@@ -2,7 +2,7 @@
   "name": "Gym Tracker",
   "short_name": "GYM TRACKER",
   "description": "Personal fitness tracker — 105 to 87kg",
-  "start_url": ".",
+  "start_url": "/gymtracker/index.html",
   "scope": "/gymtracker/",
   "display": "standalone",
   "background_color": "#0a0a0a",
