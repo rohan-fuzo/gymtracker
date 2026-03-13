@@ -834,7 +834,10 @@ async function getExerciseGif(exName) {
     );
     const data = await res.json();
     console.log('[GIF DEBUG] API response for', exName, ':', JSON.stringify(data).slice(0,300));
-    const gifUrl = Array.isArray(data) && data[0]?.gifUrl ? data[0].gifUrl : null;
+    if (!Array.isArray(data) || !data[0]) { gifCache[exName] = null; return null; }
+    // API no longer returns gifUrl field — construct from id
+    const ex0 = data[0];
+    const gifUrl = ex0.gifUrl || (ex0.id ? `https://v2.exercisedb.io/image/${ex0.id}` : null);
     console.log('[GIF DEBUG] gifUrl:', gifUrl);
     if (!gifUrl) { gifCache[exName] = null; return null; }
     // Just use the URL directly — skip blob fetch
