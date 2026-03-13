@@ -1264,17 +1264,16 @@ function renderWorkout(){
       <div class="ex-detail"><div class="ex-detail-inner">
         ${isFirst?`<div class="ex-new" style="border-color:var(--gold);color:var(--gold)">🧠 MM SET FIRST — No weight. Full ROM. Feel the muscle. Then load up.</div>`:''}
         ${ex.warn?`<div class="ex-warn">${ex.warn}</div>`:''}
-        ${EXERCISEDB_NAMES[ex.n]?`<div style="margin-bottom:10px" id="gif-wrap-${ei}">
+        ${EXERCISEDB_NAMES[ex.n]?`<div style="margin-bottom:12px" id="gif-wrap-${ei}">
           <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">CORRECT FORM</div>
-          <div style="width:100%;height:180px;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden" id="gif-box-${ei}">
-            <div id="gif-loading-${ei}" style="display:flex;flex-direction:column;align-items:center;gap:6px">
-              <div style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--p1);border-radius:50%;animation:spin .8s linear infinite"></div>
-              <div style="color:var(--muted);font-size:11px">Loading demo...</div>
+          <div style="width:100%;border-radius:10px;background:#111;overflow:hidden;position:relative" id="gif-box-${ei}">
+            <img id="gif-img-${ei}" alt="${ex.n} form"
+              style="width:100%;display:block;border-radius:10px;opacity:0;transition:opacity .3s"
+              onload="this.style.opacity=1;document.getElementById('gif-loading-${ei}').style.display='none'"
+              onerror="document.getElementById('gif-wrap-${ei}').style.display='none'">
+            <div id="gif-loading-${ei}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#111;border-radius:10px">
+              <div style="color:var(--dim);font-size:11px">Loading...</div>
             </div>
-            <video id="gif-img-${ei}"
-              autoplay loop muted playsinline
-              style="width:100%;height:180px;object-fit:cover;border-radius:10px;display:none;position:absolute;inset:0">
-            </video>
           </div>
         </div>`:''}
         <div class="ex-note">${ex.note}</div>
@@ -1304,29 +1303,14 @@ function tEx(id, exName, exIdx){
   if(!r) return;
   const wasOpen = r.classList.contains('open');
   r.classList.toggle('open');
-  // Load video on first open
+  // Load image on first open
   if(!wasOpen && exName && exIdx !== undefined){
-    const videoEl = document.getElementById(`gif-img-${exIdx}`);
-    if(videoEl && !videoEl.dataset.loaded){
-      videoEl.dataset.loaded = '1';
-      const loadingEl = document.getElementById(`gif-loading-${exIdx}`);
-      const wrap     = document.getElementById(`gif-wrap-${exIdx}`);
+    const imgEl = document.getElementById(`gif-img-${exIdx}`);
+    if(imgEl && !imgEl.dataset.loaded){
+      imgEl.dataset.loaded = '1';
       getExerciseGif(exName).then(url => {
-        if(url){
-          videoEl.src = url;
-          videoEl.oncanplay = () => {
-            videoEl.style.display = 'block';
-            if(loadingEl) loadingEl.style.display = 'none';
-            videoEl.play().catch(()=>{});
-          };
-          videoEl.onerror = () => {
-            if(loadingEl){ loadingEl.innerHTML = '<span style="color:var(--dim);font-size:11px">No demo available</span>'; }
-          };
-          videoEl.load();
-        } else {
-          // No key set or no result — hide the whole demo block silently
-          if(wrap) wrap.style.display = 'none';
-        }
+        if(url) imgEl.src = url;
+        else { const w = document.getElementById(`gif-wrap-${exIdx}`); if(w) w.style.display='none'; }
       });
     }
   }
