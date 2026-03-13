@@ -837,7 +837,9 @@ async function getExerciseGif(exName) {
     if (!Array.isArray(data) || !data[0]) { gifCache[exName] = null; return null; }
     // API no longer returns gifUrl field — construct from id
     const ex0 = data[0];
-    const gifUrl = ex0.gifUrl || (ex0.id ? `https://v2.exercisedb.io/image/${ex0.id}` : null);
+    // Wrap in corsproxy to avoid CORS block on img load from GitHub Pages
+    const rawUrl = ex0.gifUrl || (ex0.id ? `https://v2.exercisedb.io/image/${ex0.id}` : null);
+    const gifUrl = rawUrl ? `https://corsproxy.io/?${encodeURIComponent(rawUrl)}` : null;
     console.log('[GIF DEBUG] gifUrl:', gifUrl);
     if (!gifUrl) { gifCache[exName] = null; return null; }
     // Just use the URL directly — skip blob fetch
