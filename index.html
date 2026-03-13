@@ -833,19 +833,15 @@ async function getExerciseGif(exName) {
       }}
     );
     const data = await res.json();
+    console.log('[GIF DEBUG] API response for', exName, ':', JSON.stringify(data).slice(0,300));
     const gifUrl = Array.isArray(data) && data[0]?.gifUrl ? data[0].gifUrl : null;
+    console.log('[GIF DEBUG] gifUrl:', gifUrl);
     if (!gifUrl) { gifCache[exName] = null; return null; }
-
-    // Step 2: fetch image as blob -> object URL
-    // This sidesteps <img> CORS issues — the blob URL is local, no tainted canvas
-    const imgRes = await fetch(gifUrl);
-    if (!imgRes.ok) { gifCache[exName] = gifUrl; return gifUrl; } // fallback: try direct URL
-    const blob = await imgRes.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    gifCache[exName] = objectUrl;
-    return objectUrl;
+    // Just use the URL directly — skip blob fetch
+    gifCache[exName] = gifUrl;
+    return gifUrl;
   } catch(e) {
-    console.warn('ExerciseDB GIF failed for', exName, e?.message);
+    console.error('[GIF DEBUG] fetch error for', exName, e?.message, e);
     gifCache[exName] = null;
     return null;
   }
@@ -1298,23 +1294,24 @@ function tEx(id, exName, exIdx){
       const loadingEl = document.getElementById(`gif-loading-${exIdx}`);
       const wrap = document.getElementById(`gif-wrap-${exIdx}`);
       getExerciseGif(exName).then(url => {
+        console.log('[GIF DEBUG] tEx got url for', exName, ':', url ? url.slice(0,80) : null);
         if(url){
-          // Set src and let onload/onerror in the HTML handle show/hide
           imgEl.src = url;
-          // Safety: if onload fires before we get here it may have already hidden loading
           imgEl.onload = () => {
+            console.log('[GIF DEBUG] img loaded OK for', exName);
             imgEl.style.display = 'block';
             if(loadingEl) loadingEl.style.display = 'none';
           };
-          imgEl.onerror = () => {
-            // Image URL exists but failed to load — show fallback text
+          imgEl.onerror = (e) => {
+            console.error('[GIF DEBUG] img onerror for', exName, 'src was:', imgEl.src);
             if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
           };
         } else {
-          // API returned nothing — compact fallback, don't hide the whole block
+          console.warn('[GIF DEBUG] no url returned for', exName);
           if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
         }
-      }).catch(() => {
+      }).catch((e) => {
+        console.error('[GIF DEBUG] catch in tEx for', exName, e);
         if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
       });
     }
