@@ -836,19 +836,16 @@ async function getExerciseGif(exName) {
   if (!query) { videoCache[exName] = null; return null; }
   if (MUSCLEWIKI_KEY === 'PASTE_YOUR_KEY_HERE') { videoCache[exName] = null; return null; }
   try {
+    const MW_PROXY = 'https://musclewiki-proxy.rohan-3e4.workers.dev';
     const res = await fetch(
-      `https://api.musclewiki.com/search?search=${encodeURIComponent(query)}&limit=1&gender=male`,
-      { headers: { 'X-API-Key': MUSCLEWIKI_KEY } }
+      `${MW_PROXY}/search?search=${encodeURIComponent(query)}&limit=1&gender=male`
     );
     if (!res.ok) { videoCache[exName] = null; return null; }
     const data = await res.json();
-    // Response: { results: [{id, name}] } — then fetch exercise detail for video URL
     const first = data?.results?.[0];
     if (!first?.id) { videoCache[exName] = null; return null; }
-    // Fetch the exercise detail to get video URLs
     const detailRes = await fetch(
-      `https://api.musclewiki.com/exercises/${first.id}?gender=male`,
-      { headers: { 'X-API-Key': MUSCLEWIKI_KEY } }
+      `${MW_PROXY}/exercises/${first.id}?gender=male`
     );
     if (!detailRes.ok) { videoCache[exName] = null; return null; }
     const detail = await detailRes.json();
