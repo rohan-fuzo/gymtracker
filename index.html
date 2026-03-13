@@ -824,6 +824,7 @@ async function getExerciseGif(exName) {
   if (!searchName) { gifCache[exName] = null; return null; }
   if (EXERCISEDB_KEY === 'YOUR_RAPIDAPI_KEY_HERE') { gifCache[exName] = null; return null; }
   try {
+    // Step 1: get gifUrl from ExerciseDB metadata
     const res = await fetch(
       `https://exercisedb.p.rapidapi.com/exercises/name/${encodeURIComponent(searchName)}?limit=1&offset=0`,
       { headers: {
@@ -832,10 +833,22 @@ async function getExerciseGif(exName) {
       }}
     );
     const data = await res.json();
-    const url = Array.isArray(data) && data[0]?.gifUrl ? data[0].gifUrl : null;
-    gifCache[exName] = url;
-    return url;
-  } catch { gifCache[exName] = null; return null; }
+    const gifUrl = Array.isArray(data) && data[0]?.gifUrl ? data[0].gifUrl : null;
+    if (!gifUrl) { gifCache[exName] = null; return null; }
+
+    // Step 2: fetch image as blob -> object URL
+    // This sidesteps <img> CORS issues — the blob URL is local, no tainted canvas
+    const imgRes = await fetch(gifUrl);
+    if (!imgRes.ok) { gifCache[exName] = gifUrl; return gifUrl; } // fallback: try direct URL
+    const blob = await imgRes.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    gifCache[exName] = objectUrl;
+    return objectUrl;
+  } catch(e) {
+    console.warn('ExerciseDB GIF failed for', exName, e?.message);
+    gifCache[exName] = null;
+    return null;
+  }
 }
 
 const EX_GIFS = {}; // kept for compatibility
@@ -1247,9 +1260,7 @@ function renderWorkout(){
           <div style="width:100%;height:180px;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
             <div style="color:var(--muted);font-size:12px;position:absolute" id="gif-loading-${ei}">Loading form guide...</div>
             <img id="gif-img-${ei}" alt="${ex.n} form"
-              style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;display:none;position:relative;z-index:1"
-              onload="this.style.display='block';document.getElementById('gif-loading-${ei}').style.display='none'"
-              onerror="document.getElementById('gif-wrap-${ei}').style.display='none'">
+              style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;display:none;position:relative;z-index:1">
           </div>
         </div>`:''}
         <div class="ex-note">${ex.note}</div>
@@ -1279,16 +1290,32 @@ function tEx(id, exName, exIdx){
   if(!r) return;
   const wasOpen = r.classList.contains('open');
   r.classList.toggle('open');
-  // Load GIF dynamically when opening
+  // Load GIF dynamically on first open
   if(!wasOpen && exName && exIdx !== undefined){
     const imgEl = document.getElementById(`gif-img-${exIdx}`);
-    if(imgEl && !imgEl.src) {
+    if(imgEl && !imgEl.dataset.loaded){
+      imgEl.dataset.loaded = '1';
+      const loadingEl = document.getElementById(`gif-loading-${exIdx}`);
+      const wrap = document.getElementById(`gif-wrap-${exIdx}`);
       getExerciseGif(exName).then(url => {
-        if(url && imgEl) imgEl.src = url;
-        else {
-          const wrap = document.getElementById(`gif-wrap-${exIdx}`);
-          if(wrap) wrap.style.display = 'none';
+        if(url){
+          // Set src and let onload/onerror in the HTML handle show/hide
+          imgEl.src = url;
+          // Safety: if onload fires before we get here it may have already hidden loading
+          imgEl.onload = () => {
+            imgEl.style.display = 'block';
+            if(loadingEl) loadingEl.style.display = 'none';
+          };
+          imgEl.onerror = () => {
+            // Image URL exists but failed to load — show fallback text
+            if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
+          };
+        } else {
+          // API returned nothing — compact fallback, don't hide the whole block
+          if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
         }
+      }).catch(() => {
+        if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
       });
     }
   }
