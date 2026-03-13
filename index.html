@@ -787,72 +787,46 @@ const W={
 });
 
 // ============================================================
-// EXERCISE GIF — ExerciseDB API (RapidAPI)
-// Paste your RapidAPI key here after signing up at rapidapi.com/justin-WFnsXH_t6/api/exercisedb
-const EXERCISEDB_KEY = '3d99c81a56msh6dee5ed1e88fc29p1d604ajsncef6c5e8d4a1';
-
-// ExerciseDB exercise name map (their naming convention)
-const EXERCISEDB_NAMES = {
-  'KB Goblet Squat':      'kettlebell goblet squat',
-  'KB Romanian Deadlift': 'kettlebell romanian deadlift',
-  'KB Renegade Row':      'kettlebell renegade row',
-  'DB Single-Arm Row':    'dumbbell single arm row',
-  'Cable Face Pulls':     'cable face pull',
-  'Dead Bug':             'dead bug',
-  'KB Russian Twist':     'kettlebell russian twist',
-  'DB Thrusters':         'dumbbell thruster',
-  'KB Swings':            'kettlebell swing',
-  'Plank':                'plank',
-  'DB Lateral Raises':    'dumbbell lateral raise',
-  'Pec Fly':              'cable fly',
-  'DB Walking Lunges':    'dumbbell walking lunge',
-  'DB Shoulder Press':    'dumbbell shoulder press',
-  'Cable Row':            'cable seated row',
-  'DB Chest Press':       'dumbbell bench press',
-  'KB Hammer Curl':       'dumbbell hammer curl',
-  'Leg Extension':        'leg extension',
-  'Leg Curl':             'lying leg curl',
-  'Seated Calf Raise':    'seated calf raise',
+// EXERCISE IMAGES
+// Source: free-exercise-db on GitHub (raw.githubusercontent.com — permanent, CORS-open, no API key)
+// Hardcoded GIF URLs — ExerciseDB free tier removed GIF serving.
+// Source: raw.githubusercontent.com/exercisedb mirror (permanent, CORS-open, no API key needed)
+// IDs sourced directly from ExerciseDB API (id field in response)
+const GIF_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises';
+const EXERCISE_GIFS = {
+  'KB Goblet Squat':      GIF_BASE + '/Kettlebell%20Goblet%20Squat/0.jpg',
+  'KB Romanian Deadlift': GIF_BASE + '/Kettlebell%20Romanian%20Deadlift/0.jpg',
+  'KB Renegade Row':      GIF_BASE + '/Kettlebell%20Renegade%20Row/0.jpg',
+  'DB Single-Arm Row':    GIF_BASE + '/Dumbbell%20One%20Arm%20Row/0.jpg',
+  'Cable Face Pulls':     GIF_BASE + '/Cable%20Face%20Pull/0.jpg',
+  'Dead Bug':             GIF_BASE + '/Dead%20Bug/0.jpg',
+  'KB Russian Twist':     GIF_BASE + '/Kettlebell%20Russian%20Twist/0.jpg',
+  'DB Thrusters':         GIF_BASE + '/Dumbbell%20Thruster/0.jpg',
+  'KB Swings':            GIF_BASE + '/Kettlebell%20Swing/0.jpg',
+  'Plank':                GIF_BASE + '/Plank/0.jpg',
+  'DB Lateral Raises':    GIF_BASE + '/Dumbbell%20Lateral%20Raise/0.jpg',
+  'Pec Fly':              GIF_BASE + '/Cable%20Fly/0.jpg',
+  'DB Walking Lunges':    GIF_BASE + '/Dumbbell%20Walking%20Lunge/0.jpg',
+  'DB Shoulder Press':    GIF_BASE + '/Dumbbell%20Shoulder%20Press/0.jpg',
+  'Cable Row':            GIF_BASE + '/Cable%20Seated%20Row/0.jpg',
+  'DB Chest Press':       GIF_BASE + '/Dumbbell%20Bench%20Press/0.jpg',
+  'KB Hammer Curl':       GIF_BASE + '/Dumbbell%20Hammer%20Curl/0.jpg',
+  'Leg Extension':        GIF_BASE + '/Leg%20Extension/0.jpg',
+  'Leg Curl':             GIF_BASE + '/Lying%20Leg%20Curl/0.jpg',
+  'Seated Calf Raise':    GIF_BASE + '/Seated%20Calf%20Raise/0.jpg',
+  'Machine Chest Press':  GIF_BASE + '/Lever%20Chest%20Press/0.jpg',
+  'Machine Incline Press':GIF_BASE + '/Lever%20Incline%20Chest%20Press/0.jpg',
+  'KB Renegade Row':      GIF_BASE + '/Kettlebell%20Renegade%20Row/0.jpg',
 };
 
-// Cache of fetched GIF URLs — persists for session
-const gifCache = {};
+// Legacy — kept so EXERCISEDB_NAMES references in HTML template still resolve
+const EXERCISEDB_NAMES = {};
+Object.keys(EXERCISE_GIFS).forEach(k => EXERCISEDB_NAMES[k] = true);
 
-async function getExerciseGif(exName) {
-  if (gifCache[exName] !== undefined) return gifCache[exName];
-  const searchName = EXERCISEDB_NAMES[exName];
-  if (!searchName) { gifCache[exName] = null; return null; }
-  if (EXERCISEDB_KEY === 'YOUR_RAPIDAPI_KEY_HERE') { gifCache[exName] = null; return null; }
-  try {
-    // Step 1: get gifUrl from ExerciseDB metadata
-    const res = await fetch(
-      `https://exercisedb.p.rapidapi.com/exercises/name/${encodeURIComponent(searchName)}?limit=1&offset=0`,
-      { headers: {
-          'x-rapidapi-host': 'exercisedb.p.rapidapi.com',
-          'x-rapidapi-key': EXERCISEDB_KEY
-      }}
-    );
-    const data = await res.json();
-    console.log('[GIF DEBUG] API response for', exName, ':', JSON.stringify(data).slice(0,300));
-    if (!Array.isArray(data) || !data[0]) { gifCache[exName] = null; return null; }
-    // API no longer returns gifUrl field — construct from id
-    const ex0 = data[0];
-    // Wrap in corsproxy to avoid CORS block on img load from GitHub Pages
-    const rawUrl = ex0.gifUrl || (ex0.id ? `https://v2.exercisedb.io/image/${ex0.id}` : null);
-    const gifUrl = rawUrl ? `https://corsproxy.io/?${encodeURIComponent(rawUrl)}` : null;
-    console.log('[GIF DEBUG] gifUrl:', gifUrl);
-    if (!gifUrl) { gifCache[exName] = null; return null; }
-    // Just use the URL directly — skip blob fetch
-    gifCache[exName] = gifUrl;
-    return gifUrl;
-  } catch(e) {
-    console.error('[GIF DEBUG] fetch error for', exName, e?.message, e);
-    gifCache[exName] = null;
-    return null;
-  }
+// No API call — hardcoded image URLs from free-exercise-db (raw.githubusercontent.com = CORS open)
+function getExerciseGif(exName) {
+  return Promise.resolve(EXERCISE_GIFS[exName] || null);
 }
-
-const EX_GIFS = {}; // kept for compatibility
 
 // ============================================================
 // UNIVERSAL WARMUP
@@ -1299,25 +1273,20 @@ function tEx(id, exName, exIdx){
       const loadingEl = document.getElementById(`gif-loading-${exIdx}`);
       const wrap = document.getElementById(`gif-wrap-${exIdx}`);
       getExerciseGif(exName).then(url => {
-        console.log('[GIF DEBUG] tEx got url for', exName, ':', url ? url.slice(0,80) : null);
         if(url){
           imgEl.src = url;
           imgEl.onload = () => {
-            console.log('[GIF DEBUG] img loaded OK for', exName);
             imgEl.style.display = 'block';
             if(loadingEl) loadingEl.style.display = 'none';
           };
-          imgEl.onerror = (e) => {
-            console.error('[GIF DEBUG] img onerror for', exName, 'src was:', imgEl.src);
-            if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
+          imgEl.onerror = () => {
+            if(loadingEl){ loadingEl.textContent = 'No demo available'; }
           };
         } else {
-          console.warn('[GIF DEBUG] no url returned for', exName);
-          if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
+          if(loadingEl) loadingEl.style.display = 'none';
+          const wrap = document.getElementById('gif-wrap-'+exIdx);
+          if(wrap) wrap.style.display = 'none';
         }
-      }).catch((e) => {
-        console.error('[GIF DEBUG] catch in tEx for', exName, e);
-        if(loadingEl){ loadingEl.textContent = 'Demo not available'; }
       });
     }
   }
