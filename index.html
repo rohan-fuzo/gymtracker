@@ -105,8 +105,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .eq-mach{background:rgba(100,116,139,.12);color:#94a3b8}
 .ex-chevron{color:var(--dim);font-size:12px;flex-shrink:0;transition:transform .2s}
 .ex-row.open .ex-chevron{transform:rotate(180deg)}
-.ex-detail{max-height:0;overflow:hidden;transition:max-height .3s ease;background:var(--surface2)}
-.ex-row.open .ex-detail{max-height:600px}
+.ex-detail{max-height:0;overflow:hidden;transition:max-height .4s ease;background:var(--surface2)}
+.ex-row.open .ex-detail{max-height:900px}
 .ex-detail-inner{padding:10px 16px 12px}
 .ex-note{font-size:13px;color:#aaa;line-height:1.6;margin-bottom:8px}
 .ex-warn{font-size:12px;color:var(--p2);background:rgba(255,140,0,.08);border-left:3px solid var(--p2);padding:6px 10px;border-radius:0 6px 6px 0;margin-bottom:8px}
@@ -785,32 +785,58 @@ const W={
 });
 
 // ============================================================
-// EXERCISE GIF LIBRARY
-// All URLs from inspireusafoundation.org and muscle-wiki.com
-// Curated for correct form — only technically demanding exercises
-// ============================================================
-const EX_GIFS = {
-  'KB Goblet Squat':        'https://www.inspireusafoundation.org/wp-content/uploads/2022/03/kettlebell-goblet-squat.gif',
-  'KB Romanian Deadlift':   'https://www.inspireusafoundation.org/wp-content/uploads/2022/11/kettlebell-romanian-deadlift.gif',
-  'KB Renegade Row':        'https://www.inspireusafoundation.org/wp-content/uploads/2022/04/renegade-row.gif',
-  'DB Single-Arm Row':      'https://www.inspireusafoundation.org/wp-content/uploads/2022/01/single-arm-dumbbell-row.gif',
-  'Cable Face Pulls':       'https://www.inspireusafoundation.org/wp-content/uploads/2022/02/face-pull.gif',
-  'Dead Bug':               'https://www.inspireusafoundation.org/wp-content/uploads/2022/06/dead-bug.gif',
-  'KB Russian Twist':       'https://www.inspireusafoundation.org/wp-content/uploads/2021/06/russian-twist.gif',
-  'DB Thrusters':           'https://www.inspireusafoundation.org/wp-content/uploads/2022/05/dumbbell-thruster.gif',
-  'KB Swings':              'https://www.inspireusafoundation.org/wp-content/uploads/2021/05/kettlebell-swing.gif',
-  'Plank':                  'https://www.inspireusafoundation.org/wp-content/uploads/2021/06/plank.gif',
-  'DB Lateral Raises':      'https://www.inspireusafoundation.org/wp-content/uploads/2021/05/lateral-raise.gif',
-  'Pec Fly':                'https://www.inspireusafoundation.org/wp-content/uploads/2022/05/pec-deck-fly.gif',
-  'DB Walking Lunges':      'https://www.inspireusafoundation.org/wp-content/uploads/2021/06/dumbbell-walking-lunge.gif',
-  'DB Shoulder Press':      'https://www.inspireusafoundation.org/wp-content/uploads/2021/05/dumbbell-shoulder-press.gif',
-  'Cable Row':              'https://www.inspireusafoundation.org/wp-content/uploads/2021/06/cable-row.gif',
-  'DB Chest Press':         'https://www.inspireusafoundation.org/wp-content/uploads/2021/05/dumbbell-bench-press.gif',
-  'KB Hammer Curl':         'https://www.inspireusafoundation.org/wp-content/uploads/2021/06/hammer-curl.gif',
-  'Leg Extension':          'https://www.inspireusafoundation.org/wp-content/uploads/2021/05/leg-extension.gif',
-  'Leg Curl':               'https://www.inspireusafoundation.org/wp-content/uploads/2021/06/lying-leg-curl.gif',
-  'Seated Calf Raise':      'https://www.inspireusafoundation.org/wp-content/uploads/2022/09/seated-calf-raise.gif',
+// EXERCISE GIF — ExerciseDB API (RapidAPI)
+// Paste your RapidAPI key here after signing up at rapidapi.com/justin-WFnsXH_t6/api/exercisedb
+const EXERCISEDB_KEY = '3d99c81a56msh6dee5ed1e88fc29p1d604ajsncef6c5e8d4a1';
+
+// ExerciseDB exercise name map (their naming convention)
+const EXERCISEDB_NAMES = {
+  'KB Goblet Squat':      'kettlebell goblet squat',
+  'KB Romanian Deadlift': 'kettlebell romanian deadlift',
+  'KB Renegade Row':      'kettlebell renegade row',
+  'DB Single-Arm Row':    'dumbbell single arm row',
+  'Cable Face Pulls':     'cable face pull',
+  'Dead Bug':             'dead bug',
+  'KB Russian Twist':     'kettlebell russian twist',
+  'DB Thrusters':         'dumbbell thruster',
+  'KB Swings':            'kettlebell swing',
+  'Plank':                'plank',
+  'DB Lateral Raises':    'dumbbell lateral raise',
+  'Pec Fly':              'cable fly',
+  'DB Walking Lunges':    'dumbbell walking lunge',
+  'DB Shoulder Press':    'dumbbell shoulder press',
+  'Cable Row':            'cable seated row',
+  'DB Chest Press':       'dumbbell bench press',
+  'KB Hammer Curl':       'dumbbell hammer curl',
+  'Leg Extension':        'leg extension',
+  'Leg Curl':             'lying leg curl',
+  'Seated Calf Raise':    'seated calf raise',
 };
+
+// Cache of fetched GIF URLs — persists for session
+const gifCache = {};
+
+async function getExerciseGif(exName) {
+  if (gifCache[exName] !== undefined) return gifCache[exName];
+  const searchName = EXERCISEDB_NAMES[exName];
+  if (!searchName) { gifCache[exName] = null; return null; }
+  if (EXERCISEDB_KEY === 'YOUR_RAPIDAPI_KEY_HERE') { gifCache[exName] = null; return null; }
+  try {
+    const res = await fetch(
+      `https://exercisedb.p.rapidapi.com/exercises/name/${encodeURIComponent(searchName)}?limit=1&offset=0`,
+      { headers: {
+          'x-rapidapi-host': 'exercisedb.p.rapidapi.com',
+          'x-rapidapi-key': EXERCISEDB_KEY
+      }}
+    );
+    const data = await res.json();
+    const url = Array.isArray(data) && data[0]?.gifUrl ? data[0].gifUrl : null;
+    gifCache[exName] = url;
+    return url;
+  } catch { gifCache[exName] = null; return null; }
+}
+
+const EX_GIFS = {}; // kept for compatibility
 
 // ============================================================
 // UNIVERSAL WARMUP
@@ -1161,7 +1187,7 @@ function renderWorkout(){
       </div>`;
     }).join('');
     h+=`<div class="ex-row" id="${ek}">
-      <div class="ex-main" onclick="tEx('${ek}')">
+      <div class="ex-main" onclick="tEx('${ek}','${ex.n}',${exIdx})">
         <div class="ex-icon">${ex.ic}</div>
         <div class="ex-info">
           <div class="ex-name">${ex.n}</div>
@@ -1173,11 +1199,15 @@ function renderWorkout(){
       <div class="ex-detail"><div class="ex-detail-inner">
         ${isFirst?`<div class="ex-new" style="border-color:var(--gold);color:var(--gold)">🧠 MM SET FIRST — No weight. Full ROM. Feel the muscle. Then load up.</div>`:''}
         ${ex.warn?`<div class="ex-warn">${ex.warn}</div>`:''}
-        ${EX_GIFS[ex.n]?`<div style="margin-bottom:10px">
+        ${EXERCISEDB_NAMES[ex.n]?`<div style="margin-bottom:10px" id="gif-wrap-${exIdx}">
           <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">CORRECT FORM</div>
-          <img src="${EX_GIFS[ex.n]}" alt="${ex.n} form" loading="lazy"
-            style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;background:#111;display:block"
-            onerror="this.parentElement.style.display='none'">
+          <div style="width:100%;height:180px;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+            <div style="color:var(--muted);font-size:12px;position:absolute" id="gif-loading-${exIdx}">Loading form guide...</div>
+            <img id="gif-img-${exIdx}" alt="${ex.n} form"
+              style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;display:none;position:relative;z-index:1"
+              onload="this.style.display='block';document.getElementById('gif-loading-${exIdx}').style.display='none'"
+              onerror="document.getElementById('gif-wrap-${exIdx}').style.display='none'">
+          </div>
         </div>`:''}
         <div class="ex-note">${ex.note}</div>
         <div class="sets-grid">${setsH}</div>
@@ -1201,7 +1231,25 @@ function renderWorkout(){
 
 function esc(s){ return s.replace(/'/g,"\\'"); }
 function parseSets(s){ const m=s.match(/^(\d+)\s*[×x]\s*(.+?)(?:\s*[@(]|$)/); if(!m)return[s]; return Array(parseInt(m[1])).fill(m[2].trim()); }
-function tEx(id){ const r=document.getElementById(id); if(r)r.classList.toggle('open'); }
+function tEx(id, exName, exIdx){
+  const r = document.getElementById(id);
+  if(!r) return;
+  const wasOpen = r.classList.contains('open');
+  r.classList.toggle('open');
+  // Load GIF dynamically when opening
+  if(!wasOpen && exName && exIdx !== undefined){
+    const imgEl = document.getElementById(`gif-img-${exIdx}`);
+    if(imgEl && !imgEl.src) {
+      getExerciseGif(exName).then(url => {
+        if(url && imgEl) imgEl.src = url;
+        else {
+          const wrap = document.getElementById(`gif-wrap-${exIdx}`);
+          if(wrap) wrap.style.display = 'none';
+        }
+      });
+    }
+  }
+}
 
 function renderFinHTML(f,ph,dk){
   if(f.type==='cardio'&&!f.rounds.length) return `<div class="hiit-block"><div class="hiit-title">🔥 ${f.title}</div><div class="hiit-desc">${f.desc}<br>${f.dur} · ${f.kcal}</div></div>`;
