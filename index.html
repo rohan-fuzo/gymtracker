@@ -792,40 +792,77 @@ const W={
 // Hardcoded GIF URLs — ExerciseDB free tier removed GIF serving.
 // Source: raw.githubusercontent.com/exercisedb mirror (permanent, CORS-open, no API key needed)
 // IDs sourced directly from ExerciseDB API (id field in response)
-const GIF_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises';
-const EXERCISE_GIFS = {
-  'KB Goblet Squat':      GIF_BASE + '/Kettlebell%20Goblet%20Squat/0.jpg',
-  'KB Romanian Deadlift': GIF_BASE + '/Kettlebell%20Romanian%20Deadlift/0.jpg',
-  'KB Renegade Row':      GIF_BASE + '/Kettlebell%20Renegade%20Row/0.jpg',
-  'DB Single-Arm Row':    GIF_BASE + '/Dumbbell%20One%20Arm%20Row/0.jpg',
-  'Cable Face Pulls':     GIF_BASE + '/Cable%20Face%20Pull/0.jpg',
-  'Dead Bug':             GIF_BASE + '/Dead%20Bug/0.jpg',
-  'KB Russian Twist':     GIF_BASE + '/Kettlebell%20Russian%20Twist/0.jpg',
-  'DB Thrusters':         GIF_BASE + '/Dumbbell%20Thruster/0.jpg',
-  'KB Swings':            GIF_BASE + '/Kettlebell%20Swing/0.jpg',
-  'Plank':                GIF_BASE + '/Plank/0.jpg',
-  'DB Lateral Raises':    GIF_BASE + '/Dumbbell%20Lateral%20Raise/0.jpg',
-  'Pec Fly':              GIF_BASE + '/Cable%20Fly/0.jpg',
-  'DB Walking Lunges':    GIF_BASE + '/Dumbbell%20Walking%20Lunge/0.jpg',
-  'DB Shoulder Press':    GIF_BASE + '/Dumbbell%20Shoulder%20Press/0.jpg',
-  'Cable Row':            GIF_BASE + '/Cable%20Seated%20Row/0.jpg',
-  'DB Chest Press':       GIF_BASE + '/Dumbbell%20Bench%20Press/0.jpg',
-  'KB Hammer Curl':       GIF_BASE + '/Dumbbell%20Hammer%20Curl/0.jpg',
-  'Leg Extension':        GIF_BASE + '/Leg%20Extension/0.jpg',
-  'Leg Curl':             GIF_BASE + '/Lying%20Leg%20Curl/0.jpg',
-  'Seated Calf Raise':    GIF_BASE + '/Seated%20Calf%20Raise/0.jpg',
-  'Machine Chest Press':  GIF_BASE + '/Lever%20Chest%20Press/0.jpg',
-  'Machine Incline Press':GIF_BASE + '/Lever%20Incline%20Chest%20Press/0.jpg',
-  'KB Renegade Row':      GIF_BASE + '/Kettlebell%20Renegade%20Row/0.jpg',
+// ============================================================
+// MUSCLEWIKI VIDEO — api.musclewiki.com
+// Free account: api.musclewiki.com/register (no credit card)
+// ============================================================
+const MUSCLEWIKI_KEY = 'mw_bqqGkZpG3kxgJSO_c96oQJIjUY5tE-UswBHbCNeDWa4';
+
+// Search term map — maps our exercise names to MuscleWiki search queries
+const MW_SEARCH = {
+  'KB Goblet Squat':       'kettlebell goblet squat',
+  'KB Romanian Deadlift':  'kettlebell romanian deadlift',
+  'KB Renegade Row':       'kettlebell renegade row',
+  'DB Single-Arm Row':     'dumbbell one arm row',
+  'Cable Face Pulls':      'cable face pull',
+  'Dead Bug':              'dead bug',
+  'KB Russian Twist':      'russian twist',
+  'DB Thrusters':          'dumbbell thruster',
+  'KB Swings':             'kettlebell swing',
+  'Plank':                 'plank',
+  'DB Lateral Raises':     'dumbbell lateral raise',
+  'Pec Fly':               'cable fly',
+  'DB Walking Lunges':     'dumbbell walking lunge',
+  'DB Shoulder Press':     'dumbbell shoulder press',
+  'Cable Row':             'cable seated row',
+  'DB Chest Press':        'dumbbell bench press',
+  'KB Hammer Curl':        'hammer curl',
+  'Leg Extension':         'leg extension',
+  'Leg Curl':              'lying leg curl',
+  'Seated Calf Raise':     'seated calf raise',
+  'Machine Chest Press':   'chest press machine',
+  'Machine Incline Press': 'incline chest press machine',
 };
 
-// Legacy — kept so EXERCISEDB_NAMES references in HTML template still resolve
-const EXERCISEDB_NAMES = {};
-Object.keys(EXERCISE_GIFS).forEach(k => EXERCISEDB_NAMES[k] = true);
+// Session cache: exName -> video URL string | null
+const videoCache = {};
 
-// No API call — hardcoded image URLs from free-exercise-db (raw.githubusercontent.com = CORS open)
-function getExerciseGif(exName) {
-  return Promise.resolve(EXERCISE_GIFS[exName] || null);
+// Legacy flag — all exercises in MW_SEARCH get a demo section
+const EXERCISEDB_NAMES = MW_SEARCH;
+
+async function getExerciseGif(exName) {
+  if (videoCache[exName] !== undefined) return videoCache[exName];
+  const query = MW_SEARCH[exName];
+  if (!query) { videoCache[exName] = null; return null; }
+  if (MUSCLEWIKI_KEY === 'PASTE_YOUR_KEY_HERE') { videoCache[exName] = null; return null; }
+  try {
+    const res = await fetch(
+      `https://api.musclewiki.com/search?search=${encodeURIComponent(query)}&limit=1&gender=male`,
+      { headers: { 'X-API-Key': MUSCLEWIKI_KEY } }
+    );
+    if (!res.ok) { videoCache[exName] = null; return null; }
+    const data = await res.json();
+    // Response: { results: [{id, name}] } — then fetch exercise detail for video URL
+    const first = data?.results?.[0];
+    if (!first?.id) { videoCache[exName] = null; return null; }
+    // Fetch the exercise detail to get video URLs
+    const detailRes = await fetch(
+      `https://api.musclewiki.com/exercises/${first.id}?gender=male`,
+      { headers: { 'X-API-Key': MUSCLEWIKI_KEY } }
+    );
+    if (!detailRes.ok) { videoCache[exName] = null; return null; }
+    const detail = await detailRes.json();
+    // Videos array: [{url, gender, view}] — prefer front view
+    const videos = detail?.videos || [];
+    const front = videos.find(v => v.view === 'front') || videos[0];
+    const url = front?.url || null;
+    videoCache[exName] = url;
+    return url;
+  } catch(e) {
+    console.warn('MuscleWiki video fetch failed for', exName, e?.message);
+    videoCache[exName] = null;
+    return null;
+  }
 }
 
 // ============================================================
@@ -1232,10 +1269,15 @@ function renderWorkout(){
         ${ex.warn?`<div class="ex-warn">${ex.warn}</div>`:''}
         ${EXERCISEDB_NAMES[ex.n]?`<div style="margin-bottom:10px" id="gif-wrap-${ei}">
           <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">CORRECT FORM</div>
-          <div style="width:100%;height:180px;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
-            <div style="color:var(--muted);font-size:12px;position:absolute" id="gif-loading-${ei}">Loading form guide...</div>
-            <img id="gif-img-${ei}" alt="${ex.n} form"
-              style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;display:none;position:relative;z-index:1">
+          <div style="width:100%;height:180px;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden" id="gif-box-${ei}">
+            <div id="gif-loading-${ei}" style="display:flex;flex-direction:column;align-items:center;gap:6px">
+              <div style="width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--p1);border-radius:50%;animation:spin .8s linear infinite"></div>
+              <div style="color:var(--muted);font-size:11px">Loading demo...</div>
+            </div>
+            <video id="gif-img-${ei}"
+              autoplay loop muted playsinline
+              style="width:100%;height:180px;object-fit:cover;border-radius:10px;display:none;position:absolute;inset:0">
+            </video>
           </div>
         </div>`:''}
         <div class="ex-note">${ex.note}</div>
@@ -1265,26 +1307,27 @@ function tEx(id, exName, exIdx){
   if(!r) return;
   const wasOpen = r.classList.contains('open');
   r.classList.toggle('open');
-  // Load GIF dynamically on first open
+  // Load video on first open
   if(!wasOpen && exName && exIdx !== undefined){
-    const imgEl = document.getElementById(`gif-img-${exIdx}`);
-    if(imgEl && !imgEl.dataset.loaded){
-      imgEl.dataset.loaded = '1';
+    const videoEl = document.getElementById(`gif-img-${exIdx}`);
+    if(videoEl && !videoEl.dataset.loaded){
+      videoEl.dataset.loaded = '1';
       const loadingEl = document.getElementById(`gif-loading-${exIdx}`);
-      const wrap = document.getElementById(`gif-wrap-${exIdx}`);
+      const wrap     = document.getElementById(`gif-wrap-${exIdx}`);
       getExerciseGif(exName).then(url => {
         if(url){
-          imgEl.src = url;
-          imgEl.onload = () => {
-            imgEl.style.display = 'block';
+          videoEl.src = url;
+          videoEl.oncanplay = () => {
+            videoEl.style.display = 'block';
             if(loadingEl) loadingEl.style.display = 'none';
+            videoEl.play().catch(()=>{});
           };
-          imgEl.onerror = () => {
-            if(loadingEl){ loadingEl.textContent = 'No demo available'; }
+          videoEl.onerror = () => {
+            if(loadingEl){ loadingEl.innerHTML = '<span style="color:var(--dim);font-size:11px">No demo available</span>'; }
           };
+          videoEl.load();
         } else {
-          if(loadingEl) loadingEl.style.display = 'none';
-          const wrap = document.getElementById('gif-wrap-'+exIdx);
+          // No key set or no result — hide the whole demo block silently
           if(wrap) wrap.style.display = 'none';
         }
       });
