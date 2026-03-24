@@ -76,6 +76,19 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .day-pill.active .dp-day{color:var(--p1)}
 .day-pill .dp-dot{width:5px;height:5px;border-radius:50%;background:var(--border)}
 .day-pill.active .dp-dot{background:var(--p1)}
+.day-pill.done-day .dp-dot{background:var(--p3)}
+.day-pill.done-day .dp-day{color:var(--p3)}
+.ex-row.ex-done .ex-name{text-decoration:line-through;opacity:.5}
+.ex-row.ex-done .ex-chevron{opacity:.4}
+.cardio-log{background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:10px}
+.cardio-log-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.cardio-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cardio-field label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:4px}
+.cardio-field input{width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 6px;color:var(--text);font-size:16px;font-family:'DM Sans',sans-serif;font-weight:600;text-align:center;outline:none;-webkit-appearance:none}
+.cardio-field input:focus{border-color:var(--p1)}
+.cardio-save-btn{width:100%;margin-top:10px;padding:10px;background:var(--p1);border:none;border-radius:10px;color:#fff;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+.cardio-save-btn.saved{background:var(--p3)}
+.liss-log-wrap{margin:12px 0}
 
 /* CARDS */
 .workout-card{margin:0 16px 12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
@@ -669,7 +682,15 @@ async function loadCheckCache(dateStr){
     db.from('warmup_logs').select('*').eq('date',dateStr),
   ]);
   checkCache = {};
-  if(checkRes.data) checkRes.data.forEach(r=>{ checkCache[r.item_key] = r.completed; });
+  if(checkRes.data) checkRes.data.forEach(r=>{
+    // Cardio logs store JSON in notes — restore as object
+    if(r.item_type==='cardio' && r.notes){
+      try { checkCache[r.item_key] = {...JSON.parse(r.notes), saved:true}; }
+      catch(e){ checkCache[r.item_key] = r.completed; }
+    } else {
+      checkCache[r.item_key] = r.completed;
+    }
+  });
   if(warmupRes.data) warmupRes.data.forEach(r=>{ checkCache[r.item_key] = r.completed; });
 }
 
@@ -930,12 +951,18 @@ async function toggleWarmup(itemKey, label, el){
   });
   setSyncStatus('syncing');
   try {
-    await db.from('warmup_logs').upsert({
-      date: selectedDateStr, phase: cPhase,
+    const {error} = await db.from('warmup_logs').upsert({
+      date: selectedDateStr, phase: cPhase||1,
       item_key: itemKey, item_label: label, completed: newVal
     }, {onConflict:'date,item_key'});
+    if(error) throw error;
     setSyncStatus('synced');
-  } catch(e){ setSyncStatus('error'); }
+    renderWeekStrip();
+  } catch(e){
+    setSyncStatus('error');
+    console.error('warmup save failed:', e?.message, e);
+    showToast('Warmup save failed', 'error');
+  }
 }
 
 // ============================================================
@@ -949,11 +976,15 @@ async function toggleCheck(itemKey, itemType, el){
   if(cb) cb.textContent = newVal ? '✓' : '';
   setSyncStatus('syncing');
   try {
-    await db.from('checklist_logs').upsert({
+    const {error} = await db.from('checklist_logs').upsert({
       date: selectedDateStr, item_type: itemType, item_key: itemKey, completed: newVal
     }, {onConflict:'date,item_key'});
+    if(error) throw error;
     setSyncStatus('synced');
-  } catch(e){ setSyncStatus('error'); }
+  } catch(e){
+    setSyncStatus('error');
+    console.error('checklist save failed:', e?.message, e);
+  }
 }
 
 async function toggleCreatine(el){
@@ -1067,6 +1098,20 @@ async function commitSet(weight, reps, completed){
     setSyncStatus('synced');
     haptic([10, 50, 10]);
     showToast(weight>0 ? `${weight}kg × ${reps} saved ✓` : 'Set logged ✓');
+    // Update exercise done state
+    const ek = `ex_${cPhase}_${DAYS[cDay]}_${exIndex}`;
+    const rowEl = document.getElementById(ek);
+    if(rowEl){
+      const w = W[cPhase][DAYS[cDay]];
+      const ex = w?.ex?.[exIndex];
+      if(ex){
+        const sp = parseSets(ex.s);
+        const done = isExerciseDone(ex.n, sp, exIndex===0);
+        rowEl.classList.toggle('ex-done', done);
+      }
+    }
+    // Update week strip dot
+    renderWeekStrip();
   } catch(e){
     setSyncStatus('error');
     showToast('Saved offline', 'error');
@@ -1119,8 +1164,12 @@ function selectDay(d){
   const date = getDateForDay(d);
   selectedDateStr = date.toISOString().split('T')[0];
   renderWeekStrip();
-  // loadSetsForDate will call renderWorkout once data is ready
-  loadSetsForDate(selectedDateStr);
+  // reload both sets and checkcache for the new date
+  Promise.all([
+    loadSetsForDate(selectedDateStr, true),
+    loadCheckCache(selectedDateStr),
+    loadHydration(selectedDateStr),
+  ]).then(() => renderWorkout());
 }
 
 function renderWeekStrip(){
@@ -1132,12 +1181,16 @@ function renderWeekStrip(){
     const isToday = (i === todayDow);
     const isSelected = (i === cDay);
     const isPast = dateState.beforeStart;
-    return `<div class="day-pill ${isSelected?'active':''} ${isPast?'pre-start':''}"
+    const dateStr = date.toISOString().split('T')[0];
+    const w = W[cPhase][d];
+    const dayIsDone = !isPast && isDayDone(w, d);
+    const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
+    return `<div class="day-pill ${isSelected?'active':''} ${isPast?'pre-start':''} ${dayIsDone?'done-day':''}"
       onclick="selectDay(${i})"
       style="${isPast?'opacity:.35':''}">
       <div class="dp-day">${d}</div>
       <div class="dp-num" style="font-size:12px;font-family:'DM Sans',sans-serif;font-weight:600;line-height:1.2">${formatDate(date)}</div>
-      <div class="dp-dot" style="background:${isToday?'var(--p1)':'var(--border)'}"></div>
+      <div class="dp-dot" style="background:${dotColor}"></div>
     </div>`;
   }).join('');
 }
@@ -1251,7 +1304,8 @@ function renderWorkout(){
         <div class="sc-logged">${done&&logged.weight>0?logged.weight+'kg×'+logged.reps:done?'✓':''}</div>
       </div>`;
     }).join('');
-    h+=`<div class="ex-row" id="${ek}">
+    const exDone = isExerciseDone(ex.n, sp, isFirst);
+    h+=`<div class="ex-row${exDone?' ex-done':''}" id="${ek}">
       <div class="ex-main" onclick="tEx('${ek}','${ex.n}',${ei})">
         <div class="ex-icon">${ex.ic}</div>
         <div class="ex-info">
@@ -1296,7 +1350,45 @@ function renderWorkout(){
   c.innerHTML=h;
 }
 
-function esc(s){ return s.replace(/'/g,"\\'"); }
+function esc(s){ return s.replace(/'/g,"\'"); }
+
+// Returns true if every set (including MM if isFirst) for an exercise is logged complete
+function isExerciseDone(exName, sp, isFirst){
+  if(isFirst){
+    const mmKey = exName+'|0|1';
+    if(!loggedSets[mmKey]?.completed) return false;
+  }
+  return sp.every((_,si) => loggedSets[exName+'|'+(si+1)+'|0']?.completed);
+}
+
+// Returns true if all exercises done AND all warmup items ticked
+function isDayDone(w, dk){
+  if(!w || w.isRest) return false;
+  // LISS day — just needs cardio logged
+  if(w.isLiss){
+    const lissKey = 'liss_'+cPhase+'_'+dk;
+    return !!(checkCache[lissKey]?.saved || (typeof checkCache[lissKey]==='boolean' && checkCache[lissKey]));
+  }
+  // Warmup
+  const warmupDone = WARMUP_ITEMS.every(j => checkCache['wu_'+dk+'_'+j.k]);
+  if(!warmupDone) return false;
+  // All exercises
+  const exDone = w.ex.every((ex, ei) => isExerciseDone(ex.n, parseSets(ex.s), ei===0));
+  if(!exDone) return false;
+  // Finisher — if present
+  if(w.fin){
+    if(w.fin.type==='cardio'){
+      const fKey = 'fin_cardio_'+cPhase+'_'+dk;
+      if(!(checkCache[fKey]?.saved || (typeof checkCache[fKey]==='boolean' && checkCache[fKey]))) return false;
+    } else {
+      // HIIT/Ropes/Tyre — all rounds ticked
+      const allRounds = w.fin.rounds.every((_,i) => checkCache['fin_'+cPhase+'_'+dk+'_'+i]);
+      if(!allRounds) return false;
+    }
+  }
+  return true;
+}
+
 function parseSets(s){ const m=s.match(/^(\d+)\s*[×x]\s*(.+?)(?:\s*[@(]|$)/); if(!m)return[s]; return Array(parseInt(m[1])).fill(m[2].trim()); }
 function tEx(id, exName, exIdx){
   const r = document.getElementById(id);
@@ -1316,8 +1408,67 @@ function tEx(id, exName, exIdx){
   }
 }
 
+// ============================================================
+// CARDIO LOG (LISS day + cardio finishers)
+// ============================================================
+async function saveCardioLog(logKey, btnEl){
+  const incline = parseFloat(document.getElementById(logKey+'-inc').value)||0;
+  const speed   = parseFloat(document.getElementById(logKey+'-spd').value)||0;
+  const mins    = parseFloat(document.getElementById(logKey+'-min').value)||0;
+  if(!mins){ showToast('Enter duration at minimum','error'); return; }
+  checkCache[logKey] = {incline, speed, mins, saved:true};
+  btnEl.textContent = '✓ LOGGED';
+  btnEl.classList.add('saved');
+  setSyncStatus('syncing');
+  try {
+    const {error} = await db.from('checklist_logs').upsert({
+      date: selectedDateStr,
+      item_type: 'cardio',
+      item_key: logKey,
+      completed: true,
+      notes: JSON.stringify({incline, speed, mins})
+    }, {onConflict:'date,item_key'});
+    if(error) throw error;
+    setSyncStatus('synced');
+    showToast(`${mins} min logged ✓`);
+    renderWeekStrip();
+  } catch(e){
+    setSyncStatus('error');
+    console.error('cardio save failed:', e?.message);
+    showToast('Save failed','error');
+  }
+}
+
+function renderCardioLogHTML(logKey, title, targetMins){
+  const saved = checkCache[logKey];
+  const isSaved = saved?.saved || (typeof saved === 'boolean' && saved);
+  const inc = saved?.incline||'';
+  const spd = saved?.speed||'';
+  const mins = saved?.mins||'';
+  return `<div class="cardio-log">
+    <div class="cardio-log-title">🏃 ${title} <span style="color:var(--dim);font-weight:400">· Target: ${targetMins} min</span></div>
+    <div class="cardio-fields">
+      <div class="cardio-field"><label>Incline %</label><input id="${logKey}-inc" type="number" inputmode="decimal" placeholder="5" value="${inc}" ${isSaved?'readonly':''}></div>
+      <div class="cardio-field"><label>Speed km/h</label><input id="${logKey}-spd" type="number" inputmode="decimal" placeholder="6" value="${spd}" ${isSaved?'readonly':''}></div>
+      <div class="cardio-field"><label>Duration min</label><input id="${logKey}-min" type="number" inputmode="decimal" placeholder="${targetMins}" value="${mins}" ${isSaved?'readonly':''}></div>
+    </div>
+    <button class="cardio-save-btn ${isSaved?'saved':''}" onclick="saveCardioLog('${logKey}',this)" ${isSaved?'disabled':''}>
+      ${isSaved?'✓ LOGGED':'LOG CARDIO'}
+    </button>
+  </div>`;
+}
+
 function renderFinHTML(f,ph,dk){
-  if(f.type==='cardio'&&!f.rounds.length) return `<div class="hiit-block"><div class="hiit-title">🔥 ${f.title}</div><div class="hiit-desc">${f.desc}<br>${f.dur} · ${f.kcal}</div></div>`;
+  // Cardio finisher — log incline/speed/duration
+  if(f.type==='cardio'){
+    const targetMins = parseInt(f.dur)||20;
+    const logKey = `fin_cardio_${ph}_${dk}`;
+    return `<div class="hiit-block"><div class="hiit-title">🔥 ${f.title}</div>
+      <div class="hiit-desc" style="margin-bottom:8px">${f.desc} · ${f.kcal}</div>
+      ${renderCardioLogHTML(logKey, 'Treadmill', targetMins)}
+    </div>`;
+  }
+  // HIIT / Ropes / Tyre — round checkboxes
   const ic=f.type==='ropes'?'💥':f.type==='tyre'?'🔥':'⚡';
   const rH=f.rounds.map((r,i)=>{
     const k=`fin_${ph}_${dk}_${i}`;
@@ -1354,11 +1505,16 @@ function renderHydrationHTML(){
 }
 
 function renderLiss(w,c,bannerHTML=''){
+  const dk=DAYS[cDay];
+  const lissKey = `liss_${cPhase}_${dk}`;
+  const targetMins = parseInt(w.dur)||45;
+  // Load saved cardio data into checkCache if stored as JSON in notes
   let h=bannerHTML+`<div class="workout-card"><div class="wc-header">
     <div><div class="wc-day">${w.title}</div><div style="margin-top:4px"><span class="tag tag-liss">LISS</span></div></div>
     <div class="wc-meta"><div class="wc-duration">${w.dur}'</div></div></div>
-    <div class="liss-main">${w.liss.main}</div></div>`;
-  const dk=DAYS[cDay];
+    <div class="liss-main">${w.liss.main}</div>
+    <div class="liss-log-wrap">${renderCardioLogHTML(lissKey,'Incline Treadmill',targetMins)}</div>
+    </div>`;
   h+=`<div class="cd-block"><div class="block-title">COOLDOWN</div><ul class="checklist">`;
   w.cd.forEach((it,i)=>{
     const k=`cd_${cPhase}_${dk}_${i}`;const done=checkCache[k]?'done':'';
