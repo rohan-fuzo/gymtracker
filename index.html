@@ -460,6 +460,7 @@ const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','
 const PHASE_WEEKS = { 1:4, 2:4, 3:5, 4:4, 5:999 };
 const MIN_ACTIVE_DAYS = 4;
 let weekActivityCache = {};
+let doneDatesCache = new Set(); // dates where all sets are fully logged
 
 // Weekly weight targets (for Progress tab)
 const WEEK_TARGETS = {
@@ -568,13 +569,15 @@ async function loadWeekActivity() {
       .eq('completed', true)
       .neq('is_mm_set', true);
     if(!data) return;
-    // Count distinct days with 1+ completed sets per programme week
-    const byDate = {};
+    // Group completed sets by date
+    const byDate = {}; // date -> Set of "exName|setNum"
     data.forEach(row => {
       if(!byDate[row.date]) byDate[row.date] = new Set();
       byDate[row.date].add(row.exercise_name + '|' + row.set_number);
     });
-    const weekDays = {}; // weekNum -> Set of active dates
+
+    // Count active days per week
+    const weekDays = {};
     Object.entries(byDate).forEach(([dateStr, sets]) => {
       if(sets.size < 1) return;
       const wk = getCalendarWeek(new Date(dateStr));
@@ -582,10 +585,31 @@ async function loadWeekActivity() {
       if(!weekDays[wk]) weekDays[wk] = new Set();
       weekDays[wk].add(dateStr);
     });
-    // Convert to day counts
     weekActivityCache = {};
     Object.entries(weekDays).forEach(([wk, dates]) => {
       weekActivityCache[parseInt(wk)] = dates.size;
+    });
+
+    // Compute doneDatesCache — dates where ALL sets for that day's workout are logged
+    doneDatesCache = new Set();
+    Object.entries(byDate).forEach(([dateStr, loggedSet]) => {
+      const d = new Date(dateStr); d.setHours(12,0,0,0);
+      const js = d.getDay();
+      const dowIndex = js === 0 ? 6 : js - 1;
+      const dk = DAYS[dowIndex];
+      const calWeek = getCalendarWeek(d);
+      const phaseData = computePhaseFromHistory(weekActivityCache, calWeek);
+      const w = W[phaseData.phase]?.[dk];
+      if(!w || w.isRest || w.isLiss) return; // REST/LISS handled separately
+      if(!w.ex) return;
+      // Check all sets for all exercises are present
+      const allDone = w.ex.every((ex, ei) => {
+        const sp = parseSets(ex.s);
+        // MM set for first exercise
+        if(ei === 0 && !loggedSet.has(ex.n + '|0')) return false;
+        return sp.every((_, si) => loggedSet.has(ex.n + '|' + (si+1)));
+      });
+      if(allDone) doneDatesCache.add(dateStr);
     });
   } catch(e) { console.error('loadWeekActivity', e); }
 }
@@ -1105,8 +1129,8 @@ async function commitSet(weight, reps, completed){
     setSyncStatus('synced');
     haptic([10, 50, 10]);
     showToast(weight>0 ? `${weight}kg × ${reps} saved ✓` : 'Set logged ✓');
-    // Refresh week activity count so banner shows correct days
-    loadWeekActivity().then(() => renderWeekStrip());
+    // Refresh week activity + doneDatesCache so dots update live
+    loadWeekActivity().then(() => { renderWeekStrip(); });
     // Update exercise done state
     const ek = `ex_${cPhase}_${DAYS[cDay]}_${exIndex}`;
     const rowEl = document.getElementById(ek);
@@ -1191,8 +1215,12 @@ function renderWeekStrip(){
     const isSelected = (i === cDay);
     const isPast = dateState.beforeStart;
     const dateStr = date.toISOString().split('T')[0];
-    const w = W[cPhase][d];
-    const dayIsDone = !isPast && isDayDone(w, d);
+    // Use doneDatesCache for past days (DB-driven), isDayDone for selected day (live state)
+    const isSelectedDate = (i === cDay);
+    const dayIsDone = !isPast && (
+      doneDatesCache.has(dateStr) ||
+      (isSelectedDate && isDayDone(W[cPhase][d], d))
+    );
     const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
     return `<div class="day-pill ${isSelected?'active':''} ${isPast?'pre-start':''} ${dayIsDone?'done-day':''}"
       onclick="selectDay(${i})"
