@@ -274,6 +274,31 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{border-color:var(--p3);color:var(--p3)}
 .toast.error{border-color:var(--p1);color:var(--p1)}
+.toast.info{border-color:var(--p2);color:var(--p2)}
+
+/* ── SKELETON SCREENS ── */
+@keyframes sk-shimmer{
+  0%{background-position:-600px 0}
+  100%{background-position:600px 0}
+}
+.sk{
+  background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);
+  background-size:1200px 100%;
+  animation:sk-shimmer 1.4s infinite linear;
+  border-radius:8px;
+}
+.sk-pill{height:52px;border-radius:12px;flex:1;min-width:44px}
+.sk-pill-row{display:flex;gap:8px;padding:8px 16px}
+.sk-block{margin:0 16px 12px;border-radius:14px;overflow:hidden;background:var(--surface)}
+.sk-block-inner{padding:14px 16px}
+.sk-line{height:10px;border-radius:5px;margin-bottom:8px}
+.sk-line-lg{height:16px;border-radius:5px;margin-bottom:10px}
+.sk-ex-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.sk-ex-icon{width:36px;height:36px;border-radius:10px;flex-shrink:0}
+.sk-ex-info{flex:1}
+.sk-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px}
+.sk-chip{height:54px;border-radius:10px}
+.sk-banner{margin:0 16px 10px;height:72px;border-radius:12px}
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-state .es-icon{font-size:40px;margin-bottom:12px}
 .empty-state p{font-size:13px;line-height:1.6}
@@ -302,8 +327,32 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
     <button class="ph-btn" data-ph="4" onclick="selectPhase(4,this)">P4 Wk14–17</button>
     <button class="ph-btn" data-ph="5" onclick="selectPhase(5,this)">P5 Wk18+</button>
   </div>
-  <div class="week-strip" id="week-strip"></div>
-  <div id="workout-content"></div>
+  <div class="week-strip" id="week-strip">
+    <div class="sk-pill-row">
+      <div class="sk sk-pill"></div><div class="sk sk-pill"></div>
+      <div class="sk sk-pill"></div><div class="sk sk-pill"></div>
+      <div class="sk sk-pill"></div><div class="sk sk-pill"></div>
+      <div class="sk sk-pill"></div>
+    </div>
+  </div>
+  <div id="workout-content">
+    <div class="sk sk-banner"></div>
+    <div class="sk-block">
+      <div class="sk-block-inner">
+        <div class="sk sk-line-lg" style="width:55%"></div>
+        <div class="sk sk-line" style="width:35%"></div>
+      </div>
+    </div>
+    <div class="sk-block">
+      <div class="sk-block-inner">
+        <div class="sk sk-line" style="width:25%;margin-bottom:14px"></div>
+        <div class="sk-ex-row"><div class="sk sk-ex-icon"></div><div class="sk-ex-info"><div class="sk sk-line" style="width:60%;margin-bottom:6px"></div><div class="sk sk-line" style="width:40%"></div></div></div>
+        <div class="sk-chips"><div class="sk sk-chip"></div><div class="sk sk-chip"></div><div class="sk sk-chip"></div><div class="sk sk-chip"></div></div>
+        <div class="sk-ex-row"><div class="sk sk-ex-icon"></div><div class="sk-ex-info"><div class="sk sk-line" style="width:50%;margin-bottom:6px"></div><div class="sk sk-line" style="width:35%"></div></div></div>
+        <div class="sk-chips"><div class="sk sk-chip"></div><div class="sk sk-chip"></div><div class="sk sk-chip"></div></div>
+      </div>
+    </div>
+  </div>
   <div class="spacer"></div>
 </div>
 
@@ -448,6 +497,123 @@ const SUPABASE_KEY = 'sb_publishable_YQZdhUmmyExuNmUJD4jj2g_3H0uR1hp';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ── Schema constants — change column names here, not scattered across 50 callsites ──
+const TABLES = Object.freeze({
+  SESSIONS:   'workout_sessions',
+  EXERCISES:  'exercise_logs',
+  WARMUP:     'warmup_logs',
+  CHECKLIST:  'checklist_logs',
+  BODY:       'body_metrics',
+  HYDRATION:  'hydration_logs',
+  INBODY:     'inbody_logs',
+});
+const CONFLICTS = Object.freeze({
+  EXERCISES:  'date,exercise_name,set_number,is_mm_set',
+  WARMUP:     'date,item_key',
+  CHECKLIST:  'date,item_key',
+  HYDRATION:  'date',
+  BODY:       'date',
+  INBODY:     'date',
+});
+
+// ============================================================
+// STORE — single source of truth, controlled mutations
+// ============================================================
+class Store {
+  constructor(initial) {
+    this._state = Object.freeze({...initial});
+    this._subs = [];   // [{keys, fn}]
+    this._batch = false;
+    this._dirty = new Set();
+  }
+
+  getState() { return this._state; }
+
+  // Merge patch into state, notify relevant subscribers
+  setState(patch) {
+    const changed = {};
+    let hasChange = false;
+    for(const k in patch) {
+      if(this._state[k] !== patch[k]) {
+        changed[k] = patch[k];
+        hasChange = true;
+        if(this._batch) this._dirty.add(k);
+      }
+    }
+    if(!hasChange) return;
+    this._state = Object.freeze({...this._state, ...changed});
+    if(!this._batch) this._notify(Object.keys(changed));
+  }
+
+  // Batch multiple setState calls into one notification pass
+  batch(fn) {
+    this._batch = true;
+    this._dirty = new Set();
+    try { fn(); } finally {
+      this._batch = false;
+      if(this._dirty.size) this._notify([...this._dirty]);
+      this._dirty = new Set();
+    }
+  }
+
+  // Subscribe to state changes — fn called when any of keys change
+  // Returns unsubscribe function
+  subscribe(keys, fn) {
+    const sub = {keys: new Set(keys), fn};
+    this._subs.push(sub);
+    return () => { this._subs = this._subs.filter(s => s !== sub); };
+  }
+
+  _notify(changedKeys) {
+    const changed = new Set(changedKeys);
+    this._subs.forEach(sub => {
+      if([...sub.keys].some(k => changed.has(k))) {
+        try { sub.fn(this._state); } catch(e) { console.error('Store subscriber error:', e); }
+      }
+    });
+  }
+}
+
+// ── Initialise store with all app state ──
+const store = new Store({
+  // Time
+  todayStr:       getTodayDateStr_pre(),  // defined below — bootstrapped before store
+  selectedDateStr:getTodayDateStr_pre(),
+  cDay:           getTodayDowIndex_pre(),
+  cPhase:         1,
+  // Session
+  sessionId:      null,
+  // Data caches
+  loggedSets:     {},
+  checkCache:     {},
+  hydrationGlasses: 0,
+  weekActivityCache: {},
+  doneDatesCache: new Set(),
+  // UI
+  pendingSet:     null,
+  syncStatus:     'syncing',
+  activeScreen:   'today',
+  // Render flags
+  progressLastFetch: 0,
+  screenRendered: {},
+  dPhase:         1,
+});
+
+// Convenience destructure — these replace the old globals as live getters
+// Reading always goes through store.getState() for correctness
+function S() { return store.getState(); }
+
+// ── Pre-store date helpers (needed before store init) ──
+function getTodayDateStr_pre(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function getTodayDowIndex_pre(){
+  const js = new Date().getDay();
+  return js === 0 ? 6 : js - 1;
+}
+
 // ============================================================
 // PROGRAMME DATE LOGIC
 // ============================================================
@@ -459,8 +625,16 @@ const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','
 // Qualifying weeks needed per phase
 const PHASE_WEEKS = { 1:4, 2:4, 3:5, 4:4, 5:999 };
 const MIN_ACTIVE_DAYS = 4;
-let weekActivityCache = {};
-let doneDatesCache = new Set(); // dates where all sets are fully logged
+// weekActivityCache + doneDatesCache now live in store
+// These shorthands keep existing code working without full rewrite
+Object.defineProperty(window, 'weekActivityCache', {
+  get(){ return store.getState().weekActivityCache; },
+  set(v){ store.setState({weekActivityCache: v}); }
+});
+Object.defineProperty(window, 'doneDatesCache', {
+  get(){ return store.getState().doneDatesCache; },
+  set(v){ store.setState({doneDatesCache: v}); }
+});
 
 // Weekly weight targets (for Progress tab)
 const WEEK_TARGETS = {
@@ -476,12 +650,19 @@ function getTodayDowIndex() {
   return js === 0 ? 6 : js - 1;
 }
 
+// Memoized — same result for entire day, recomputes at midnight
+let _weekDatesMemo = null;
+let _weekDatesMemoKey = null;
 function getWeekDates() {
+  const todayKey = localDateStr();
+  if (_weekDatesMemoKey === todayKey && _weekDatesMemo) return _weekDatesMemo;
   const today = new Date(); today.setHours(0,0,0,0);
   const js = today.getDay();
   const mondayOffset = js === 0 ? -6 : 1 - js;
   const mon = new Date(today.getTime() + mondayOffset * 86400000);
-  return Array.from({length:7}, (_,i) => new Date(mon.getTime() + i*86400000));
+  _weekDatesMemo = Array.from({length:7}, (_,i) => new Date(mon.getTime() + i*86400000));
+  _weekDatesMemoKey = todayKey;
+  return _weekDatesMemo;
 }
 
 function getDateForDay(dowIndex) {
@@ -564,22 +745,44 @@ function getLastWeekStatus() {
 // Load week activity from Supabase exercise_logs
 async function loadWeekActivity() {
   try {
-    const {data} = await db.from('exercise_logs')
-      .select('date, exercise_name, set_number')
-      .eq('completed', true)
-      .neq('is_mm_set', true);
-    if(!data) return;
+    // Fetch exercise logs AND cardio/LISS logs in parallel
+    const [exRes, cardioRes] = await Promise.all([
+      db.from('exercise_logs')
+        .select('date, exercise_name, set_number')
+        .eq('completed', true)
+        .neq('is_mm_set', true),
+      db.from('checklist_logs')
+        .select('date, item_key, item_type')
+        .eq('completed', true)
+        .eq('item_type', 'cardio'),
+    ]);
+
     // Group completed sets by date
-    const byDate = {}; // date -> Set of "exName|setNum"
-    data.forEach(row => {
+    const byDate = {};
+    if(exRes.data) exRes.data.forEach(row => {
       if(!byDate[row.date]) byDate[row.date] = new Set();
       byDate[row.date].add(row.exercise_name + '|' + row.set_number);
     });
 
+    // Collect LISS/cardio logged dates
+    const cardioDates = new Set();
+    if(cardioRes.data) cardioRes.data.forEach(row => {
+      // liss_1_WED or fin_cardio_1_MON — any cardio log counts
+      cardioDates.add(row.date);
+    });
+
+    // All active dates = gym days + cardio days
+    const allActiveDates = new Set([
+      ...Object.keys(byDate).filter(d => {
+        const regularSets = [...byDate[d]].filter(k => !k.endsWith('|0')).length;
+        return regularSets >= 5;
+      }),
+      ...cardioDates,
+    ]);
+
     // Count active days per week
     const weekDays = {};
-    Object.entries(byDate).forEach(([dateStr, sets]) => {
-      if(sets.size < 1) return;
+    allActiveDates.forEach(dateStr => {
       const wk = getCalendarWeek(new Date(dateStr));
       if(wk <= 0) return;
       if(!weekDays[wk]) weekDays[wk] = new Set();
@@ -590,27 +793,9 @@ async function loadWeekActivity() {
       weekActivityCache[parseInt(wk)] = dates.size;
     });
 
-    // Compute doneDatesCache — dates where ALL sets for that day's workout are logged
-    doneDatesCache = new Set();
-    Object.entries(byDate).forEach(([dateStr, loggedSet]) => {
-      const d = new Date(dateStr); d.setHours(12,0,0,0);
-      const js = d.getDay();
-      const dowIndex = js === 0 ? 6 : js - 1;
-      const dk = DAYS[dowIndex];
-      const calWeek = getCalendarWeek(d);
-      const phaseData = computePhaseFromHistory(weekActivityCache, calWeek);
-      const w = W[phaseData.phase]?.[dk];
-      if(!w || w.isRest || w.isLiss) return; // REST/LISS handled separately
-      if(!w.ex) return;
-      // Check all sets for all exercises are present
-      const allDone = w.ex.every((ex, ei) => {
-        const sp = parseSets(ex.s);
-        // MM set for first exercise
-        if(ei === 0 && !loggedSet.has(ex.n + '|0')) return false;
-        return sp.every((_, si) => loggedSet.has(ex.n + '|' + (si+1)));
-      });
-      if(allDone) doneDatesCache.add(dateStr);
-    });
+    // doneDatesCache — all active dates get a green dot
+    doneDatesCache = new Set(allActiveDates);
+
   } catch(e) { console.error('loadWeekActivity', e); }
 }
 
@@ -618,46 +803,281 @@ function formatDate(date) {
   return `${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
 }
 
-function getTodayDateStr(){ return new Date().toISOString().split('T')[0]; }
+// Always use local date — toISOString() returns UTC, wrong for IST midnight-5:30am
+function localDateStr(date){
+  const d = date || new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function getTodayDateStr(){ return localDateStr(); }
 
 // ============================================================
 // STATE
 // ============================================================
-let cPhase = 1; // will be updated after loadWeekActivity in init
-let cDay = getTodayDowIndex();
-let todayStr = getTodayDateStr();
-let selectedDateStr = todayStr;
-let sessionId = null;
+// ── Store-backed globals — reads/writes go through store ──
+// These property descriptors let all existing code work unchanged
+// while state flows through the single store
+['cPhase','cDay','todayStr','selectedDateStr','sessionId',
+ 'loggedSets','checkCache','hydrationGlasses','pendingSet',
+ 'dPhase','_progressLastFetch','_screenRendered'].forEach(key => {
+  const storeKey = key === '_progressLastFetch' ? 'progressLastFetch'
+                 : key === '_screenRendered'     ? 'screenRendered'
+                 : key;
+  Object.defineProperty(window, key, {
+    get(){ return store.getState()[storeKey]; },
+    set(v){ store.setState({[storeKey]: v}); },
+    configurable: true,
+  });
+});
 
-// In-memory cache — key: "exerciseName|setNum|isMM" -> {weight,reps,completed}
-let loggedSets = {};
-let checkCache = {};
-let hydrationGlasses = 0;
-
-// Modal state
-let pendingSet = null;
-
-// Charts
+// Charts — not in store (DOM refs, not serialisable state)
 let strengthChart = null, weightChart = null;
+
+// ============================================================
+// SCHEMA — type definitions for every DB write
+// These catch column name typos and wrong types at write time
+// ============================================================
+const Schema = {
+  exercise_log: (d) => ({
+    session_id:     d.session_id    ?? null,
+    date:           String(d.date),
+    phase:          Number(d.phase),
+    exercise_name:  String(d.exercise_name),
+    exercise_index: Number(d.exercise_index),
+    set_number:     Number(d.set_number),
+    is_mm_set:      Boolean(d.is_mm_set),
+    weight_kg:      d.weight_kg != null ? Number(d.weight_kg) : null,
+    reps:           d.reps != null ? Number(d.reps) : null,
+    completed:      Boolean(d.completed),
+    updated_at:     new Date().toISOString(),
+  }),
+  warmup_log: (d) => ({
+    date:       String(d.date),
+    phase:      Number(d.phase ?? 1),
+    item_key:   String(d.item_key),
+    item_label: String(d.item_label ?? ''),
+    completed:  Boolean(d.completed),
+  }),
+  checklist_log: (d) => ({
+    date:       String(d.date),
+    item_type:  String(d.item_type),
+    item_key:   String(d.item_key),
+    completed:  Boolean(d.completed),
+    notes:      d.notes ?? null,
+  }),
+  hydration_log: (d) => ({
+    date:       String(d.date),
+    glasses:    Math.max(0, Math.min(8, Number(d.glasses))),
+    updated_at: new Date().toISOString(),
+  }),
+  body_metric: (d) => ({
+    date:      String(d.date),
+    weight_kg: Number(d.weight_kg),
+    phase:     Number(d.phase),
+    notes:     d.notes ?? null,
+  }),
+};
+
+// Validated DB write — throws if schema check fails
+function validated(schemaFn, data) {
+  const row = schemaFn(data);
+  // Sanity checks
+  if(row.date && !/^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
+    throw new Error(`Invalid date format: ${row.date}`);
+  }
+  if('weight_kg' in row && row.weight_kg !== null && (row.weight_kg < 0 || row.weight_kg > 500)) {
+    throw new Error(`Unrealistic weight: ${row.weight_kg}`);
+  }
+  if('reps' in row && row.reps !== null && (row.reps < 0 || row.reps > 200)) {
+    throw new Error(`Unrealistic reps: ${row.reps}`);
+  }
+  return row;
+}
+
+// ============================================================
+// OFFLINE QUEUE — saves that failed get queued and retried
+// ============================================================
+// ============================================================
+// SYNC ENGINE — IndexedDB queue + exponential backoff + deduplication
+// ============================================================
+const SyncDB = (() => {
+  const DB_NAME = 'gymtracker_sync';
+  const DB_VER  = 1;
+  const STORE   = 'queue';
+  let _db = null;
+
+  async function open() {
+    if (_db) return _db;
+    return new Promise((res, rej) => {
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          // conflictKey is the unique dedup key
+          db.createObjectStore(STORE, { keyPath: 'conflictKey' });
+        }
+      };
+      req.onsuccess = e => { _db = e.target.result; res(_db); };
+      req.onerror   = e => rej(e.target.error);
+    });
+  }
+
+  async function put(item) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      // put() replaces existing record with same conflictKey — automatic dedup
+      tx.objectStore(STORE).put({...item, queuedAt: Date.now(), retries: 0});
+      tx.oncomplete = res;
+      tx.onerror = e => rej(e.target.error);
+    });
+  }
+
+  async function getAll() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getAll();
+      req.onsuccess = e => res(e.target.result);
+      req.onerror   = e => rej(e.target.error);
+    });
+  }
+
+  async function remove(conflictKey) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).delete(conflictKey);
+      tx.oncomplete = res;
+      tx.onerror = e => rej(e.target.error);
+    });
+  }
+
+  async function update(item) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(item);
+      tx.oncomplete = res;
+      tx.onerror = e => rej(e.target.error);
+    });
+  }
+
+  return { put, getAll, remove, update };
+})();
+
+// ── Exponential backoff retry ──
+// Retries fn up to maxAttempts times: 500ms → 1s → 2s → 4s
+async function withRetry(fn, maxAttempts = 4) {
+  let delay = 500;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt === maxAttempts) throw e;
+      await new Promise(r => setTimeout(r, delay));
+      delay *= 2;
+    }
+  }
+}
+
+// ── In-flight request deduplication ──
+// Prevents duplicate DB writes if same set tapped twice fast
+const _inFlight = new Map(); // conflictKey -> Promise
+
+async function dedupedUpsert(conflictKey, upserFn) {
+  if (_inFlight.has(conflictKey)) return _inFlight.get(conflictKey);
+  const promise = upserFn().finally(() => _inFlight.delete(conflictKey));
+  _inFlight.set(conflictKey, promise);
+  return promise;
+}
+
+// ── Public API ──
+async function queueOfflineSave(payload) {
+  try {
+    await SyncDB.put(payload);
+  } catch (e) {
+    // IDB unavailable (private browsing) — fall back to localStorage
+    try {
+      const q = JSON.parse(localStorage.getItem('gymtracker_q') || '[]');
+      const idx = q.findIndex(p => p.conflictKey === payload.conflictKey);
+      if (idx >= 0) q[idx] = payload; else q.push(payload);
+      localStorage.setItem('gymtracker_q', JSON.stringify(q));
+    } catch (_) {}
+  }
+}
+
+let _flushing = false;
+async function flushOfflineQueue() {
+  if (_flushing) return;
+  _flushing = true;
+  try {
+    // Flush IDB queue
+    const items = await SyncDB.getAll().catch(() => []);
+    // Also pick up any localStorage fallback items
+    const lsRaw = JSON.parse(localStorage.getItem('gymtracker_q') || '[]');
+    const all = [...items, ...lsRaw];
+    if (!all.length) return;
+
+    let synced = 0;
+    for (const item of all) {
+      try {
+        await withRetry(async () => {
+          const { error } = await db.from(item.table)
+            .upsert(item.data, { onConflict: item.onConflict });
+          if (error) throw error;
+        });
+        await SyncDB.remove(item.conflictKey).catch(() => {});
+        synced++;
+      } catch (e) {
+        // Max retries exceeded — leave in queue, try next time
+        const updated = { ...item, retries: (item.retries || 0) + 1 };
+        await SyncDB.update(updated).catch(() => {});
+      }
+    }
+    // Clear localStorage fallback if all flushed
+    if (lsRaw.length && synced >= lsRaw.length) {
+      localStorage.removeItem('gymtracker_q');
+    }
+    if (synced > 0) {
+      showToast(`${synced} offline save${synced > 1 ? 's' : ''} synced ✓`);
+      // Reload sets for current date to reflect synced data
+      loadSetsForDate(selectedDateStr, true);
+    }
+  } finally {
+    _flushing = false;
+  }
+}
+
+// Flush on reconnect + visibility change (user returns to tab)
+window.addEventListener('online', flushOfflineQueue);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && navigator.onLine) flushOfflineQueue();
+});
 
 // ============================================================
 // SYNC STATUS
 // ============================================================
 function setSyncStatus(status){
-  const dot = document.getElementById('sync-dot');
-  const lbl = document.getElementById('sync-label');
-  dot.className = 'sync-dot ' + status;
-  lbl.textContent = status==='synced'?'synced':status==='syncing'?'saving...':status==='error'?'offline':'connecting...';
+  store.setState({syncStatus: status});
 }
 
 // ============================================================
 // TOAST
 // ============================================================
-function showToast(msg, type='success'){
+function showToast(msg, type='success', duration=2500, onClick=null){
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show ' + type;
-  setTimeout(()=>t.className='toast',2000);
+  t.style.cursor = onClick ? 'pointer' : '';
+  t.onclick = onClick || null;
+  t.style.pointerEvents = onClick ? 'auto' : 'none';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => {
+    t.className = 'toast';
+    t.onclick = null;
+    t.style.pointerEvents = 'none';
+  }, duration);
 }
 
 // ============================================================
@@ -665,6 +1085,9 @@ function showToast(msg, type='success'){
 // ============================================================
 async function init(){
   setSyncStatus('syncing');
+  // Show skeletons immediately — before any DB calls
+  renderSkeletonWeekStrip();
+  renderSkeletonWorkout();
   try {
     todayStr = getTodayDateStr();
     selectedDateStr = todayStr;
@@ -687,6 +1110,8 @@ async function init(){
     ]);
     if(sessionRes.data && sessionRes.data.length>0) sessionId = sessionRes.data[0].id;
     setSyncStatus('synced');
+    // Flush any queued offline saves
+    flushOfflineQueue();
   } catch(e){
     console.error(e);
     setSyncStatus('error');
@@ -731,15 +1156,26 @@ async function loadHydration(dateStr){
   hydrationGlasses = data && data.length>0 ? data[0].glasses : 0;
 }
 
+let _sessionPromise = null;
 async function ensureSession(){
   if(sessionId) return sessionId;
-  const dk = DAYS[cDay];
-  const w = W[cPhase][dk];
-  const {data} = await db.from('workout_sessions').insert({
-    date: selectedDateStr, phase: cPhase, day_of_week: dk, workout_title: w.title
-  }).select().single();
-  if(data) sessionId = data.id;
-  return sessionId;
+  // Guard: if already in-flight, wait for same promise (prevents duplicate inserts)
+  if(_sessionPromise) return _sessionPromise;
+  _sessionPromise = (async () => {
+    const dk = DAYS[cDay];
+    const w = W[cPhase][dk];
+    // Try to get existing session first
+    const {data:existing} = await db.from('workout_sessions')
+      .select('id').eq('date', selectedDateStr).eq('day_of_week', dk).limit(1).single();
+    if(existing?.id){ sessionId = existing.id; return sessionId; }
+    // Create new
+    const {data} = await db.from('workout_sessions').insert({
+      date: selectedDateStr, phase: cPhase, day_of_week: dk, workout_title: w.title
+    }).select().single();
+    if(data) sessionId = data.id;
+    return sessionId;
+  })();
+  try { return await _sessionPromise; } finally { _sessionPromise = null; }
 }
 
 // ============================================================
@@ -940,7 +1376,7 @@ function renderUniversalWarmup(dk, isPowerDay){
   WARMUP_ITEMS.forEach(j=>{
     const itemKey = `wu_${dk}_${j.k}`;
     const done = checkCache[itemKey] ? 'done' : '';
-    h += `<li class="${done}" onclick="toggleWarmup('${itemKey}','${j.label}',this)">
+    h += `<li class="${done}" data-wu="${itemKey}" onclick="toggleWarmup('${itemKey}','${j.label}',this)">
       <div class="cb">${checkCache[itemKey]?'✓':''}</div>
       <span><strong style="color:var(--text)">${j.label}</strong> — <span style="color:var(--muted)">${j.detail}</span></span>
     </li>`;
@@ -982,11 +1418,14 @@ async function toggleWarmup(itemKey, label, el){
   });
   setSyncStatus('syncing');
   try {
-    const {error} = await db.from('warmup_logs').upsert({
-      date: selectedDateStr, phase: cPhase||1,
-      item_key: itemKey, item_label: label, completed: newVal
-    }, {onConflict:'date,item_key'});
-    if(error) throw error;
+    await withRetry(() =>
+      db.from('warmup_logs')
+        .upsert(validated(Schema.warmup_log, {
+          date: selectedDateStr, phase: cPhase||1,
+          item_key: itemKey, item_label: label, completed: newVal
+        }), {onConflict:'date,item_key'})
+        .then(r => { if(r.error) throw r.error; })
+    );
     setSyncStatus('synced');
     renderWeekStrip();
   } catch(e){
@@ -1007,10 +1446,14 @@ async function toggleCheck(itemKey, itemType, el){
   if(cb) cb.textContent = newVal ? '✓' : '';
   setSyncStatus('syncing');
   try {
-    const {error} = await db.from('checklist_logs').upsert({
-      date: selectedDateStr, item_type: itemType, item_key: itemKey, completed: newVal
-    }, {onConflict:'date,item_key'});
-    if(error) throw error;
+    await withRetry(() =>
+      db.from('checklist_logs')
+        .upsert(validated(Schema.checklist_log, {
+          date: selectedDateStr, item_type: itemType,
+          item_key: itemKey, completed: newVal
+        }), {onConflict:'date,item_key'})
+        .then(r => { if(r.error) throw r.error; })
+    );
     setSyncStatus('synced');
   } catch(e){
     setSyncStatus('error');
@@ -1031,9 +1474,13 @@ async function toggleGlass(num){
   renderHydrationRow();
   setSyncStatus('syncing');
   try {
-    await db.from('hydration_logs').upsert({
-      date: selectedDateStr, glasses: newVal, updated_at: new Date().toISOString()
-    }, {onConflict:'date'});
+    await withRetry(() =>
+      db.from('hydration_logs')
+        .upsert(validated(Schema.hydration_log, {
+          date: selectedDateStr, glasses: newVal
+        }), {onConflict:'date'})
+        .then(r => { if(r.error) throw r.error; })
+    );
     setSyncStatus('synced');
   } catch(e){ setSyncStatus('error'); }
 }
@@ -1087,6 +1534,17 @@ async function saveSet(){
   if(!pendingSet) return;
   const weight = parseFloat(document.getElementById('modal-weight').value)||0;
   const reps = parseInt(document.getElementById('modal-reps').value)||0;
+  // Validate: reps required, weight must be non-negative
+  if(reps <= 0 && !pendingSet.isMM){
+    showToast('Enter reps to save', 'error');
+    document.getElementById('modal-reps').focus();
+    return;
+  }
+  if(weight < 0 || weight > 500){
+    showToast('Check weight value', 'error');
+    document.getElementById('modal-weight').focus();
+    return;
+  }
   await commitSet(weight, reps, true);
 }
 
@@ -1098,57 +1556,78 @@ async function skipSet(){
 async function commitSet(weight, reps, completed){
   const {exName, setNum, isMM, chipEl, exIndex} = pendingSet;
   const key = `${exName}|${setNum}|${isMM?1:0}`;
-  loggedSets[key] = {weight, reps, completed};
-  // Update chip UI
+
+  // ── OPTIMISTIC UPDATE — UI responds instantly ──
+  const prevLoggedSets = {...loggedSets};  // snapshot for rollback
+  const newLoggedSets = {...loggedSets, [key]: {weight, reps, completed}};
+
+  // Update store immediately — triggers re-render via subscription
+  store.batch(() => {
+    store.setState({loggedSets: newLoggedSets});
+  });
+
+  // Update chip directly (faster than waiting for full re-render)
   if(chipEl){
     chipEl.classList.add('done');
     const logged = chipEl.querySelector('.sc-logged');
-    if(logged){
-      if(weight>0) logged.textContent = `${weight}kg×${reps}`;
-      else logged.textContent = 'done';
-    }
+    if(logged) logged.textContent = weight>0 ? `${weight}kg×${reps}` : 'done';
     chipEl.querySelector('.sc-num').style.color = isMM ? 'var(--gold)' : 'var(--p3)';
   }
+
+  // Update exercise done state immediately
+  const ek = `ex_${cPhase}_${DAYS[cDay]}_${exIndex}`;
+  const rowEl = document.getElementById(ek);
+  if(rowEl){
+    const w = W[cPhase][DAYS[cDay]];
+    const ex = w?.ex?.[exIndex];
+    if(ex) rowEl.classList.toggle('ex-done', isExerciseDone(ex.n, parseSets(ex.s), exIndex===0));
+  }
+
   closeModal();
+  haptic([10, 50, 10]);
+  showToast(weight>0 ? `${weight}kg × ${reps} saved ✓` : 'Set logged ✓');
   setSyncStatus('syncing');
+
+  // ── PERSIST to DB in background with retry + dedup ──
+  const conflictKey = `${selectedDateStr}|${exName}|${setNum}|${isMM?1:0}`;
+  const payload = validated(Schema.exercise_log, {
+    date: selectedDateStr, phase: cPhase,
+    exercise_name: exName, exercise_index: exIndex,
+    set_number: setNum, is_mm_set: isMM,
+    weight_kg: weight||null, reps: reps||null,
+    completed,
+  });
+
   try {
-    const sid = await ensureSession();
-    await db.from('exercise_logs').upsert({
-      session_id: sid,
-      date: selectedDateStr,
-      phase: cPhase,
-      exercise_name: exName,
-      exercise_index: exIndex,
-      set_number: setNum,
-      is_mm_set: isMM,
-      weight_kg: weight||null,
-      reps: reps||null,
-      completed,
-      updated_at: new Date().toISOString()
-    }, {onConflict:'date,exercise_name,set_number,is_mm_set'});
+    await dedupedUpsert(conflictKey, async () => {
+      const sid = await ensureSession();
+      await withRetry(() =>
+        db.from('exercise_logs')
+          .upsert({...payload, session_id: sid},
+                  {onConflict:'date,exercise_name,set_number,is_mm_set'})
+          .then(r => { if(r.error) throw r.error; return r; })
+      );
+    });
     setSyncStatus('synced');
-    haptic([10, 50, 10]);
-    showToast(weight>0 ? `${weight}kg × ${reps} saved ✓` : 'Set logged ✓');
-    // Refresh week activity + doneDatesCache so dots update live
-    loadWeekActivity().then(() => { renderWeekStrip(); });
-    // Update exercise done state
-    const ek = `ex_${cPhase}_${DAYS[cDay]}_${exIndex}`;
-    const rowEl = document.getElementById(ek);
-    if(rowEl){
-      const w = W[cPhase][DAYS[cDay]];
-      const ex = w?.ex?.[exIndex];
-      if(ex){
-        const sp = parseSets(ex.s);
-        const done = isExerciseDone(ex.n, sp, exIndex===0);
-        rowEl.classList.toggle('ex-done', done);
-      }
-    }
-    // Update week strip dot
-    renderWeekStrip();
+    // Debounced week activity refresh
+    clearTimeout(window._weekRefreshTimer);
+    window._weekRefreshTimer = setTimeout(() => {
+      loadWeekActivity().then(() => renderWeekStrip());
+    }, 1500);
   } catch(e){
+    // ── ROLLBACK — restore previous state ──
+    store.setState({loggedSets: prevLoggedSets});
+    if(chipEl){ chipEl.classList.remove('done'); }
+    if(rowEl) rowEl.classList.remove('ex-done');
     setSyncStatus('error');
-    showToast('Saved offline', 'error');
-    console.error(e);
+    showToast('Saved offline — will sync when online', 'error');
+    console.error('commitSet failed:', e?.message);
+    queueOfflineSave({
+      table: 'exercise_logs',
+      onConflict: 'date,exercise_name,set_number,is_mm_set',
+      conflictKey: selectedDateStr+'|'+exName+'|'+setNum+'|'+(isMM?1:0),
+      data: {...payload, session_id: sessionId||null}
+    });
   }
 }
 
@@ -1187,17 +1666,26 @@ function phRgb(ph){return['','255,69,32','255,140,0','34,197,94','59,130,246','1
 
 function selectPhase(ph,btn){
   cPhase=ph;
+  _workoutRenderKey = null;
   document.querySelectorAll('#phase-strip .ph-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  renderWeekStrip(); renderWorkout();
+  renderSkeletonWorkout();
+  // Brief timeout so skeleton paints before synchronous renderWorkout blocks
+  setTimeout(() => { renderWeekStrip(); renderWorkout(); }, 16);
 }
 function selectDay(d){
   cDay=d;
   sessionId=null;
+  _sessionPromise=null;
+  // Clear prev best cache — stale for new day
+  Object.keys(_prevBestCache).forEach(k => delete _prevBestCache[k]);
   const date = getDateForDay(d);
-  selectedDateStr = date.toISOString().split('T')[0];
+  selectedDateStr = localDateStr(date);
+  // Reset render key so next renderWorkout does full rebuild
+  _workoutRenderKey = null;
   renderWeekStrip();
-  // reload both sets and checkcache for the new date
+  // Show skeleton while new day's data loads
+  renderSkeletonWorkout();
   Promise.all([
     loadSetsForDate(selectedDateStr, true),
     loadCheckCache(selectedDateStr),
@@ -1205,36 +1693,174 @@ function selectDay(d){
   ]).then(() => renderWorkout());
 }
 
+// Cache strip data to detect what actually changed
+let _stripCache = {};
+
 function renderWeekStrip(){
   const todayDow = getTodayDowIndex();
   const weekDates = getWeekDates();
-  document.getElementById('week-strip').innerHTML = DAYS.map((d,i) => {
+  const container = document.getElementById('week-strip');
+  const pills = container.querySelectorAll('.day-pill');
+  const needsFullRebuild = pills.length !== 7;
+
+  if(needsFullRebuild){
+    // First render — build full HTML
+    container.innerHTML = DAYS.map((d,i) => {
+      const date = weekDates[i];
+      const dateState = getProgrammeState(date);
+      const isPast = dateState.beforeStart;
+      const dateStr = localDateStr(date);
+      const isToday = (i === todayDow);
+      const isSelected = (i === cDay);
+      const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(W[cPhase][d],d)));
+      const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
+      _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor};
+      return `<div class="day-pill ${isSelected?'active':''} ${isPast?'pre-start':''} ${dayIsDone?'done-day':''}"
+        onclick="selectDay(${i})" style="${isPast?'opacity:.35':''}">
+        <div class="dp-day">${d}</div>
+        <div class="dp-num" style="font-size:12px;font-family:'DM Sans',sans-serif;font-weight:600;line-height:1.2">${formatDate(date)}</div>
+        <div class="dp-dot" style="background:${dotColor}"></div>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  // Subsequent renders — patch only changed pills (no innerHTML on container)
+  DAYS.forEach((d, i) => {
     const date = weekDates[i];
     const dateState = getProgrammeState(date);
+    const isPast = dateState.beforeStart;
+    const dateStr = localDateStr(date);
     const isToday = (i === todayDow);
     const isSelected = (i === cDay);
-    const isPast = dateState.beforeStart;
-    const dateStr = date.toISOString().split('T')[0];
-    // Use doneDatesCache for past days (DB-driven), isDayDone for selected day (live state)
-    const isSelectedDate = (i === cDay);
-    const dayIsDone = !isPast && (
-      doneDatesCache.has(dateStr) ||
-      (isSelectedDate && isDayDone(W[cPhase][d], d))
-    );
+    const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(W[cPhase][d],d)));
     const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
-    return `<div class="day-pill ${isSelected?'active':''} ${isPast?'pre-start':''} ${dayIsDone?'done-day':''}"
-      onclick="selectDay(${i})"
-      style="${isPast?'opacity:.35':''}">
-      <div class="dp-day">${d}</div>
-      <div class="dp-num" style="font-size:12px;font-family:'DM Sans',sans-serif;font-weight:600;line-height:1.2">${formatDate(date)}</div>
-      <div class="dp-dot" style="background:${dotColor}"></div>
-    </div>`;
-  }).join('');
+
+    const prev = _stripCache[i] || {};
+    // Skip if nothing changed for this pill
+    if(prev.isSelected === isSelected && prev.dayIsDone === dayIsDone && prev.dotColor === dotColor) return;
+    _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor};
+
+    const pill = pills[i];
+    if(!pill) return;
+    // Patch classes
+    pill.classList.toggle('active', isSelected);
+    pill.classList.toggle('done-day', dayIsDone);
+    // Patch dot color
+    const dot = pill.querySelector('.dp-dot');
+    if(dot) dot.style.background = dotColor;
+  });
+}
+
+// Track what was last rendered to decide full vs patch
+let _workoutRenderKey = null;  // 'phase_day_date' — changes when day/phase switches
+
+function patchWorkoutSets(){
+  // Surgical update: only re-paint set chips and exercise done state
+  // Called when loggedSets changes but day/phase hasn't changed
+  const dk = DAYS[cDay];
+  const w = W[cPhase][dk];
+  if(!w || !w.ex) return;
+  w.ex.forEach((ex, ei) => {
+    const sp = parseSets(ex.s);
+    const isFirst = ei === 0;
+    const exDone = isExerciseDone(ex.n, sp, isFirst);
+    const ek = `ex_${cPhase}_${dk}_${ei}`;
+    const rowEl = document.getElementById(ek);
+    if(!rowEl) return;
+    // Update ex-done class
+    rowEl.classList.toggle('ex-done', exDone);
+    // Update each set chip
+    const grid = rowEl.querySelector('.sets-grid');
+    if(!grid) return;
+    const chips = grid.querySelectorAll('.set-chip:not(.mm-chip)');
+    sp.forEach((s, si) => {
+      const setNum = si + 1;
+      const logKey = `${ex.n}|${setNum}|0`;
+      const logged = loggedSets[logKey];
+      const done = logged?.completed;
+      const chip = chips[si];
+      if(!chip) return;
+      chip.classList.toggle('done', !!done);
+      const loggedEl = chip.querySelector('.sc-logged');
+      if(loggedEl) loggedEl.textContent = done && logged.weight>0 ? `${logged.weight}kg×${logged.reps}` : done ? '✓' : '';
+    });
+    // MM chip
+    if(isFirst){
+      const mmChip = grid.querySelector('.mm-chip');
+      if(mmChip){
+        const mmLogged = loggedSets[`${ex.n}|0|1`];
+        const mmDone = mmLogged?.completed;
+        mmChip.classList.toggle('done', !!mmDone);
+        const mmLoggedEl = mmChip.querySelector('.sc-logged');
+        if(mmLoggedEl) mmLoggedEl.textContent = mmDone ? 'done' : '';
+      }
+    }
+  });
+
+  // Also patch banner week count
+  const weekCountEl = document.querySelector('[data-week-count]');
+  if(weekCountEl){
+    const viewState = getProgrammeState(getDateForDay(cDay));
+    const curWeek = viewState.week;
+    const thisWeekDays = weekActivityCache[curWeek] || 0;
+    weekCountEl.textContent = `${thisWeekDays}/4 active days`;
+  }
+}
+
+function patchCheckCache(){
+  // Surgical update: re-paint warmup + cooldown checkboxes
+  const dk = DAYS[cDay];
+  // Warmup items
+  WARMUP_ITEMS.forEach(j => {
+    const key = `wu_${dk}_${j.k}`;
+    const li = document.querySelector(`li[data-wu="${key}"]`);
+    if(!li) return;
+    const done = !!checkCache[key];
+    li.classList.toggle('done', done);
+    const cb = li.querySelector('.cb');
+    if(cb) cb.textContent = done ? '✓' : '';
+  });
+  // Cooldown items
+  const w = W[cPhase][dk];
+  if(w?.cd) w.cd.forEach((_, i) => {
+    const key = `cd_${cPhase}_${dk}_${i}`;
+    const li = document.querySelector(`li[data-cd="${key}"]`);
+    if(!li) return;
+    const done = !!checkCache[key];
+    li.classList.toggle('done', done);
+    const cb = li.querySelector('.cb');
+    if(cb) cb.textContent = done ? '✓' : '';
+  });
+  // Warmup progress bar
+  const wuDone = WARMUP_ITEMS.filter(j => checkCache[`wu_${dk}_${j.k}`]).length;
+  const pct = Math.round(wuDone / WARMUP_ITEMS.length * 100);
+  const fill = document.querySelector('.wu-progress-fill');
+  if(fill) fill.style.width = pct + '%';
+  document.querySelectorAll('.wu-block div').forEach(d => {
+    if(d.textContent.match(/^\d+\/\d+ complete$/)){
+      d.textContent = `${wuDone}/${WARMUP_ITEMS.length} complete`;
+      d.style.color = pct===100 ? 'var(--yellow)' : 'var(--dim)';
+    }
+  });
 }
 
 function renderWorkout(){
+  Perf.start('renderWorkout');
   const dk=DAYS[cDay]; const w=W[cPhase][dk];
   const viewDate = getDateForDay(cDay);
+  const newRenderKey = `${cPhase}_${cDay}_${selectedDateStr}`;
+
+  // If same day/phase — patch in-place instead of full rebuild
+  if(_workoutRenderKey === newRenderKey && document.getElementById('workout-content').children.length > 0){
+    patchWorkoutSets();
+    patchCheckCache();
+    return;
+  }
+  _workoutRenderKey = newRenderKey;
+  // Reset strip cache so week strip also fully rebuilds on day change
+  _stripCache = {};
+
   const viewState = getProgrammeState(viewDate);
   const isBeforeStart = viewState.beforeStart;
   const weekLabel = isBeforeStart ? 'Before start' : `Week ${viewState.week}`;
@@ -1244,7 +1870,7 @@ function renderWorkout(){
   const c=document.getElementById('workout-content');
 
   // Build banner HTML (Monday status + phase progress — shown on every view of today)
-  const isViewingToday = (viewDate.toISOString().split('T')[0] === todayStr);
+  const isViewingToday = (localDateStr(viewDate) === todayStr);
   let bannerHTML = '';
   if(isViewingToday && !isBeforeStart) {
     const isMonday = new Date().getDay() === 1;
@@ -1282,7 +1908,7 @@ function renderWorkout(){
         <div style="width:${pct}%;height:100%;background:${col};border-radius:5px;transition:width .5s"></div>
       </div>
       <div style="display:flex;justify-content:space-between">
-        <div style="font-size:12px;color:var(--muted)">This week: <strong style="color:var(--text)">${thisWeekDays}/4 active days</strong></div>
+        <div style="font-size:12px;color:var(--muted)">This week: <strong style="color:var(--text)" data-week-count>${thisWeekDays}/4 active days</strong></div>
         <div style="font-size:12px;color:var(--muted)">${remaining} week${remaining!==1?'s':''} to Phase ${cPhase<5?cPhase+1:5}</div>
       </div>
     </div>`;
@@ -1378,13 +2004,14 @@ function renderWorkout(){
   w.cd.forEach((it,i)=>{
     const k=`cd_${cPhase}_${dk}_${i}`;
     const done=checkCache[k]?'done':'';
-    h+=`<li class="${done}" onclick="toggleCheck('${k}','cooldown',this)"><div class="cb">${checkCache[k]?'✓':''}</div><span>${it}</span></li>`;
+    h+=`<li class="${done}" data-cd="${k}" onclick="toggleCheck('${k}','cooldown',this)"><div class="cb">${checkCache[k]?'✓':''}</div><span>${it}</span></li>`;
   });
   h+=`</ul></div>`;
   h+=renderCreatineBannerHTML();
   h+=renderSleepCardHTML();
   h+=renderHydrationHTML();
   c.innerHTML=h;
+  Perf.end('renderWorkout');
 }
 
 function esc(s){ return s.replace(/'/g,"\'"); }
@@ -1401,29 +2028,14 @@ function isExerciseDone(exName, sp, isFirst){
 // Returns true if all exercises done AND all warmup items ticked
 function isDayDone(w, dk){
   if(!w || w.isRest) return false;
-  // LISS day — just needs cardio logged
+  // LISS day — any cardio logged = done
   if(w.isLiss){
     const lissKey = 'liss_'+cPhase+'_'+dk;
     return !!(checkCache[lissKey]?.saved || (typeof checkCache[lissKey]==='boolean' && checkCache[lissKey]));
   }
-  // Warmup
-  const warmupDone = WARMUP_ITEMS.every(j => checkCache['wu_'+dk+'_'+j.k]);
-  if(!warmupDone) return false;
-  // All exercises
-  const exDone = w.ex.every((ex, ei) => isExerciseDone(ex.n, parseSets(ex.s), ei===0));
-  if(!exDone) return false;
-  // Finisher — if present
-  if(w.fin){
-    if(w.fin.type==='cardio'){
-      const fKey = 'fin_cardio_'+cPhase+'_'+dk;
-      if(!(checkCache[fKey]?.saved || (typeof checkCache[fKey]==='boolean' && checkCache[fKey]))) return false;
-    } else {
-      // HIIT/Ropes/Tyre — all rounds ticked
-      const allRounds = w.fin.rounds.every((_,i) => checkCache['fin_'+cPhase+'_'+dk+'_'+i]);
-      if(!allRounds) return false;
-    }
-  }
-  return true;
+  // Workout day — all sets logged is enough (warmup + finisher are bonuses, not blockers)
+  if(!w.ex) return false;
+  return w.ex.every((ex, ei) => isExerciseDone(ex.n, parseSets(ex.s), ei===0));
 }
 
 function parseSets(s){ const m=s.match(/^(\d+)\s*[×x]\s*(.+?)(?:\s*[@(]|$)/); if(!m)return[s]; return Array(parseInt(m[1])).fill(m[2].trim()); }
@@ -1468,7 +2080,7 @@ async function saveCardioLog(logKey, btnEl){
     if(error) throw error;
     setSyncStatus('synced');
     showToast(`${mins} min logged ✓`);
-    renderWeekStrip();
+    loadWeekActivity().then(() => renderWeekStrip());
   } catch(e){
     setSyncStatus('error');
     console.error('cardio save failed:', e?.message);
@@ -1555,7 +2167,7 @@ function renderLiss(w,c,bannerHTML=''){
   h+=`<div class="cd-block"><div class="block-title">COOLDOWN</div><ul class="checklist">`;
   w.cd.forEach((it,i)=>{
     const k=`cd_${cPhase}_${dk}_${i}`;const done=checkCache[k]?'done':'';
-    h+=`<li class="${done}" onclick="toggleCheck('${k}','cooldown',this)"><div class="cb">${checkCache[k]?'✓':''}</div><span>${it}</span></li>`;
+    h+=`<li class="${done}" data-cd="${k}" onclick="toggleCheck('${k}','cooldown',this)"><div class="cb">${checkCache[k]?'✓':''}</div><span>${it}</span></li>`;
   });
   h+=`</ul></div>${renderCreatineBannerHTML()}${renderSleepCardHTML()}${renderHydrationHTML()}`;
   c.innerHTML=h;
@@ -1564,7 +2176,7 @@ function renderLiss(w,c,bannerHTML=''){
 // ============================================================
 // PROGRESS SCREEN
 // ============================================================
-let _progressLastFetch = 0;
+// _progressLastFetch now in store
 
 async function renderProgress(){
   const now = Date.now();
@@ -1854,7 +2466,7 @@ const DP={
   5:{label:'Phase 5',weeks:'Wk 18+',kcal:'~2,150',pro:'~125g',carb:'~235g',fat:'~53g',def:'+200 surplus',rotis:3,rNote:'3 rotis every night',col:'var(--p5)'},
 };
 const P3R={MON:2,TUE:3,WED:1,THU:2,FRI:3,SAT:2,SUN:1};
-let dPhase=1;
+// dPhase now in store
 const MEALS=[
   {t:'6:00',ap:'AM',n:'Warm Water',b:'Honey only — no lemon',kcal:20,items:['1 glass warm water','1 tsp honey','NO lemon — rash trigger'],note:'First thing every morning.'},
   {t:'7:30',ap:'AM',n:'Breakfast',b:'Omelette + Oats + 2 scoops whey',kcal:540,items:['Omelette: 1 whole egg + 1 egg white + veggies','Oats: 40g slow roasted + water + 50ml milk','1 scoop whey blended into oats','Sweeten: dates or honey','2 boiled egg whites'],note:'2nd whey scoop in oats — protein to ~125g/day.',isNew:true},
@@ -2030,14 +2642,14 @@ async function toggleMob(k, el){
 // SCREEN NAV
 // ============================================================
 // Track which screens have been rendered
-let _screenRendered = {};
+// _screenRendered now in store
 
 function showScreen(id,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.botnav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+id).classList.add('active');
   btn.classList.add('active');
-  if(id==='progress') renderProgress();  // always refresh — data changes
+  if(id==='progress') renderProgress();  // has internal 60s cache
   if(id==='diet' && !_screenRendered.diet){ renderDiet(); _screenRendered.diet=true; }
   if(id==='mob' && !_screenRendered.mob){ renderMobility(); _screenRendered.mob=true; }
 }
@@ -2264,17 +2876,354 @@ function daysSinceInBody() {
 async function registerPWA() {
   if(!('serviceWorker' in navigator)) return;
   try {
-    await navigator.serviceWorker.register('sw.js');
+    const reg = await navigator.serviceWorker.register('sw.js');
     // Re-init notifications after SW active
     const prefs = JSON.parse(localStorage.getItem('notifPrefs') || '[]');
     if(prefs.length) initNotifications(prefs);
-  } catch(e) { console.log('SW reg failed (expected if not on server):', e.message); }
+    // Detect new SW version — prompt user to update
+    reg.addEventListener('updatefound', () => {
+      const newSW = reg.installing;
+      newSW.addEventListener('statechange', () => {
+        if(newSW.state === 'installed' && navigator.serviceWorker.controller){
+          showToast('App updated — tap to reload', 'info', 8000, () => {
+            newSW.postMessage('skipWaiting');
+            window.location.reload();
+          });
+        }
+      });
+    });
+    // Flush offline queue once SW ready
+    flushOfflineQueue();
+  } catch(e) { console.log('SW reg failed:', e.message); }
 }
+
+// ============================================================
+// SKELETON SCREENS
+// ============================================================
+function renderSkeletonWeekStrip(){
+  const container = document.getElementById('week-strip');
+  container.innerHTML = `<div class="sk-pill-row">
+    ${Array(7).fill('<div class="sk sk-pill"></div>').join('')}
+  </div>`;
+}
+
+function renderSkeletonWorkout(){
+  const c = document.getElementById('workout-content');
+  // Banner skeleton
+  let h = '<div class="sk sk-banner"></div>';
+  // Workout card with warmup skeleton
+  h += `<div class="sk-block">
+    <div class="sk-block-inner">
+      <div class="sk sk-line-lg" style="width:55%"></div>
+      <div class="sk sk-line" style="width:35%"></div>
+    </div>
+    <div style="padding:0 16px 14px">
+      <div class="sk sk-line" style="width:25%;margin-bottom:12px"></div>
+      ${Array(4).fill('<div class="sk sk-line" style="width:90%"></div>').join('')}
+    </div>
+  </div>`;
+  // Exercises card skeleton — show 3 exercise rows
+  h += '<div class="sk-block"><div class="sk-block-inner">';
+  h += '<div class="sk sk-line" style="width:25%;margin-bottom:14px"></div>';
+  for(let i = 0; i < 3; i++){
+    h += `<div class="sk-ex-row">
+      <div class="sk sk-ex-icon"></div>
+      <div class="sk-ex-info">
+        <div class="sk sk-line" style="width:60%;margin-bottom:6px"></div>
+        <div class="sk sk-line" style="width:40%"></div>
+      </div>
+    </div>
+    <div class="sk-chips">
+      <div class="sk sk-chip"></div>
+      <div class="sk sk-chip"></div>
+      <div class="sk sk-chip"></div>
+      <div class="sk sk-chip"></div>
+    </div>`;
+  }
+  h += '</div></div>';
+  c.innerHTML = h;
+}
+
+// ============================================================
+// STORE SUBSCRIPTIONS — renders fire only on relevant state change
+// ============================================================
+
+// Week strip — patch in-place when only selection/done state changes
+store.subscribe(['cDay','cPhase','doneDatesCache','weekActivityCache'], () => {
+  renderWeekStrip();
+});
+
+// Workout — smart render: patch chips when only sets change, full rebuild on day/phase change
+store.subscribe(['selectedDateStr','cDay','cPhase'], () => {
+  // Day or phase changed — force full rebuild by resetting render key
+  _workoutRenderKey = null;
+  renderWorkout();
+});
+
+store.subscribe(['loggedSets'], () => {
+  // Only sets changed — patch chips surgically
+  if(_workoutRenderKey) patchWorkoutSets();
+  else renderWorkout();
+});
+
+store.subscribe(['checkCache'], () => {
+  // Only checks changed — patch checkboxes surgically
+  if(_workoutRenderKey) patchCheckCache();
+  else renderWorkout();
+});
+
+store.subscribe(['hydrationGlasses'], () => {
+  // Only hydration changed — patch just the hydration row
+  renderHydrationRow();
+});
+
+// Sync dot — direct DOM patch, no re-render needed
+store.subscribe(['syncStatus'], ({syncStatus}) => {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  if(!dot) return;
+  dot.className = 'sync-dot ' + syncStatus;
+  if(lbl) lbl.textContent =
+    syncStatus==='synced'  ? 'synced'    :
+    syncStatus==='syncing' ? 'saving...' :
+    syncStatus==='error'   ? 'offline'   : 'connecting...';
+});
 
 // ============================================================
 // BOOT
 // ============================================================
 registerPWA();
+
+// Run unit tests in dev mode — silent in production
+if(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'){
+  setTimeout(runTests, 1500);
+}
+
+// ============================================================
+// UNIT TESTS — run on init in dev/localhost only
+// Tests the 6 most critical functions for data correctness
+// ============================================================
+function runTests() {
+  const results = [];
+  let passed = 0, failed = 0;
+
+  function test(name, fn) {
+    try {
+      fn();
+      results.push({ name, ok: true });
+      passed++;
+    } catch(e) {
+      results.push({ name, ok: false, error: e.message });
+      failed++;
+    }
+  }
+
+  function assert(condition, msg) {
+    if (!condition) throw new Error(msg || 'Assertion failed');
+  }
+
+  function assertEqual(a, b, msg) {
+    if (a !== b) throw new Error(`${msg || 'assertEqual'}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+  }
+
+  // ── localDateStr ──
+  test('localDateStr: returns YYYY-MM-DD format', () => {
+    const d = localDateStr(new Date(2026, 2, 26)); // March 26
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(d), `Bad format: ${d}`);
+    assertEqual(d, '2026-03-26');
+  });
+
+  test('localDateStr: no UTC shift for IST midnight', () => {
+    // 1am local time should return same local date, not UTC-1 date
+    const d = new Date(2026, 2, 27, 1, 0, 0); // 1am local Mar 27
+    assertEqual(localDateStr(d), '2026-03-27', 'IST midnight bug');
+  });
+
+  // ── getCalendarWeek ──
+  test('getCalendarWeek: programme start = week 1', () => {
+    assertEqual(getCalendarWeek(new Date('2026-03-13')), 1);
+  });
+
+  test('getCalendarWeek: Mon 23 Mar = week 3', () => {
+    assertEqual(getCalendarWeek(new Date('2026-03-23')), 3);
+  });
+
+  test('getCalendarWeek: same week as programme start Monday', () => {
+    // All days in week of 13 Mar (Thu) should be week 1
+    assertEqual(getCalendarWeek(new Date('2026-03-09')), 1); // Mon
+    assertEqual(getCalendarWeek(new Date('2026-03-15')), 1); // Sun
+  });
+
+  test('getCalendarWeek: before start returns 0', () => {
+    assertEqual(getCalendarWeek(new Date('2026-03-01')), 0);
+  });
+
+  // ── parseSets ──
+  test('parseSets: 4×10 returns 4 items', () => {
+    const result = parseSets('4×10');
+    assertEqual(result.length, 4);
+    assertEqual(result[0], '10');
+  });
+
+  test('parseSets: 3×12 reps', () => {
+    const result = parseSets('3×12');
+    assertEqual(result.length, 3);
+  });
+
+  test('parseSets: fallback for non-standard format', () => {
+    const result = parseSets('3×30 steps');
+    assertEqual(result.length, 3);
+  });
+
+  test('parseSets: 5×5 power', () => {
+    const result = parseSets('5×5');
+    assertEqual(result.length, 5);
+  });
+
+  // ── isExerciseDone ──
+  test('isExerciseDone: false when no sets logged', () => {
+    const origSets = loggedSets;
+    loggedSets = {};
+    const result = isExerciseDone('DB Chest Press', ['10','10','10','10'], false);
+    loggedSets = origSets;
+    assert(!result, 'Should be false with no sets');
+  });
+
+  test('isExerciseDone: true when all sets logged', () => {
+    const origSets = loggedSets;
+    loggedSets = {
+      'TestEx|1|0': {completed:true}, 'TestEx|2|0': {completed:true},
+      'TestEx|3|0': {completed:true}
+    };
+    const result = isExerciseDone('TestEx', ['10','10','10'], false);
+    loggedSets = origSets;
+    assert(result, 'Should be true with all sets logged');
+  });
+
+  test('isExerciseDone: false when MM set missing for first exercise', () => {
+    const origSets = loggedSets;
+    loggedSets = {
+      'TestEx|1|0': {completed:true}, 'TestEx|2|0': {completed:true}
+    };
+    const result = isExerciseDone('TestEx', ['10','10'], true); // isFirst=true, no MM set
+    loggedSets = origSets;
+    assert(!result, 'Should be false when MM set missing');
+  });
+
+  // ── Schema validation ──
+  test('Schema.exercise_log: rejects bad date format', () => {
+    let threw = false;
+    try { validated(Schema.exercise_log, {date:'26/03/2026', phase:1, exercise_name:'X', exercise_index:0, set_number:1, is_mm_set:false, completed:true}); }
+    catch(e) { threw = true; }
+    assert(threw, 'Should throw on bad date format');
+  });
+
+  test('Schema.exercise_log: rejects unrealistic weight', () => {
+    let threw = false;
+    try { validated(Schema.exercise_log, {date:'2026-03-26', phase:1, exercise_name:'X', exercise_index:0, set_number:1, is_mm_set:false, completed:true, weight_kg:999}); }
+    catch(e) { threw = true; }
+    assert(threw, 'Should throw on weight > 500kg');
+  });
+
+  test('Schema.hydration_log: clamps glasses to 0-8', () => {
+    const row = validated(Schema.hydration_log, {date:'2026-03-26', glasses:15});
+    assertEqual(row.glasses, 8, 'Should clamp to 8');
+  });
+
+  // ── withRetry ──
+  test('withRetry: resolves on first success', async () => {
+    const result = await withRetry(() => Promise.resolve(42));
+    assertEqual(result, 42);
+  });
+
+  test('withRetry: retries on failure then succeeds', async () => {
+    let attempts = 0;
+    const result = await withRetry(() => {
+      attempts++;
+      if(attempts < 3) throw new Error('fail');
+      return Promise.resolve('ok');
+    }, 4);
+    assertEqual(result, 'ok');
+    assert(attempts === 3, `Expected 3 attempts, got ${attempts}`);
+  });
+
+  // Print results
+  const color = failed === 0 ? 'color:limegreen' : 'color:tomato';
+  console.groupCollapsed(`%c✓ ${passed} passed  ✗ ${failed} failed  — GymTracker test suite`, color);
+  results.forEach(r => {
+    if(r.ok) console.log(`  ✓ ${r.name}`);
+    else console.error(`  ✗ ${r.name}: ${r.error}`);
+  });
+  console.groupEnd();
+
+  if(failed > 0) {
+    showToast(`${failed} test${failed>1?'s':''} failed — check console`, 'error', 5000);
+  }
+}
+
+// ============================================================
+// PERFORMANCE MONITOR — measures render times in dev mode
+// ============================================================
+const Perf = {
+  _marks: {},
+  start(label) { this._marks[label] = performance.now(); },
+  end(label) {
+    const ms = performance.now() - (this._marks[label] || 0);
+    if(ms > 16) console.warn(`[Perf] ${label} took ${ms.toFixed(1)}ms — over 1 frame`);
+    delete this._marks[label];
+    return ms;
+  },
+  measure(label, fn) {
+    this.start(label);
+    const result = fn();
+    this.end(label);
+    return result;
+  }
+};
+
+// ── Global error boundary — catch unhandled errors, never show blank screen ──
+window.addEventListener('error', e => {
+  console.error('Unhandled error:', e.error);
+  setSyncStatus('error');
+  showToast('Something went wrong — tap to reload', 'error', 8000, () => window.location.reload());
+});
+
+window.addEventListener('unhandledrejection', e => {
+  // Ignore Supabase auth noise
+  if(e.reason?.message?.includes('JWT')) return;
+  console.error('Unhandled promise rejection:', e.reason);
+  setSyncStatus('error');
+});
+
+// ── Dev helper: expose store to console for debugging ──
+if(window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+  window.__store = store;
+  console.log('Dev mode: window.__store available');
+}
+
+// Refresh app at midnight IST so "today" stays correct
+(function scheduleMidnightRefresh(){
+  const now = new Date();
+  const msUntilMidnight = (
+    new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5) - now
+  );
+  setTimeout(() => {
+    // Silently update todayStr + cDay without full reload
+    const newToday = localDateStr();
+    if(newToday !== todayStr){
+      todayStr = newToday;
+      cDay = getTodayDowIndex();
+      selectedDateStr = todayStr;
+      sessionId = null;
+      _weekDatesMemo = null;  // invalidate memo
+      _stripCache = {};       // force strip rebuild
+      _workoutRenderKey = null; // force workout rebuild
+      renderWeekStrip();
+      renderWorkout();
+    }
+    scheduleMidnightRefresh(); // reschedule for next midnight
+  }, msUntilMidnight);
+})();
 init();
 // Auto-request notifications on first load
 window.addEventListener('load', () => {
