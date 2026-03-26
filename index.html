@@ -14,7 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-:root{--bg:#0a0a0a;--surface:#141414;--surface2:#1c1c1c;--surface3:#242424;--border:#2a2a2a;--text:#f0ede8;--muted:#666;--dim:#444;--p1:#ff4520;--p2:#ff8c00;--p3:#22c55e;--p4:#3b82f6;--p5:#a855f7;--yellow:#fbbf24;--cyan:#06b6d4;--gold:#f59e0b}
+:root{--bg:#0a0a0a;--surface:#141414;--surface2:#1c1c1c;--surface3:#242424;--border:#2a2a2a;--text:#f0ede8;--muted:#666;--dim:#666;--p1:#ff4520;--p2:#ff8c00;--p3:#22c55e;--p4:#3b82f6;--p5:#a855f7;--yellow:#fbbf24;--cyan:#06b6d4;--gold:#f59e0b}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;position:fixed;width:100%;height:100%}
@@ -38,6 +38,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-sheet{touch-action:pan-x}
 .modal-overlay.open{opacity:1;pointer-events:all}
 .modal-sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;max-width:480px;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,1.1,.5,1)}
 .modal-overlay.open .modal-sheet{transform:translateY(0)}
@@ -275,6 +276,41 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .toast.success{border-color:var(--p3);color:var(--p3)}
 .toast.error{border-color:var(--p1);color:var(--p1)}
 .toast.info{border-color:var(--p2);color:var(--p2)}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.shake{animation:shake .35s ease}
+
+/* ── PHASE PROGRESS BANNER ── */
+.phase-banner{margin:0 16px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--border);overflow:hidden}
+.phase-banner-top{padding:12px 14px 10px;display:flex;justify-content:space-between;align-items:center}
+.phase-banner-title{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.phase-banner-meta{font-size:11px;color:var(--muted)}
+.phase-banner-bar-wrap{height:4px;background:var(--border);margin:0 14px}
+.phase-banner-bar{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.phase-banner-days{display:flex;gap:6px;padding:10px 14px 12px;align-items:center}
+.phase-day-dot{flex:1;height:32px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:8px;font-weight:700;letter-spacing:.5px;transition:all .2s}
+.phase-day-dot.done{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);color:var(--p3)}
+.phase-day-dot.today{border-width:2px}
+.phase-day-dot.future{background:var(--surface2);border:1px solid var(--border);color:var(--dim);opacity:.5}
+.phase-day-dot.missed{background:rgba(255,69,32,.08);border:1px solid rgba(255,69,32,.2);color:var(--p1)}
+.phase-day-dot .pd-check{font-size:10px;line-height:1}
+.phase-banner-footer{padding:0 14px 10px;display:flex;justify-content:space-between;align-items:center}
+.phase-banner-week-msg{font-size:12px;color:var(--muted)}
+.phase-banner-week-msg strong{color:var(--text)}
+.phase-banner-locked{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--p3)}
+
+/* ── REST TIMER ── */
+#rest-timer{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--surface);border:1.5px solid var(--border);border-radius:16px;
+  padding:10px 18px;display:flex;align-items:center;gap:12px;z-index:150;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap}
+#rest-timer.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:all}
+#rest-timer-label{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;color:var(--muted)}
+#rest-timer-count{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--text);min-width:52px;text-align:center}
+#rest-timer-bar-wrap{width:80px;height:4px;background:var(--border);border-radius:4px;overflow:hidden}
+#rest-timer-bar{height:100%;background:var(--p3);border-radius:4px;transition:width .9s linear}
+#rest-timer-skip{font-size:11px;font-weight:700;color:var(--dim);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;letter-spacing:.5px}
+#rest-timer-skip:active{opacity:.6}
 
 /* ── SKELETON SCREENS ── */
 @keyframes sk-shimmer{
@@ -314,7 +350,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
   </div>
 </div>
 
-<div class="screen active" id="screen-today">
+<div class="screen active" id="screen-today" role="main" aria-label="Today's workout">
   <div class="today-header">
     <div class="today-date" id="today-date-label">PHASE 1 · MON</div>
     <div class="today-title" id="today-workout-title">PUSH DAY</div>
@@ -372,11 +408,21 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
   <div class="spacer"></div>
 </div>
 
+<!-- REST TIMER -->
+<div id="rest-timer">
+  <div>
+    <div id="rest-timer-label">REST</div>
+    <div id="rest-timer-count">90s</div>
+  </div>
+  <div id="rest-timer-bar-wrap"><div id="rest-timer-bar" style="width:100%"></div></div>
+  <button id="rest-timer-skip" onclick="skipRestTimer()">SKIP ✕</button>
+</div>
+
 <div class="botnav">
-  <button class="botnav-btn active" onclick="showScreen('today',this)"><div class="icon">🏋️</div><div>TODAY</div></button>
-  <button class="botnav-btn" onclick="showScreen('progress',this)"><div class="icon">📈</div><div>PROGRESS</div></button>
-  <button class="botnav-btn" onclick="showScreen('diet',this)"><div class="icon">🥗</div><div>DIET</div></button>
-  <button class="botnav-btn" onclick="showScreen('mob',this)"><div class="icon">🧘</div><div>MOBILITY</div></button>
+  <button class="botnav-btn active" onclick="showScreen('today',this)" aria-label="Today's workout"><div class="icon">🏋️</div><div>TODAY</div></button>
+  <button class="botnav-btn" onclick="showScreen('progress',this)" aria-label="Progress"><div class="icon">📈</div><div>PROGRESS</div></button>
+  <button class="botnav-btn" onclick="showScreen('diet',this)" aria-label="Diet plan"><div class="icon">🥗</div><div>DIET</div></button>
+  <button class="botnav-btn" onclick="showScreen('mob',this)" aria-label="Mobility"><div class="icon">🧘</div><div>MOBILITY</div></button>
 </div>
 </div>
 
@@ -390,14 +436,14 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
     <div class="modal-row">
       <div class="modal-field">
         <label>Weight (kg)</label>
-        <input type="number" id="modal-weight" placeholder="0" step="0.5" min="0" inputmode="decimal">
+        <input type="number" id="modal-weight" placeholder="0" step="0.5" min="0" inputmode="decimal" aria-label="Weight in kilograms">
       </div>
       <div class="modal-field">
         <label>Reps done</label>
-        <input type="number" id="modal-reps" placeholder="0" min="0" inputmode="numeric">
+        <input type="number" id="modal-reps" placeholder="0" min="0" inputmode="numeric" aria-label="Number of reps">
       </div>
     </div>
-    <button class="modal-btn" onclick="saveSet()">SAVE SET ✓</button>
+    <button class="modal-btn" onclick="saveSet()" aria-label="Save set">SAVE SET ✓</button>
     <button class="modal-btn skip" onclick="skipSet()">Skip (bodyweight / no weight)</button>
   </div>
 </div>
@@ -617,14 +663,25 @@ function getTodayDowIndex_pre(){
 // ============================================================
 // PROGRAMME DATE LOGIC
 // ============================================================
-const PROGRAMME_START = new Date('2026-03-13T00:00:00'); // Day 1 — Thursday 13 March 2026
-const DAYS=['MON','TUE','WED','THU','FRI','SAT','SUN'];
-const DAY_LABELS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// ============================================================
+// PROGRAMME CONFIG — single source of truth
+// All dates are IST local time. Change these to reconfigure.
+// ============================================================
+const CFG = {
+  startDate:     '2026-03-13',   // YYYY-MM-DD — programme Day 1 (IST)
+  phaseWeeks:    [4, 4, 5, 4, 999], // qualifying weeks needed per phase (index 0 = phase 1)
+  minActiveDays: 4,               // days per week needed to qualify (Mon–Sat)
+  totalPhases:   5,
+};
 
-// Qualifying weeks needed per phase
-const PHASE_WEEKS = { 1:4, 2:4, 3:5, 4:4, 5:999 };
-const MIN_ACTIVE_DAYS = 4;
+// Derived — do not edit
+const PROGRAMME_START   = parseLocalDate(CFG.startDate);
+const PHASE_WEEKS       = Object.fromEntries(CFG.phaseWeeks.map((w,i)=>[i+1,w]));
+const MIN_ACTIVE_DAYS   = CFG.minActiveDays;
+
+const DAYS      = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+const DAY_LABELS= ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 // weekActivityCache + doneDatesCache now live in store
 // These shorthands keep existing code working without full rewrite
 Object.defineProperty(window, 'weekActivityCache', {
@@ -656,11 +713,20 @@ let _weekDatesMemoKey = null;
 function getWeekDates() {
   const todayKey = localDateStr();
   if (_weekDatesMemoKey === todayKey && _weekDatesMemo) return _weekDatesMemo;
+  // Use date arithmetic on local calendar — no millisecond offsets
   const today = new Date(); today.setHours(0,0,0,0);
-  const js = today.getDay();
-  const mondayOffset = js === 0 ? -6 : 1 - js;
-  const mon = new Date(today.getTime() + mondayOffset * 86400000);
-  _weekDatesMemo = Array.from({length:7}, (_,i) => new Date(mon.getTime() + i*86400000));
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const daysToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const mon = new Date(today);
+  mon.setDate(today.getDate() + daysToMon);
+  mon.setHours(0,0,0,0);
+  // Build 7 days from Monday using local date increment — DST safe
+  _weekDatesMemo = Array.from({length:7}, (_, i) => {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    d.setHours(0,0,0,0);
+    return d;
+  });
   _weekDatesMemoKey = todayKey;
   return _weekDatesMemo;
 }
@@ -671,19 +737,24 @@ function getDateForDay(dowIndex) {
 
 // Get programme week number — Monday-based calendar weeks from programme start week
 function getCalendarWeek(date) {
-  const d = new Date(date); d.setHours(0,0,0,0);
-  const start = new Date(PROGRAMME_START); start.setHours(0,0,0,0);
+  // Always work in local (IST) midnight — no UTC conversion
+  const d = (typeof date === 'string') ? parseLocalDate(date) : new Date(date);
+  d.setHours(0,0,0,0);
+  // PROGRAMME_START is already a local Date from parseLocalDate(CFG.startDate)
+  const start = new Date(PROGRAMME_START.getTime()); start.setHours(0,0,0,0);
   if(d < start) return 0;
-  // Find Monday of programme start week
-  const startDay = start.getDay(); // 0=Sun,1=Mon...
-  const startMondayOffset = startDay === 0 ? -6 : 1 - startDay;
-  const startMonday = new Date(start.getTime() + startMondayOffset * 86400000);
-  // Find Monday of target date week
+  // Monday of programme start week (IST)
+  const startDay = start.getDay();
+  const startMonday = new Date(start);
+  startMonday.setDate(start.getDate() - (startDay === 0 ? 6 : startDay - 1));
+  startMonday.setHours(0,0,0,0);
+  // Monday of target date week (IST)
   const dDay = d.getDay();
-  const dMondayOffset = dDay === 0 ? -6 : 1 - dDay;
-  const dMonday = new Date(d.getTime() + dMondayOffset * 86400000);
-  // Week number = how many Mondays since start Monday
-  const weekNum = Math.floor((dMonday - startMonday) / (7 * 86400000)) + 1;
+  const dMonday = new Date(d);
+  dMonday.setDate(d.getDate() - (dDay === 0 ? 6 : dDay - 1));
+  dMonday.setHours(0,0,0,0);
+  // Week number — purely day arithmetic, no timezone math
+  const weekNum = Math.round((dMonday - startMonday) / (7 * 86400000)) + 1;
   return Math.max(weekNum, 1);
 }
 
@@ -708,8 +779,9 @@ function computePhaseFromHistory(history, currentCalendarWeek) {
 }
 
 function getProgrammeState(date) {
-  const d = new Date(date); d.setHours(0,0,0,0);
-  const start = new Date(PROGRAMME_START); start.setHours(0,0,0,0);
+  const d = (typeof date === 'string') ? parseLocalDate(date) : new Date(date);
+  d.setHours(0,0,0,0);
+  const start = new Date(PROGRAMME_START.getTime()); start.setHours(0,0,0,0);
   const dayNum = Math.floor((d - start) / 86400000);
   const js = d.getDay();
   const dowIndex = js === 0 ? 6 : js - 1;
@@ -742,6 +814,39 @@ function getLastWeekStatus() {
   return { week: lastWeek, days, qualified, phase: phaseAtLastWeek.phase };
 }
 
+// Get this week's Mon-Sat day breakdown for the progress banner
+// Uses doneDatesCache (DB-backed) + live isDayDone for selected day
+// Returns { logged, target, days:[{dateStr,isDone,isFuture,label}×6], weekLocked }
+function getThisWeekProgress(calWeek) {
+  const weekDates = getWeekDates(); // Mon-Sun of current IST calendar week
+  const todayLocal = new Date(); todayLocal.setHours(0,0,0,0); // IST local midnight
+
+  const days = [];
+  for(let i = 0; i < 6; i++) { // Mon(0) to Sat(5) only
+    const d = weekDates[i]; // Date object from getWeekDates() — always local time
+    const dateStr = localDateStr(d);
+    const isFuture = d > todayLocal;
+    const isSelectedDay = (i === cDay);
+
+    // Check done: DB cache OR live state for selected day
+    const inCache = doneDatesCache.has(dateStr);
+    const liveCheck = isSelectedDay && !isFuture && isDayDone(W[cPhase][DAYS[i]], DAYS[i]);
+    const isDone = !isFuture && (inCache || liveCheck);
+
+    days.push({ dateStr, isDone, isFuture, label: DAYS[i] });
+  }
+
+  // logged = count from DB cache (source of truth for past days)
+  // Use weekActivityCache[calWeek] directly — it's already computed from DB
+  const logged = weekActivityCache[calWeek] || 0;
+
+  // Week qualifies once Sunday passes with 4+ days
+  const todayDowIndex = getTodayDowIndex();
+  const weekLocked = todayDowIndex === 6 && logged >= MIN_ACTIVE_DAYS;
+
+  return { logged, target: MIN_ACTIVE_DAYS, days, weekLocked, calWeek };
+}
+
 // Load week activity from Supabase exercise_logs
 async function loadWeekActivity() {
   try {
@@ -771,19 +876,32 @@ async function loadWeekActivity() {
       cardioDates.add(row.date);
     });
 
-    // All active dates = gym days + cardio days
-    const allActiveDates = new Set([
+    // Active dates for COUNTING (Mon-Sat only, Sunday excluded)
+    // Sunday is REST — never counts toward the 4-day weekly target
+    const countingDates = new Set([
+      ...Object.keys(byDate).filter(d => {
+        const regularSets = [...byDate[d]].filter(k => !k.endsWith('|0')).length;
+        if(regularSets < 5) return false;
+        return parseLocalDate(d).getDay() !== 0; // exclude Sunday
+      }),
+      ...Array.from(cardioDates).filter(d => parseLocalDate(d).getDay() !== 0),
+    ]);
+
+    // doneDatesCache — ALL active dates get a green dot (including Sunday if logged)
+    // This is separate from counting — green dot just means "something was logged"
+    const allLoggedDates = new Set([
       ...Object.keys(byDate).filter(d => {
         const regularSets = [...byDate[d]].filter(k => !k.endsWith('|0')).length;
         return regularSets >= 5;
       }),
       ...cardioDates,
     ]);
+    doneDatesCache = new Set(allLoggedDates);
 
-    // Count active days per week
+    // weekActivityCache — count Mon-Sat active days per programme week
     const weekDays = {};
-    allActiveDates.forEach(dateStr => {
-      const wk = getCalendarWeek(new Date(dateStr));
+    countingDates.forEach(dateStr => {
+      const wk = getCalendarWeek(parseLocalDate(dateStr));
       if(wk <= 0) return;
       if(!weekDays[wk]) weekDays[wk] = new Set();
       weekDays[wk].add(dateStr);
@@ -792,10 +910,6 @@ async function loadWeekActivity() {
     Object.entries(weekDays).forEach(([wk, dates]) => {
       weekActivityCache[parseInt(wk)] = dates.size;
     });
-
-    // doneDatesCache — all active dates get a green dot
-    doneDatesCache = new Set(allActiveDates);
-
   } catch(e) { console.error('loadWeekActivity', e); }
 }
 
@@ -810,6 +924,15 @@ function localDateStr(date){
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 }
 function getTodayDateStr(){ return localDateStr(); }
+
+// Parse a YYYY-MM-DD string as LOCAL midnight — not UTC midnight
+// new Date('2026-03-26') = UTC midnight = 5:30am IST next day — WRONG
+// parseLocalDate('2026-03-26') = local midnight — CORRECT
+function parseLocalDate(dateStr){
+  if(!dateStr) return new Date();
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m-1, d, 0, 0, 0, 0); // local time
+}
 
 // ============================================================
 // STATE
@@ -1402,6 +1525,7 @@ async function toggleWarmup(itemKey, label, el){
   checkCache[itemKey] = newVal;
   el.classList.toggle('done', newVal);
   el.querySelector('.cb').textContent = newVal ? '✓' : '';
+  haptic(newVal ? [6] : [4]);
   // Surgically update warmup progress bar
   const dk = DAYS[cDay];
   const wuDone = WARMUP_ITEMS.filter(j=>checkCache[`wu_${dk}_${j.k}`]).length;
@@ -1444,6 +1568,7 @@ async function toggleCheck(itemKey, itemType, el){
   el.classList.toggle('done', newVal);
   const cb = el.querySelector('.cb,.s-cb');
   if(cb) cb.textContent = newVal ? '✓' : '';
+  haptic(newVal ? [6] : [4]);
   setSyncStatus('syncing');
   try {
     await withRetry(() =>
@@ -1470,6 +1595,7 @@ async function toggleCreatine(el){
 async function toggleGlass(num){
   const newVal = hydrationGlasses === num ? num-1 : num;
   hydrationGlasses = newVal;
+  haptic([5]);
   // Re-render hydration row
   renderHydrationRow();
   setSyncStatus('syncing');
@@ -1498,6 +1624,63 @@ function renderHydrationRow(){
 // ============================================================
 function haptic(pattern=[10]){
   try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+}
+
+// ============================================================
+// REST TIMER
+// ============================================================
+let _restTimerInterval = null;
+let _restTimerTotal = 0;
+let _restTimerLeft = 0;
+
+function parseRestSecs(restStr){
+  // '90s' -> 90, '75s' -> 75, '2min' -> 120
+  if(!restStr) return 60;
+  const m = restStr.match(/(\d+)\s*(s|min|m)/i);
+  if(!m) return 60;
+  return m[2].toLowerCase().startsWith('m') ? parseInt(m[1])*60 : parseInt(m[1]);
+}
+
+function startRestTimer(secs){
+  clearInterval(_restTimerInterval);
+  _restTimerTotal = secs;
+  _restTimerLeft = secs;
+  const el = document.getElementById('rest-timer');
+  const count = document.getElementById('rest-timer-count');
+  const bar = document.getElementById('rest-timer-bar');
+  if(!el) return;
+  el.classList.add('show');
+  count.textContent = secs + 's';
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  // Trigger reflow then animate
+  bar.offsetHeight;
+  bar.style.transition = 'width ' + secs + 's linear';
+  bar.style.width = '0%';
+  _restTimerInterval = setInterval(() => {
+    _restTimerLeft--;
+    if(_restTimerLeft <= 0){
+      clearInterval(_restTimerInterval);
+      count.textContent = 'GO!';
+      count.style.color = 'var(--p3)';
+      haptic([30, 50, 30, 50, 80]);
+      setTimeout(() => {
+        el.classList.remove('show');
+        count.style.color = 'var(--text)';
+      }, 1500);
+    } else {
+      count.textContent = _restTimerLeft + 's';
+      if(_restTimerLeft <= 10) count.style.color = 'var(--p1)';
+      else count.style.color = 'var(--text)';
+    }
+  }, 1000);
+}
+
+function skipRestTimer(){
+  clearInterval(_restTimerInterval);
+  document.getElementById('rest-timer')?.classList.remove('show');
+  document.getElementById('rest-timer-count').style.color = 'var(--text)';
+  haptic([8]);
 }
 
 function openSetModal(exName, setNum, isMM, chipEl, exIndex){
@@ -1537,12 +1720,24 @@ async function saveSet(){
   // Validate: reps required, weight must be non-negative
   if(reps <= 0 && !pendingSet.isMM){
     showToast('Enter reps to save', 'error');
-    document.getElementById('modal-reps').focus();
+    const repsEl = document.getElementById('modal-reps');
+    repsEl.focus();
+    repsEl.classList.remove('shake');
+    repsEl.offsetHeight; // force reflow
+    repsEl.classList.add('shake');
+    repsEl.addEventListener('animationend', () => repsEl.classList.remove('shake'), {once:true});
+    haptic([10,30,10,30,10]);
     return;
   }
   if(weight < 0 || weight > 500){
     showToast('Check weight value', 'error');
-    document.getElementById('modal-weight').focus();
+    const wtEl = document.getElementById('modal-weight');
+    wtEl.focus();
+    wtEl.classList.remove('shake');
+    wtEl.offsetHeight;
+    wtEl.classList.add('shake');
+    wtEl.addEventListener('animationend', () => wtEl.classList.remove('shake'), {once:true});
+    haptic([10,30,10,30,10]);
     return;
   }
   await commitSet(weight, reps, true);
@@ -1609,6 +1804,12 @@ async function commitSet(weight, reps, completed){
       );
     });
     setSyncStatus('synced');
+    // Auto-start rest timer based on exercise rest time
+    const _w = W[cPhase][DAYS[cDay]];
+    const _ex = _w?.ex?.[exIndex];
+    if(_ex?.r && !isMM){
+      startRestTimer(parseRestSecs(_ex.r));
+    }
     // Debounced week activity refresh
     clearTimeout(window._weekRefreshTimer);
     window._weekRefreshTimer = setTimeout(() => {
@@ -1798,13 +1999,33 @@ function patchWorkoutSets(){
     }
   });
 
-  // Also patch banner week count
+  // Patch banner week progress message
   const weekCountEl = document.querySelector('[data-week-count]');
   if(weekCountEl){
     const viewState = getProgrammeState(getDateForDay(cDay));
-    const curWeek = viewState.week;
-    const thisWeekDays = weekActivityCache[curWeek] || 0;
-    weekCountEl.textContent = `${thisWeekDays}/4 active days`;
+    const weekProgress = getThisWeekProgress(viewState.week);
+    const satDate = weekProgress.days[5];
+    const satPast = satDate && !satDate.isFuture;
+    const daysLeft = MIN_ACTIVE_DAYS - weekProgress.logged;
+    if(weekProgress.weekLocked || (satPast && weekProgress.logged >= MIN_ACTIVE_DAYS)){
+      weekCountEl.innerHTML = '<span class="phase-banner-locked">✅ WEEK ' + viewState.week + ' QUALIFIED</span>';
+    } else if(weekProgress.logged >= MIN_ACTIVE_DAYS){
+      weekCountEl.innerHTML = '<strong>' + weekProgress.logged + '/4</strong> days done — week qualifies on Sunday';
+    } else {
+      weekCountEl.innerHTML = '<strong>' + weekProgress.logged + '/4</strong> days — need <strong>' + daysLeft + '</strong> more to qualify';
+    }
+    // Also update day dots
+    const dots = document.querySelectorAll('.phase-day-dot');
+    if(dots.length === 6){
+      weekProgress.days.forEach((d, i) => {
+        const dot = dots[i];
+        if(!dot) return;
+        const isTodayDot = (i === getTodayDowIndex());
+        dot.className = 'phase-day-dot' + (d.isDone?' done':d.isFuture?' future':' missed') + (isTodayDot?' today':'');
+        const check = dot.querySelector('.pd-check');
+        if(check) check.textContent = d.isDone ? '✓' : d.isFuture ? '' : '–';
+      });
+    }
   }
 }
 
@@ -1869,47 +2090,83 @@ function renderWorkout(){
   document.getElementById('today-workout-sub').textContent = isBeforeStart ? 'Programme started 13 March 2026' : w.sub;
   const c=document.getElementById('workout-content');
 
-  // Build banner HTML (Monday status + phase progress — shown on every view of today)
+  // ── PHASE PROGRESS BANNER — shown on every day, not just today ──
   const isViewingToday = (localDateStr(viewDate) === todayStr);
   let bannerHTML = '';
-  if(isViewingToday && !isBeforeStart) {
-    const isMonday = new Date().getDay() === 1;
-    const lastStatus = getLastWeekStatus();
+  if(!isBeforeStart) {
     const curWeek = viewState.week;
     const qualifying = viewState.qualifyingInPhase || 0;
     const remaining = viewState.remaining || (PHASE_WEEKS[cPhase] - qualifying);
-    const thisWeekDays = weekActivityCache[curWeek] || 0;
+    const phColors = ['','var(--p1)','var(--p2)','var(--p3)','var(--p4)','var(--p5)'];
+    const col = phColors[cPhase];
+    const phasePct = Math.min(100, Math.round(qualifying / (PHASE_WEEKS[cPhase]||4) * 100));
 
-    // Monday last-week recap banner
-    if(isMonday && lastStatus) {
-      if(lastStatus.qualified) {
-        bannerHTML += `<div style="margin:0 16px 10px;padding:12px 14px;border-radius:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25)">
-          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--p3)">✅ WEEK ${lastStatus.week} COMPLETE</div>
-          <div style="font-size:13px;color:#ccc;margin-top:3px">${lastStatus.days} qualifying days — Phase ${lastStatus.phase} progressing normally</div>
+    // Week day dots (Mon–Sat) showing this week's progress
+    const weekProgress = getThisWeekProgress(curWeek);
+    const todayDowIndex = getTodayDowIndex();
+
+    const dayDotsHTML = weekProgress.days.map((d, i) => {
+      const isTodayDot = (i === todayDowIndex);
+      let cls = 'phase-day-dot';
+      let icon = '';
+      const today = new Date(); today.setHours(0,0,0,0);
+      const dotDate = parseLocalDate(d.dateStr);
+      if(d.isDone){
+        cls += ' done' + (isTodayDot?' today':'');
+        icon = '<div class="pd-check">✓</div>';
+      } else if(d.isFuture){
+        cls += ' future' + (isTodayDot?' today':'');
+        icon = '';
+      } else {
+        // Past day not done — missed
+        cls += ' missed' + (isTodayDot?' today':'');
+        icon = '<div class="pd-check">–</div>';
+      }
+      return `<div class="${cls}"><div>${d.label}</div>${icon}</div>`;
+    }).join('');
+
+    // Status message
+    const daysLeft = MIN_ACTIVE_DAYS - weekProgress.logged;
+    const satDate = weekProgress.days[5]; // Saturday
+    const satPast = satDate && !satDate.isFuture;
+    let weekMsg = '';
+    if(weekProgress.weekLocked || (satPast && weekProgress.logged >= MIN_ACTIVE_DAYS)){
+      weekMsg = `<span class="phase-banner-locked">✅ WEEK ${curWeek} QUALIFIED</span>`;
+    } else if(weekProgress.logged >= MIN_ACTIVE_DAYS){
+      weekMsg = `<strong>${weekProgress.logged}/4</strong> days done — week qualifies on Sunday`;
+    } else if(daysLeft > 0){
+      weekMsg = `<strong>${weekProgress.logged}/4</strong> days — need <strong>${daysLeft}</strong> more to qualify`;
+    }
+
+    // Monday recap — show last week result
+    let recapHTML = '';
+    const isMonday = new Date().getDay() === 1;
+    const lastStatus = getLastWeekStatus();
+    if(isMonday && isViewingToday && lastStatus){
+      if(lastStatus.qualified){
+        recapHTML = `<div style="margin:0 16px 8px;padding:10px 14px;border-radius:10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);font-size:12px">
+          <span style="font-weight:700;color:var(--p3)">✅ Week ${lastStatus.week} complete</span>
+          <span style="color:var(--muted)"> — ${lastStatus.days} days logged. Phase ${lastStatus.phase} on track.</span>
         </div>`;
       } else {
-        bannerHTML += `<div style="margin:0 16px 10px;padding:12px 14px;border-radius:12px;background:rgba(255,69,32,.08);border:1px solid rgba(255,69,32,.25)">
-          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--p1)">⚠️ WEEK ${lastStatus.week} INCOMPLETE</div>
-          <div style="font-size:13px;color:#ccc;margin-top:3px">Only ${lastStatus.days} qualifying day${lastStatus.days!==1?'s':''} (need ${MIN_ACTIVE_DAYS}) — Phase ${lastStatus.phase} extended by 1 week</div>
+        recapHTML = `<div style="margin:0 16px 8px;padding:10px 14px;border-radius:10px;background:rgba(255,69,32,.08);border:1px solid rgba(255,69,32,.2);font-size:12px">
+          <span style="font-weight:700;color:var(--p1)">⚠️ Week ${lastStatus.week} missed</span>
+          <span style="color:var(--muted)"> — only ${lastStatus.days} days. Phase ${lastStatus.phase} extended 1 week.</span>
         </div>`;
       }
     }
 
-    // Phase progress bar — always visible
-    const pct = Math.round(qualifying / (PHASE_WEEKS[cPhase]||4) * 100);
-    const phColors = ['','var(--p1)','var(--p2)','var(--p3)','var(--p4)','var(--p5)'];
-    const col = phColors[cPhase];
-    bannerHTML += `<div style="margin:0 16px 10px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:${col}">PHASE ${cPhase} PROGRESS</div>
-        <div style="font-size:11px;color:var(--muted)">${qualifying}/${PHASE_WEEKS[cPhase]} qualifying weeks</div>
+    bannerHTML = recapHTML + `<div class="phase-banner">
+      <div class="phase-banner-top">
+        <div class="phase-banner-title" style="color:${col}">PHASE ${cPhase}</div>
+        <div class="phase-banner-meta">${qualifying}/${PHASE_WEEKS[cPhase]} weeks · ${remaining} to go</div>
       </div>
-      <div style="height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:8px">
-        <div style="width:${pct}%;height:100%;background:${col};border-radius:5px;transition:width .5s"></div>
+      <div class="phase-banner-bar-wrap">
+        <div class="phase-banner-bar" style="width:${phasePct}%;background:${col}"></div>
       </div>
-      <div style="display:flex;justify-content:space-between">
-        <div style="font-size:12px;color:var(--muted)">This week: <strong style="color:var(--text)" data-week-count>${thisWeekDays}/4 active days</strong></div>
-        <div style="font-size:12px;color:var(--muted)">${remaining} week${remaining!==1?'s':''} to Phase ${cPhase<5?cPhase+1:5}</div>
+      <div class="phase-banner-days">${dayDotsHTML}</div>
+      <div class="phase-banner-footer">
+        <div class="phase-banner-week-msg" data-week-count>${weekMsg}</div>
       </div>
     </div>`;
   }
@@ -3194,6 +3451,53 @@ window.addEventListener('unhandledrejection', e => {
   console.error('Unhandled promise rejection:', e.reason);
   setSyncStatus('error');
 });
+
+// ============================================================
+// SWIPE DOWN TO DISMISS MODAL
+// ============================================================
+(function initModalSwipe(){
+  let startY = 0;
+  const sheet = document.querySelector('.modal-sheet');
+  if(!sheet) return;
+  sheet.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+  }, {passive:true});
+  sheet.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    // Swipe down > 80px = dismiss
+    if(dy > 80){ closeModal(); haptic([8]); }
+  }, {passive:true});
+})();
+
+// ============================================================
+// SWIPE BETWEEN DAYS
+// ============================================================
+(function initSwipe(){
+  let startX = 0, startY = 0, startTime = 0;
+  const el = document.getElementById('screen-today');
+  if(!el) return;
+
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startTime = Date.now();
+  }, {passive: true});
+
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    const dt = Date.now() - startTime;
+    // Must be fast (<350ms), horizontal (dx > dy*2), and far enough (>50px)
+    if(dt > 350 || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if(dx < 0) {
+      // Swipe left — next day
+      if(cDay < 6) { selectDay(cDay + 1); haptic([6]); }
+    } else {
+      // Swipe right — previous day
+      if(cDay > 0) { selectDay(cDay - 1); haptic([6]); }
+    }
+  }, {passive: true});
+})();
 
 // ── Dev helper: expose store to console for debugging ──
 if(window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
