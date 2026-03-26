@@ -487,13 +487,22 @@ function getDateForDay(dowIndex) {
   return getWeekDates()[dowIndex];
 }
 
-// Get calendar week number from programme start (1-indexed)
+// Get programme week number — Monday-based calendar weeks from programme start week
 function getCalendarWeek(date) {
   const d = new Date(date); d.setHours(0,0,0,0);
   const start = new Date(PROGRAMME_START); start.setHours(0,0,0,0);
-  const dayNum = Math.floor((d - start) / 86400000);
-  if(dayNum < 0) return 0;
-  return Math.floor(dayNum/7)+1;
+  if(d < start) return 0;
+  // Find Monday of programme start week
+  const startDay = start.getDay(); // 0=Sun,1=Mon...
+  const startMondayOffset = startDay === 0 ? -6 : 1 - startDay;
+  const startMonday = new Date(start.getTime() + startMondayOffset * 86400000);
+  // Find Monday of target date week
+  const dDay = d.getDay();
+  const dMondayOffset = dDay === 0 ? -6 : 1 - dDay;
+  const dMonday = new Date(d.getTime() + dMondayOffset * 86400000);
+  // Week number = how many Mondays since start Monday
+  const weekNum = Math.floor((dMonday - startMonday) / (7 * 86400000)) + 1;
+  return Math.max(weekNum, 1);
 }
 
 // Core: compute current phase from week activity history
@@ -559,17 +568,15 @@ async function loadWeekActivity() {
       .eq('completed', true)
       .neq('is_mm_set', true);
     if(!data) return;
-    // Count distinct days with 3+ sets per programme week
-    // Group by date first
+    // Count distinct days with 1+ completed sets per programme week
     const byDate = {};
     data.forEach(row => {
       if(!byDate[row.date]) byDate[row.date] = new Set();
       byDate[row.date].add(row.exercise_name + '|' + row.set_number);
     });
-    // For each date with 3+ sets, mark that programme week as having an active day
     const weekDays = {}; // weekNum -> Set of active dates
     Object.entries(byDate).forEach(([dateStr, sets]) => {
-      if(sets.size < 3) return; // need 3+ sets to count as active day
+      if(sets.size < 1) return;
       const wk = getCalendarWeek(new Date(dateStr));
       if(wk <= 0) return;
       if(!weekDays[wk]) weekDays[wk] = new Set();
@@ -1098,6 +1105,8 @@ async function commitSet(weight, reps, completed){
     setSyncStatus('synced');
     haptic([10, 50, 10]);
     showToast(weight>0 ? `${weight}kg × ${reps} saved ✓` : 'Set logged ✓');
+    // Refresh week activity count so banner shows correct days
+    loadWeekActivity().then(() => renderWeekStrip());
     // Update exercise done state
     const ek = `ex_${cPhase}_${DAYS[cDay]}_${exIndex}`;
     const rowEl = document.getElementById(ek);
