@@ -14,6 +14,34 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
+/* ── SPLASH SCREEN — painted instantly, no JS or font needed ── */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:#0a0a0a;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  transition:opacity .4s ease, visibility .4s ease;
+}
+#splash.hidden{opacity:0;visibility:hidden;pointer-events:none}
+#splash-logo{
+  font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;
+  font-size:36px;font-weight:900;letter-spacing:6px;
+  color:#f0ede8;text-transform:uppercase;margin-bottom:6px;
+}
+#splash-logo span{color:#ff4520}
+#splash-sub{
+  font-family:system-ui,-apple-system,sans-serif;
+  font-size:11px;font-weight:500;letter-spacing:3px;
+  color:#444;text-transform:uppercase;margin-bottom:48px;
+}
+#splash-ring{
+  width:36px;height:36px;
+  border:2.5px solid #1c1c1c;
+  border-top-color:#ff4520;
+  border-radius:50%;
+  animation:splash-spin .7s linear infinite;
+}
+@keyframes splash-spin{to{transform:rotate(360deg)}}
+
 :root{--bg:#0a0a0a;--surface:#141414;--surface2:#1c1c1c;--surface3:#242424;--border:#2a2a2a;--text:#f0ede8;--muted:#666;--dim:#666;--p1:#ff4520;--p2:#ff8c00;--p3:#22c55e;--p4:#3b82f6;--p5:#a855f7;--yellow:#fbbf24;--cyan:#06b6d4;--gold:#f59e0b}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
@@ -341,6 +369,13 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 </style>
 </head>
 <body>
+<!-- SPLASH — shown immediately, no JS needed, dismissed when app ready -->
+<div id="splash" role="status" aria-label="Loading">
+  <div id="splash-logo">GYM<span>X</span></div>
+  <div id="splash-sub">Loading your programme</div>
+  <div id="splash-ring"></div>
+</div>
+
 <div class="app">
 <div class="topnav">
   <div class="topnav-brand">ROHAN'S <span>GYM</span></div>
@@ -1241,6 +1276,13 @@ async function init(){
   }
   renderWeekStrip();
   renderWorkout();
+  // Dismiss splash — fade out after content is painted
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const splash = document.getElementById('splash');
+      if(splash) splash.classList.add('hidden');
+    });
+  });
 }
 
 async function loadSetsForDate(dateStr, silent=false){
