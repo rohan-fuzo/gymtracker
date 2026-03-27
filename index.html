@@ -380,8 +380,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 <div class="topnav">
   <div class="topnav-brand">ROHAN'S <span>GYM</span></div>
   <div style="display:flex;align-items:center;gap:8px">
-    <div style="font-size:11px;color:var(--muted)" id="sync-label">connecting...</div>
-    <div class="sync-dot" id="sync-dot"></div>
+    <div style="display:flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:6px 0 6px 8px" onclick="manualSync()" aria-label="Sync now">
+      <div style="font-size:11px;color:var(--muted)" id="sync-label">connecting...</div>
+      <div class="sync-dot" id="sync-dot"></div>
+    </div>
   </div>
 </div>
 
@@ -398,6 +400,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
     <button class="ph-btn" data-ph="4" onclick="selectPhase(4,this)">P4 Wk14–17</button>
     <button class="ph-btn" data-ph="5" onclick="selectPhase(5,this)">P5 Wk18+</button>
   </div>
+  <div id="phase-banner-wrap"></div>
   <div class="week-strip" id="week-strip">
     <div class="sk-pill-row">
       <div class="sk sk-pill"></div><div class="sk sk-pill"></div>
@@ -932,6 +935,8 @@ async function loadWeekActivity() {
       ...cardioDates,
     ]);
     doneDatesCache = new Set(allLoggedDates);
+    // Re-render banner immediately once activity data is fresh
+    setTimeout(renderPhaseBanner, 0);
 
     // weekActivityCache — count Mon-Sat active days per programme week
     const weekDays = {};
@@ -1199,18 +1204,66 @@ async function flushOfflineQueue() {
     }
     if (synced > 0) {
       showToast(`${synced} offline save${synced > 1 ? 's' : ''} synced ✓`);
-      // Reload sets for current date to reflect synced data
-      loadSetsForDate(selectedDateStr, true);
+      // Reload sets + activity to reflect newly synced data
+      await loadSetsForDate(selectedDateStr, true);
+      await loadWeekActivity();
+      renderWeekStrip();
+      renderPhaseBanner();
     }
+    updatePendingBadge();
   } finally {
     _flushing = false;
   }
 }
 
-// Flush on reconnect + visibility change (user returns to tab)
+// ── Flush triggers ──
+// 1. Network restored
 window.addEventListener('online', flushOfflineQueue);
+
+// 2. User returns to tab/app
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && navigator.onLine) flushOfflineQueue();
+});
+
+// 3. Periodic retry — every 30 seconds while app is open and online
+//    Catches cases where network exists but Supabase was temporarily unreachable
+(function startPeriodicSync() {
+  const INTERVAL_MS = 30 * 1000; // 30 seconds
+  setInterval(async () => {
+    if (!navigator.onLine) return;           // skip if offline
+    if (_flushing) return;                   // skip if already flushing
+    const items = await SyncDB.getAll().catch(() => []);
+    const lsItems = JSON.parse(localStorage.getItem('gymtracker_q') || '[]');
+    const total = items.length + lsItems.length;
+    if (total === 0) return;                 // nothing pending, skip
+    console.log(`[Sync] ${total} item(s) pending — retrying...`);
+    await flushOfflineQueue();
+  }, INTERVAL_MS);
+})();
+
+// 4. Before page unload — last attempt to flush pending saves
+window.addEventListener('beforeunload', () => {
+  // Synchronous best-effort — can't await here
+  // Uses keepalive fetch which survives page close
+  SyncDB.getAll().then(items => {
+    if (!items.length) return;
+    items.forEach(item => {
+      try {
+        // Fire-and-forget with keepalive — browser delivers even if page closes
+        fetch(`https://acyvwbzuyaluruofkbxr.supabase.co/rest/v1/${item.table}`, {
+          method: 'POST',
+          keepalive: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'sb_publishable_YQZdhUmmyExuNmUJD4jj2g_3H0uR1hp',
+            'Authorization': 'Bearer sb_publishable_YQZdhUmmyExuNmUJD4jj2g_3H0uR1hp',
+            'Prefer': 'resolution=merge-duplicates',
+          },
+          body: JSON.stringify(item.data),
+        });
+      } catch(e) {}
+    });
+  }).catch(() => {});
 });
 
 // ============================================================
@@ -2126,7 +2179,9 @@ function renderWorkout(){
 
   const viewState = getProgrammeState(viewDate);
   const isBeforeStart = viewState.beforeStart;
-  const weekLabel = isBeforeStart ? 'Before start' : `Week ${viewState.week}`;
+  // Use getCalendarWeek for the label — pure date math, no DB dependency
+  const calWeekNum = isBeforeStart ? 1 : getCalendarWeek(viewDate);
+  const weekLabel = isBeforeStart ? 'Before start' : `Week ${calWeekNum}`;
   document.getElementById('today-date-label').textContent=`${formatDate(viewDate).toUpperCase()} · ${weekLabel.toUpperCase()} · PHASE ${cPhase}`;
   document.getElementById('today-workout-title').textContent = isBeforeStart ? 'NOT STARTED' : w.title;
   document.getElementById('today-workout-sub').textContent = isBeforeStart ? 'Programme started 13 March 2026' : w.sub;
@@ -2198,19 +2253,24 @@ function renderWorkout(){
       }
     }
 
-    bannerHTML = recapHTML + `<div class="phase-banner">
-      <div class="phase-banner-top">
-        <div class="phase-banner-title" style="color:${col}">PHASE ${cPhase}</div>
-        <div class="phase-banner-meta">${qualifying}/${PHASE_WEEKS[cPhase]} weeks · ${remaining} to go</div>
-      </div>
-      <div class="phase-banner-bar-wrap">
-        <div class="phase-banner-bar" style="width:${phasePct}%;background:${col}"></div>
-      </div>
-      <div class="phase-banner-days">${dayDotsHTML}</div>
-      <div class="phase-banner-footer">
-        <div class="phase-banner-week-msg" data-week-count>${weekMsg}</div>
-      </div>
-    </div>`;
+    // Render banner into its own container — independent of workout content
+    const bannerWrap = document.getElementById('phase-banner-wrap');
+    if(bannerWrap){
+      bannerWrap.innerHTML = recapHTML + `<div class="phase-banner">
+        <div class="phase-banner-top">
+          <div class="phase-banner-title" style="color:${col}">PHASE ${cPhase}</div>
+          <div class="phase-banner-meta">${qualifying}/${PHASE_WEEKS[cPhase]} weeks · ${remaining} to go</div>
+        </div>
+        <div class="phase-banner-bar-wrap">
+          <div class="phase-banner-bar" style="width:${phasePct}%;background:${col}"></div>
+        </div>
+        <div class="phase-banner-days">${dayDotsHTML}</div>
+        <div class="phase-banner-footer">
+          <div class="phase-banner-week-msg" data-week-count>${weekMsg}</div>
+        </div>
+      </div>`;
+    }
+    bannerHTML = ''; // banner is now in its own container, not in workout content
   }
 
   if(isBeforeStart){
@@ -3286,7 +3346,37 @@ store.subscribe(['syncStatus'], ({syncStatus}) => {
     syncStatus==='synced'  ? 'synced'    :
     syncStatus==='syncing' ? 'saving...' :
     syncStatus==='error'   ? 'offline'   : 'connecting...';
+  // Show pending count if there are items in the queue
+  updatePendingBadge();
 });
+
+async function manualSync(){
+  const items = await SyncDB.getAll().catch(() => []);
+  const lsItems = JSON.parse(localStorage.getItem('gymtracker_q') || '[]');
+  const total = items.length + lsItems.length;
+  if(total === 0){
+    showToast('All synced ✓');
+    return;
+  }
+  showToast(`Syncing ${total} item${total>1?'s':''}...`);
+  await flushOfflineQueue();
+}
+
+async function updatePendingBadge(){
+  try {
+    const items = await SyncDB.getAll();
+    const lsItems = JSON.parse(localStorage.getItem('gymtracker_q') || '[]');
+    const total = items.length + lsItems.length;
+    const lbl = document.getElementById('sync-label');
+    if(!lbl) return;
+    if(total > 0 && store.getState().syncStatus !== 'syncing'){
+      lbl.textContent = `${total} pending`;
+      lbl.style.color = 'var(--p2)';
+    } else {
+      lbl.style.color = '';
+    }
+  } catch(e){}
+}
 
 // ============================================================
 // BOOT
