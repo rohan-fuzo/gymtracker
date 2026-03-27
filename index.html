@@ -1493,53 +1493,42 @@ const W={
 });
 
 // ============================================================
-// EXERCISE IMAGES
-// Source: free-exercise-db on GitHub (raw.githubusercontent.com — permanent, CORS-open, no API key)
-// Hardcoded GIF URLs — ExerciseDB free tier removed GIF serving.
-// Source: raw.githubusercontent.com/exercisedb mirror (permanent, CORS-open, no API key needed)
-// IDs sourced directly from ExerciseDB API (id field in response)
+// EXERCISE GIFS — static.exercisedb.dev (CORS-open, no API key)
+// IDs sourced from exercisedb-api.vercel.app dataset
 // ============================================================
-// MUSCLEWIKI VIDEO — api.musclewiki.com
-// Free account: api.musclewiki.com/register (no credit card)
-// ============================================================
-const MUSCLEWIKI_KEY = 'mw_bqqGkZpG3kxgJSO_c96oQJIjUY5tE-UswBHbCNeDWa4';
-
-// Search term map — maps our exercise names to MuscleWiki search queries
-const MW_SEARCH = {
-  'KB Goblet Squat':       'kettlebell goblet squat',
-  'KB Romanian Deadlift':  'kettlebell romanian deadlift',
-  'KB Renegade Row':       'kettlebell renegade row',
-  'DB Single-Arm Row':     'dumbbell one arm row',
-  'Cable Face Pulls':      'cable face pull',
-  'Dead Bug':              'dead bug',
-  'KB Russian Twist':      'russian twist',
-  'DB Thrusters':          'dumbbell thruster',
-  'KB Swings':             'kettlebell swing',
-  'Plank':                 'plank',
-  'DB Lateral Raises':     'dumbbell lateral raise',
-  'Pec Fly':               'cable fly',
-  'DB Walking Lunges':     'dumbbell walking lunge',
-  'DB Shoulder Press':     'dumbbell shoulder press',
-  'Cable Row':             'cable seated row',
-  'DB Chest Press':        'dumbbell bench press',
-  'KB Hammer Curl':        'hammer curl',
-  'Leg Extension':         'leg extension',
-  'Leg Curl':              'lying leg curl',
-  'Seated Calf Raise':     'seated calf raise',
-  'Machine Chest Press':   'chest press machine',
-  'Machine Incline Press': 'incline chest press machine',
+const GIF_BASE = 'https://static.exercisedb.dev/media/';
+const EXERCISE_GIFS = {
+  'KB Goblet Squat': 'https://static.exercisedb.dev/media/ZA8b5hc.gif',
+  'KB Romanian Deadlift': 'https://static.exercisedb.dev/media/rR0LJzx.gif',
+  'KB Renegade Row': 'https://static.exercisedb.dev/media/b9kqlBy.gif',
+  'DB Single-Arm Row': 'https://static.exercisedb.dev/media/fUBheHs.gif',
+  'Cable Face Pulls': 'https://static.exercisedb.dev/media/hvV79Si.gif',
+  'Dead Bug': 'https://static.exercisedb.dev/media/iny3m5y.gif',
+  'KB Russian Twist': 'https://static.exercisedb.dev/media/fZFZ704.gif',
+  'DB Thrusters': 'https://static.exercisedb.dev/media/yWxMvB5.gif',
+  'KB Swings': 'https://static.exercisedb.dev/media/UHJlbu3.gif',
+  'Plank': 'https://static.exercisedb.dev/media/VO2qeJg.gif',
+  'DB Lateral Raises': 'https://static.exercisedb.dev/media/DsgkuIt.gif',
+  'Pec Fly': 'https://static.exercisedb.dev/media/w4dLzSx.gif',
+  'DB Walking Lunges': 'https://static.exercisedb.dev/media/IZVHb27.gif',
+  'DB Shoulder Press': 'https://static.exercisedb.dev/media/znQUdHY.gif',
+  'Cable Row': 'https://static.exercisedb.dev/media/fUBheHs.gif',
+  'DB Chest Press': 'https://static.exercisedb.dev/media/SpYC0Kp.gif',
+  'KB Hammer Curl': 'https://static.exercisedb.dev/media/slDvUAU.gif',
+  'Leg Extension': 'https://static.exercisedb.dev/media/my33uHU.gif',
+  'Leg Curl': 'https://static.exercisedb.dev/media/Zg3XY7P.gif',
+  'Seated Calf Raise': 'https://static.exercisedb.dev/media/bOOdeyc.gif',
+  'Machine Chest Press': 'https://static.exercisedb.dev/media/DOoWcnA.gif',
+  'Machine Incline Press': 'https://static.exercisedb.dev/media/jHAnWmT.gif',
 };
 
-// Session cache: exName -> video URL string | null
-const videoCache = {};
+// Legacy flag — controls which exercises show demo section
+const EXERCISEDB_NAMES = EXERCISE_GIFS;
 
-// Legacy flag — all exercises in MW_SEARCH get a demo section
-const EXERCISEDB_NAMES = MW_SEARCH;
-
-async function getExerciseGif(exName) {
-  if (videoCache[exName] !== undefined) return videoCache[exName];
-  const query = MW_SEARCH[exName];
-  if (!query) { videoCache[exName] = null; return null; }
+// Simple lookup — no API call needed
+function getExerciseGif(exName) {
+  return Promise.resolve(EXERCISE_GIFS[exName] || null);
+}
   if (MUSCLEWIKI_KEY === 'PASTE_YOUR_KEY_HERE') { videoCache[exName] = null; return null; }
   try {
     const MW_PROXY = 'https://musclewiki-proxy.rohan-3e4.workers.dev';
