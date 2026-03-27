@@ -705,17 +705,9 @@ function getTodayDowIndex_pre(){
 // PROGRAMME CONFIG — single source of truth
 // All dates are IST local time. Change these to reconfigure.
 // ============================================================
-const CFG = {
-  startDate:     '2026-03-13',   // YYYY-MM-DD — programme Day 1 (IST)
-  phaseWeeks:    [4, 4, 5, 4, 999], // qualifying weeks needed per phase (index 0 = phase 1)
-  minActiveDays: 4,               // days per week needed to qualify (Mon–Sat)
-  totalPhases:   5,
-};
-
-// Derived — do not edit
-const PROGRAMME_START   = parseLocalDate(CFG.startDate);
-const PHASE_WEEKS       = Object.fromEntries(CFG.phaseWeeks.map((w,i)=>[i+1,w]));
-const MIN_ACTIVE_DAYS   = CFG.minActiveDays;
+let CFG = {};
+// Derived — set by applyExerciseData after exercises.json loads
+let PROGRAMME_START, PHASE_WEEKS, MIN_ACTIVE_DAYS;
 
 const DAYS      = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
 const DAY_LABELS= ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -731,14 +723,8 @@ Object.defineProperty(window, 'doneDatesCache', {
   set(v){ store.setState({doneDatesCache: v}); }
 });
 
-// Weekly weight targets (for Progress tab)
-const WEEK_TARGETS = {
-  1:105, 2:104, 3:103, 4:102,
-  5:101, 6:100, 7:99,  8:98,
-  9:97,  10:96, 11:95, 12:94, 13:93,
-  14:92, 15:91, 16:90, 17:89,
-  18:88, 19:87
-};
+// Weekly weight targets (for Progress tab) — loaded from exercises.json
+let WEEK_TARGETS = {};
 
 function getTodayDowIndex() {
   const js = new Date().getDay();
@@ -1397,180 +1383,26 @@ async function ensureSession(){
 }
 
 // ============================================================
-// WORKOUT DATA
+// WORKOUT DATA — loaded from exercises.json via loadExerciseData()
 // ============================================================
-const EQ={
-  bb:'<span class="eq-tag eq-bb">Barbell</span>',
-  db:'<span class="eq-tag eq-db">Dumbbell</span>',
-  kb:'<span class="eq-tag eq-kb">Kettlebell</span>',
-  bw:'<span class="eq-tag eq-bw">Bodyweight</span>',
-  rope:'<span class="eq-tag eq-rope">Battle Rope</span>',
-  tyre:'<span class="eq-tag eq-tyre">Tyre</span>',
-  cable:'<span class="eq-tag eq-cable">Cable</span>',
-  mach:'<span class="eq-tag eq-mach">Machine</span>',
-};
+let EQ = {};
 
-const W={
-  1:{
-    MON:{title:'PUSH DAY',sub:'DB Press · Machine · Triceps',dur:'75',kcal:'700–780',tags:['push'],
-      wu:true,
-      ex:[
-        {n:'DB Chest Press',s:'4×10',r:'90s',ic:'💪',eq:[EQ.db],note:'Start at 10kg. 3s descent. Drive explosively. Log weight every session — this is your baseline.',warn:'⚠️ Wrist wraps if needed. Neutral grip.'},
-        {n:'Machine Chest Press',s:'3×10',r:'75s',ic:'🏋️',eq:[EQ.mach],note:'Start at 7.5kg. Full extension at top. Control the return.'},
-        {n:'Machine Incline Press',s:'3×10',r:'75s',ic:'🏋️',eq:[EQ.mach],note:'Start at 7.5kg. 45° angle. Feel upper chest.'},
-        {n:'Pec Fly',s:'3×12',r:'60s',ic:'🦅',eq:[EQ.mach],note:'Start at 35kg. Wide arc. Squeeze at centre.'},
-        {n:'DB Shoulder Press',s:'3×10',r:'75s',ic:'🔺',eq:[EQ.db],note:'Start at 7.5kg. Seated. Stop short of lockout.',warn:'⚠️ Wrist — neutral grip. Control descent.'},
-        {n:'DB Lateral Raises',s:'3×15',r:'45s',ic:'↔️',eq:[EQ.db],note:'Start at 5kg. Lead elbows. 2s up / 3s down.'},
-        {n:'KB Hammer Curl',s:'3×12',r:'45s',ic:'🔔',eq:[EQ.kb],note:'Start at 7.5kg. Neutral wrist throughout.',warn:'⚠️ Wrist neutral — don\'t flex or extend.'},
-      ],
-      fin:{type:'cardio',title:'CARDIO FINISHER',desc:'Incline treadmill 7% · HR 130–150',dur:'20 min',kcal:'~190 kcal',rounds:[]},
-      cd:['5 min flat walk','Chest doorframe stretch 30s','Shoulder cross-body 30s each','Tricep overhead 20s each','Wrist flexor + extensor 20s each — non-negotiable'],
-    },
-    TUE:{title:'LEG DAY',sub:'Goblet Squat leads · RDL · Machine work',dur:'80',kcal:'850–950',tags:['legs'],
-      wu:true,
-      ex:[
-        {n:'KB Goblet Squat',s:'5×5',r:'120s',ic:'🔔',eq:[EQ.kb],note:'LEADS SESSION. Start at 16kg. Hip-width stance. Break parallel. Drive through heels. Pattern > weight right now.',warn:'⚠️ Full depth every rep. Feel the glutes. This replaces barbell squat in Phase 1 — groove the pattern.'},
-        {n:'KB Romanian Deadlift',s:'4×10',r:'75s',ic:'🔔',eq:[EQ.kb],note:'Start at 12kg each hand. Hip hinge. Feel hamstring stretch. Squeeze glutes at top. First deadlift pattern — nail it.'},
-        {n:'Leg Extension',s:'3×12',r:'45s',ic:'📐',eq:[EQ.mach],note:'Start at 30kg. Full extension. Quad isolation.'},
-        {n:'Leg Curl',s:'3×12',r:'45s',ic:'📐',eq:[EQ.mach],note:'Start at 25kg. Full range. Hamstring work.'},
-        {n:'DB Walking Lunges',s:'3×30 steps',r:'60s',ic:'🦵',eq:[EQ.bw],note:'Bodyweight to start. Add 5kg DBs when 30 steps feels easy.'},
-        {n:'Seated Calf Raise',s:'4×20',r:'45s',ic:'👟',eq:[EQ.mach],note:'Start at 15kg. Full ROM. Pause at bottom stretch.'},
-      ],
-      fin:{type:'tyre',title:'TYRE FINISHER',desc:'',dur:'10 min',kcal:'~120 kcal',rounds:['Tyre flip ×6','Rest 45s','Tyre flip ×6','Rest 45s','Tyre flip ×6']},
-      cd:['5 min flat walk','Quad stretch 30s each','Hamstring reach 30s each','Hip flexor lunge 30s each','Pigeon pose 45s each hip'],
-    },
-    WED:{title:'LISS + RECOVERY',sub:'Active Recovery · Fat Burn Zone',dur:'45',kcal:'400–500',tags:['liss'],isLiss:true,
-      liss:{main:'45 min incline treadmill (5–7%) or cross trainer\nHR target: 120–140 bpm — conversational pace\nFat-burning zone — not punishment\n\nTreadmill speed: build from 5.5 → 6.5 over 4 weeks'},
-      cd:['5 min easy cool-down walk','Hip flexors 30s each','Thoracic spine rotation 10× each','Hamstring seated reach 30s each'],
-    },
-    THU:{title:'PULL + CORE',sub:'DB Row · KB · Cable · Battle Ropes',dur:'80',kcal:'650–730',tags:['pull','core'],
-      wu:true,
-      ex:[
-        {n:'DB Single-Arm Row',s:'4×10 each',r:'75s',ic:'💪',eq:[EQ.db],note:'Start at 12kg. Knee on bench. Pull to hip. Full stretch at bottom. Primary back builder this phase.',warn:'⚠️ Keep hips square. Full stretch.'},
-        {n:'KB Renegade Row',s:'3×8 each',r:'75s',ic:'🔔',eq:[EQ.kb],note:'Start at 10kg KBs. Push-up position. Row one arm. Hips square. Core is working the whole time.'},
-        {n:'Cable Face Pulls',s:'4×15',r:'45s',ic:'😤',eq:[EQ.cable],note:'Start at 15kg. Rope to forehead. External rotation. Rotator cuff every Pull day.'},
-        {n:'Cable Row',s:'3×12',r:'60s',ic:'💪',eq:[EQ.cable],note:'Start at 20kg. Full squeeze at chest. Full stretch forward.'},
-        {n:'KB Hammer Curl',s:'3×12',r:'45s',ic:'🔔',eq:[EQ.kb],note:'Start at 8kg. Neutral wrist throughout.',warn:'⚠️ Wrist neutral.'},
-        {n:'Plank',s:'3×45s',r:'30s',ic:'🧱',eq:[EQ.bw],note:'Dead straight. No hip sag. Breathe.'},
-        {n:'Dead Bug',s:'3×12',r:'30s',ic:'🐛',eq:[EQ.bw],note:'Lower back glued to floor. Slow alternating.'},
-        {n:'KB Russian Twist',s:'3×20',r:'30s',ic:'🔔',eq:[EQ.kb],note:'Start at 8kg. Heels off floor. Rotate side to side.'},
-      ],
-      fin:{type:'ropes',title:'BATTLE ROPES FINISHER',desc:'',dur:'10 min',kcal:'~130 kcal',rounds:['Double waves 30s → Rest 30s','Alternating waves 30s → Rest 30s','Rope slams 30s → Rest 30s','Side sweeps 30s → Rest 30s']},
-      cd:['5 min easy walk','Lat stretch overhead 20s each','Chest + bicep doorframe 30s','Wrist both ways 20s each'],
-    },
-    FRI:{title:'FULL BODY',sub:'Weeks 1–2 · Power Day from Week 3',dur:'75',kcal:'800–900',tags:['push','pull','legs'],
-      wu:true,
-      ex:[
-        {n:'KB Goblet Squat',s:'4×8',r:'90s',ic:'🔔',eq:[EQ.kb],note:'Heavier than Tuesday if possible. Full depth. Full drive.'},
-        {n:'DB Chest Press',s:'3×10',r:'75s',ic:'💪',eq:[EQ.db],note:'Working weight from Monday. Same load.'},
-        {n:'DB Single-Arm Row',s:'3×10 each',r:'60s',ic:'💪',eq:[EQ.db],note:'Working weight from Thursday.'},
-        {n:'KB Romanian Deadlift',s:'3×10',r:'75s',ic:'🔔',eq:[EQ.kb],note:'Working weight from Tuesday. Groove the hinge.'},
-        {n:'DB Thrusters',s:'3×12',r:'60s',ic:'🔥',eq:[EQ.db],note:'Start at 7.5kg. Squat deep, drive up, press overhead. Full body explosive.'},
-        {n:'KB Swings',s:'3×20',r:'45s',ic:'🔔',eq:[EQ.kb],note:'Start at 12kg. Hip drive. Bell to shoulder height.'},
-      ],
-      fin:{type:'hiit',title:'HIIT FINISHER',desc:'',dur:'15 min',kcal:'~200 kcal',rounds:['KB Swings ×20','Tyre flip ×5','Rest 90s — ×4 rounds']},
-      cd:['5 min easy walk','Full body stretch 10 min','Wrist stretch mandatory'],
-    },
-    SAT:{title:'ACCESSORY + MOBILITY',sub:'Light · No heavy compounds · Hip + Shoulder health',dur:'60',kcal:'280–380',tags:['mob'],isSat:true,
-      wu:true,
-      ex:[
-        {n:'DB Lateral Raises',s:'4×20',r:'30s',ic:'↔️',eq:[EQ.db],note:'Light. High reps. Shoulder joint health.'},
-        {n:'Cable Face Pulls',s:'4×20',r:'30s',ic:'😤',eq:[EQ.cable],note:'Rotator cuff. Light high reps.'},
-        {n:'KB Goblet Squat',s:'3×15',r:'45s',ic:'🔔',eq:[EQ.kb],note:'Light KB. Hip mobility. Full depth.'},
-        {n:'DB Walking Lunges',s:'3×20 steps',r:'45s',ic:'🦵',eq:[EQ.db],note:'Light. Fluid movement.'},
-        {n:'Plank',s:'3×60s',r:'30s',ic:'🧱',eq:[EQ.bw],note:'Core stability.'},
-        {n:'Dead Bug',s:'3×15',r:'30s',ic:'🐛',eq:[EQ.bw],note:'Anti-extension core.'},
-      ],
-      fin:{type:'cardio',title:'LISS FINISH',desc:'30 min easy · HR 115–130',dur:'30 min',kcal:'~200 kcal',rounds:[]},
-      cd:['10 min full mobility — see Mobility tab','IT band foam roll 2 min each','Hip flexor + pigeon 45s each'],
-    },
-    SUN:{title:'REST DAY',sub:'Recovery · Sleep · Meal Prep',dur:'—',kcal:'—',tags:['rest'],isRest:true},
-  },
-};
-// Fill phases 2–5 with same structure for now (abbreviated)
-[2,3,4,5].forEach(p=>{
-  W[p] = JSON.parse(JSON.stringify(W[1]));
-});
+let W = {};
 
-// ============================================================
-// EXERCISE GIFS — static.exercisedb.dev (CORS-open, no API key)
-// IDs sourced from exercisedb-api.vercel.app dataset
-// ============================================================
-const GIF_BASE = 'https://static.exercisedb.dev/media/';
-const EXERCISE_GIFS = {
-  'KB Goblet Squat': 'https://static.exercisedb.dev/media/ZA8b5hc.gif',
-  'KB Romanian Deadlift': 'https://static.exercisedb.dev/media/rR0LJzx.gif',
-  'KB Renegade Row': 'https://static.exercisedb.dev/media/b9kqlBy.gif',
-  'DB Single-Arm Row': 'https://static.exercisedb.dev/media/fUBheHs.gif',
-  'Cable Face Pulls': 'https://static.exercisedb.dev/media/hvV79Si.gif',
-  'Dead Bug': 'https://static.exercisedb.dev/media/iny3m5y.gif',
-  'KB Russian Twist': 'https://static.exercisedb.dev/media/fZFZ704.gif',
-  'DB Thrusters': 'https://static.exercisedb.dev/media/yWxMvB5.gif',
-  'KB Swings': 'https://static.exercisedb.dev/media/UHJlbu3.gif',
-  'Plank': 'https://static.exercisedb.dev/media/VO2qeJg.gif',
-  'DB Lateral Raises': 'https://static.exercisedb.dev/media/DsgkuIt.gif',
-  'Pec Fly': 'https://static.exercisedb.dev/media/w4dLzSx.gif',
-  'DB Walking Lunges': 'https://static.exercisedb.dev/media/IZVHb27.gif',
-  'DB Shoulder Press': 'https://static.exercisedb.dev/media/znQUdHY.gif',
-  'Cable Row': 'https://static.exercisedb.dev/media/fUBheHs.gif',
-  'DB Chest Press': 'https://static.exercisedb.dev/media/SpYC0Kp.gif',
-  'KB Hammer Curl': 'https://static.exercisedb.dev/media/slDvUAU.gif',
-  'Leg Extension': 'https://static.exercisedb.dev/media/my33uHU.gif',
-  'Leg Curl': 'https://static.exercisedb.dev/media/Zg3XY7P.gif',
-  'Seated Calf Raise': 'https://static.exercisedb.dev/media/bOOdeyc.gif',
-  'Machine Chest Press': 'https://static.exercisedb.dev/media/DOoWcnA.gif',
-  'Machine Incline Press': 'https://static.exercisedb.dev/media/jHAnWmT.gif',
-};
-
-// Legacy flag — controls which exercises show demo section
-const EXERCISEDB_NAMES = EXERCISE_GIFS;
+// EXERCISE GIFS — loaded from exercises.json
+let EXERCISE_GIFS = {};
 
 // Simple lookup — no API call needed
 function getExerciseGif(exName) {
   return Promise.resolve(EXERCISE_GIFS[exName] || null);
 }
-  if (MUSCLEWIKI_KEY === 'PASTE_YOUR_KEY_HERE') { videoCache[exName] = null; return null; }
-  try {
-    const MW_PROXY = 'https://musclewiki-proxy.rohan-3e4.workers.dev';
-    const res = await fetch(
-      `${MW_PROXY}/search?search=${encodeURIComponent(query)}&limit=1&gender=male`
-    );
-    if (!res.ok) { videoCache[exName] = null; return null; }
-    const data = await res.json();
-    const first = data?.results?.[0];
-    if (!first?.id) { videoCache[exName] = null; return null; }
-    const detailRes = await fetch(
-      `${MW_PROXY}/exercises/${first.id}?gender=male`
-    );
-    if (!detailRes.ok) { videoCache[exName] = null; return null; }
-    const detail = await detailRes.json();
-    // Videos array: [{url, gender, view}] — prefer front view
-    const videos = detail?.videos || [];
-    const front = videos.find(v => v.view === 'front') || videos[0];
-    const url = front?.url || null;
-    videoCache[exName] = url;
-    return url;
-  } catch(e) {
-    console.warn('MuscleWiki video fetch failed for', exName, e?.message);
-    videoCache[exName] = null;
-    return null;
-  }
-}
+
 
 // ============================================================
 // UNIVERSAL WARMUP
 // ============================================================
-const WARMUP_ITEMS = [
-  {k:'wrist',   label:'Wrist rotations',      detail:'18 reps each side — 9 CW + 9 CCW',          ic:'🤲'},
-  {k:'finger',  label:'Finger rotations',     detail:'18 reps each side — spread, close, rotate',  ic:'✋'},
-  {k:'elbow',   label:'Elbow rotations',      detail:'18 reps each side — 9 each direction',       ic:'💪'},
-  {k:'shoulder',label:'Shoulder rotations',   detail:'18 reps each side — 9 fwd + 9 back',         ic:'🔄'},
-  {k:'neck',    label:'Neck rotations',       detail:'18 reps total — slow and controlled',         ic:'🔵'},
-  {k:'hip',     label:'Hip rotations',        detail:'9 reps each side — hands on hips',            ic:'🔄'},
-  {k:'knee',    label:'Knee rotations',       detail:'9 reps each side — hands on knees',           ic:'🦵'},
-  {k:'squat',   label:'10 Bodyweight Squats', detail:'Full depth · no weight · feel the pattern',   ic:'🏔️'},
-  {k:'tmill',   label:'Treadmill 5 min',      detail:'Speed 8.5–9 · ramp up: start 7.0 in Wk1',   ic:'🏃'},
-];
+// WARMUP_ITEMS — loaded from exercises.json
+let WARMUP_ITEMS = [];
 
 function renderUniversalWarmup(dk, isPowerDay){
   const wuDone = WARMUP_ITEMS.filter(j=>checkCache[`wu_${dk}_${j.k}`]).length;
@@ -2333,7 +2165,7 @@ function renderWorkout(){
       <div class="ex-detail"><div class="ex-detail-inner">
         ${isFirst?`<div class="ex-new" style="border-color:var(--gold);color:var(--gold)">🧠 MM SET FIRST — No weight. Full ROM. Feel the muscle. Then load up.</div>`:''}
         ${ex.warn?`<div class="ex-warn">${ex.warn}</div>`:''}
-        ${EXERCISEDB_NAMES[ex.n]?`<div style="margin-bottom:12px" id="gif-wrap-${ei}">
+        ${EXERCISE_GIFS[ex.n]?`<div style="margin-bottom:12px" id="gif-wrap-${ei}">
           <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">CORRECT FORM</div>
           <div style="width:100%;border-radius:10px;background:#111;overflow:hidden;position:relative" id="gif-box-${ei}">
             <img id="gif-img-${ei}" alt="${ex.n} form"
@@ -3624,6 +3456,102 @@ window.addEventListener('unhandledrejection', e => {
   }, {passive: true});
 })();
 
+// ============================================================
+// EXERCISES JSON LOADER — IDB cache + stale-while-revalidate
+// ============================================================
+const ExCache = (() => {
+  const DB_NAME = 'gymtracker-exercises';
+  const DB_VER  = 1;
+  const STORE   = 'data';
+  let _db = null;
+
+  async function open() {
+    if (_db) return _db;
+    return new Promise((res, rej) => {
+      const req = indexedDB.open(DB_NAME, DB_VER);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE))
+          db.createObjectStore(STORE, { keyPath: 'key' });
+      };
+      req.onsuccess = e => { _db = e.target.result; res(_db); };
+      req.onerror   = e => rej(e.target.error);
+    });
+  }
+  async function get(key) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx  = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).get(key);
+      req.onsuccess = e => res(e.target.result ? e.target.result.data : null);
+      req.onerror   = e => rej(e.target.error);
+    });
+  }
+  async function put(key, data) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put({ key, data });
+      tx.oncomplete = res;
+      tx.onerror    = e => rej(e.target.error);
+    });
+  }
+  return { get, put };
+})();
+
+function applyExerciseData(data) {
+  // Rebuild EQ HTML — string concatenation, not template literals
+  EQ = {};
+  const names = data.EQ_NAMES;
+  for (const k of Object.keys(names)) {
+    EQ[k] = '<span class="eq-tag eq-' + k + '">' + names[k] + '</span>';
+  }
+  // Resolve eq key arrays → HTML strings in W
+  W = data.W;
+  for (const phase of Object.values(W)) {
+    for (const day of Object.values(phase)) {
+      if (!day.ex) continue;
+      for (const ex of day.ex) {
+        if (ex.eq) ex.eq = ex.eq.map(function(k){ return EQ[k]; });
+      }
+    }
+  }
+  EXERCISE_GIFS    = data.EXERCISE_GIFS;
+  WARMUP_ITEMS     = data.WARMUP_ITEMS;
+  WEEK_TARGETS     = data.WEEK_TARGETS;
+  CFG              = data.CFG;
+  PROGRAMME_START  = parseLocalDate(CFG.startDate);
+  PHASE_WEEKS      = Object.fromEntries(CFG.phaseWeeks.map(function(w,i){ return [i+1, w]; }));
+  MIN_ACTIVE_DAYS  = CFG.minActiveDays;
+}
+
+async function loadExerciseData() {
+  const KEY = 'exercises';
+  let cached = null;
+  try { cached = await ExCache.get(KEY); } catch(e) { /* IDB unavailable */ }
+
+  if (cached) {
+    applyExerciseData(cached);
+    // Background refresh — update cache without blocking render
+    fetch('exercises.json')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){ if (d) ExCache.put(KEY, d).catch(function(){}); })
+      .catch(function(){});
+    return;
+  }
+
+  // Cache miss — must fetch before init()
+  try {
+    const r    = await fetch('exercises.json');
+    if (!r.ok) throw new Error('exercises.json ' + r.status);
+    const data = await r.json();
+    applyExerciseData(data);
+    ExCache.put(KEY, data).catch(function(){});
+  } catch(e) {
+    console.error('[ExLoader] Failed to load exercises.json:', e);
+  }
+}
+
 // ── Dev helper: expose store to console for debugging ──
 if(window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
   window.__store = store;
@@ -3653,7 +3581,7 @@ if(window.location.hostname === 'localhost' || window.location.hostname.includes
     scheduleMidnightRefresh(); // reschedule for next midnight
   }, msUntilMidnight);
 })();
-init();
+loadExerciseData().then(init);
 // Auto-request notifications on first load
 window.addEventListener('load', () => {
   const prefs = JSON.parse(localStorage.getItem('notifPrefs') || 'null');
