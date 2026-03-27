@@ -1905,11 +1905,15 @@ async function commitSet(weight, reps, completed){
     if(_ex?.r && !isMM){
       startRestTimer(parseRestSecs(_ex.r));
     }
-    // Debounced week activity refresh
+    // Refresh week activity — debounced for today, immediate for past dates
     clearTimeout(window._weekRefreshTimer);
+    const isPastDate = selectedDateStr !== todayStr;
     window._weekRefreshTimer = setTimeout(() => {
-      loadWeekActivity().then(() => renderWeekStrip());
-    }, 1500);
+      loadWeekActivity().then(() => {
+        renderWeekStrip();
+        renderPhaseBanner();
+      });
+    }, isPastDate ? 300 : 1500); // faster refresh for past date logging
   } catch(e){
     // ── ROLLBACK — restore previous state ──
     store.setState({loggedSets: prevLoggedSets});
