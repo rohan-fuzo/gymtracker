@@ -155,6 +155,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .ex-note{font-size:13px;color:#aaa;line-height:1.6;margin-bottom:8px}
 .ex-warn{font-size:12px;color:var(--p2);background:rgba(255,140,0,.08);border-left:3px solid var(--p2);padding:6px 10px;border-radius:0 6px 6px 0;margin-bottom:8px}
 .ex-new{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--gold);background:rgba(245,158,11,.1);border-left:3px solid var(--gold);padding:4px 8px;border-radius:0 5px 5px 0;margin-bottom:6px}
+.demo-btn{display:inline-block;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:4px 10px;border-radius:6px;cursor:pointer;margin-bottom:10px;font-family:'DM Sans',sans-serif}
+.demo-btn:active{background:var(--surface3)}
+.demo-gif{border-radius:10px;overflow:hidden;background:#111;position:relative;margin-bottom:10px}
+.demo-img{width:100%;max-height:200px;object-fit:contain;display:block;border-radius:10px;opacity:0;transition:opacity .3s}
+.demo-loading{display:flex;align-items:center;justify-content:center;padding:20px;color:var(--dim);font-size:11px}
 .sets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px;margin-top:6px}
 .set-chip{background:var(--surface3);border:1px solid var(--border);border-radius:10px;text-align:center;padding:9px 4px;cursor:pointer;transition:all .15s;position:relative}
 .set-chip:active{transform:scale(.93);transition:transform .08s}
@@ -2153,7 +2158,7 @@ function renderWorkout(){
     }).join('');
     const exDone = isExerciseDone(ex.n, sp, isFirst);
     h+=`<div class="ex-row${exDone?' ex-done':''}" id="${ek}">
-      <div class="ex-main" onclick="tEx('${ek}','${ex.n}',${ei})">
+      <div class="ex-main" onclick="tEx('${ek}')">
         <div class="ex-icon">${ex.ic}</div>
         <div class="ex-info">
           <div class="ex-name">${ex.n}</div>
@@ -2165,17 +2170,12 @@ function renderWorkout(){
       <div class="ex-detail"><div class="ex-detail-inner">
         ${isFirst?`<div class="ex-new" style="border-color:var(--gold);color:var(--gold)">🧠 MM SET FIRST — No weight. Full ROM. Feel the muscle. Then load up.</div>`:''}
         ${ex.warn?`<div class="ex-warn">${ex.warn}</div>`:''}
-        ${EXERCISE_GIFS[ex.n]?`<div style="margin-bottom:12px" id="gif-wrap-${ei}">
-          <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">CORRECT FORM</div>
-          <div style="width:100%;border-radius:10px;background:#111;overflow:hidden;position:relative" id="gif-box-${ei}">
-            <img id="gif-img-${ei}" alt="${ex.n} form"
-              style="width:100%;display:block;border-radius:10px;opacity:0;transition:opacity .3s"
-              onload="this.style.opacity=1;document.getElementById('gif-loading-${ei}').style.display='none'"
-              onerror="document.getElementById('gif-wrap-${ei}').style.display='none'">
-            <div id="gif-loading-${ei}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#111;border-radius:10px">
-              <div style="color:var(--dim);font-size:11px">Loading...</div>
-            </div>
-          </div>
+        ${EXERCISE_GIFS[ex.n]?`<button class="demo-btn" id="demo-btn-${ei}" onclick="toggleDemo(${ei},'${esc(ex.n)}')">▶ View Demo</button>
+        <div class="demo-gif" id="demo-gif-${ei}" style="display:none">
+          <div class="demo-loading" id="demo-loading-${ei}">Loading...</div>
+          <img id="demo-img-${ei}" alt="${ex.n} form" class="demo-img"
+            onload="this.style.opacity=1;document.getElementById('demo-loading-${ei}').style.display='none'"
+            onerror="document.getElementById('demo-gif-${ei}').style.display='none'">
         </div>`:''}
         <div class="ex-note">${ex.note}</div>
         <div class="sets-grid">${setsH}</div>
@@ -2223,21 +2223,40 @@ function isDayDone(w, dk){
 }
 
 function parseSets(s){ const m=s.match(/^(\d+)\s*[×x]\s*(.+?)(?:\s*[@(]|$)/); if(!m)return[s]; return Array(parseInt(m[1])).fill(m[2].trim()); }
-function tEx(id, exName, exIdx){
+function tEx(id){
   const r = document.getElementById(id);
   if(!r) return;
-  const wasOpen = r.classList.contains('open');
   r.classList.toggle('open');
-  // Load image on first open
-  if(!wasOpen && exName && exIdx !== undefined){
-    const imgEl = document.getElementById(`gif-img-${exIdx}`);
+}
+
+function toggleDemo(idx, exName){
+  const gifEl  = document.getElementById('demo-gif-' + idx);
+  const btnEl  = document.getElementById('demo-btn-' + idx);
+  if(!gifEl || !btnEl) return;
+  const opening = gifEl.style.display === 'none';
+  // Close all other open demos
+  document.querySelectorAll('.demo-gif').forEach(function(el){
+    if(el !== gifEl && el.style.display !== 'none'){
+      el.style.display = 'none';
+      const b = document.getElementById(el.id.replace('demo-gif-','demo-btn-'));
+      if(b) b.textContent = '▶ View Demo';
+    }
+  });
+  if(opening){
+    gifEl.style.display = 'block';
+    btnEl.textContent = '✕ Hide Demo';
+    // Lazy load — fetch URL only on first tap
+    const imgEl = document.getElementById('demo-img-' + idx);
     if(imgEl && !imgEl.dataset.loaded){
       imgEl.dataset.loaded = '1';
-      getExerciseGif(exName).then(url => {
-        if(url) imgEl.src = url;
-        else { const w = document.getElementById(`gif-wrap-${exIdx}`); if(w) w.style.display='none'; }
+      getExerciseGif(exName).then(function(url){
+        if(url){ imgEl.src = url; }
+        else { gifEl.style.display = 'none'; }
       });
     }
+  } else {
+    gifEl.style.display = 'none';
+    btnEl.textContent = '▶ View Demo';
   }
 }
 
