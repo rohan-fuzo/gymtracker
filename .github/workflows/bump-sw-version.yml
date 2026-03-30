@@ -1,0 +1,34 @@
+name: Bump SW Version
+
+on:
+  push:
+    branches: [main]
+    # Don't re-trigger when this action itself pushes the version bump
+    paths-ignore:
+      - '.github/**'
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Use a PAT or default GITHUB_TOKEN — default token push won't
+          # re-trigger workflows (GitHub's loop-prevention behaviour)
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump SW_VERSION to current UTC timestamp
+        run: |
+          VERSION=$(date -u +"%Y-%m-%d-%H%M")
+          # Replace the SW_VERSION line in sw.js
+          sed -i "s/const SW_VERSION = '[^']*'/const SW_VERSION = '$VERSION'/" sw.js
+          echo "Bumped to $VERSION"
+
+      - name: Commit version bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sw.js
+          # Only commit if sw.js actually changed
+          git diff --staged --quiet || git commit -m "chore: bump SW version [skip ci]"
+          git push

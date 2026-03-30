@@ -3182,24 +3182,65 @@ async function registerPWA() {
   if(!('serviceWorker' in navigator)) return;
   try {
     const reg = await navigator.serviceWorker.register('sw.js');
-    // Re-init notifications after SW active
-    const prefs = JSON.parse(localStorage.getItem('notifPrefs') || '[]');
-    if(prefs.length) initNotifications(prefs);
-    // Detect new SW version — prompt user to update
+
+    // ── Force update check on every app open ──
+    // Default browser behaviour only checks every 24h — this bypasses that.
+    // Critical for iOS PWA which is aggressive about not polling.
+    reg.update().catch(() => {});
+
+    // ── Auto-reload the moment a new SW takes control ──
+    // skipWaiting() is already called inside sw.js install event, so the new
+    // SW activates immediately. We just need to reload the page to get the
+    // fresh index.html (already fetched via network-first by the new SW).
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if(refreshing) return;
+      refreshing = true;
+      // Brief visual cue so the user knows what's happening, then reload
+      showUpdateOverlay();
+      setTimeout(() => window.location.reload(), 800);
+    });
+
+    // ── New SW installing in background — show subtle indicator ──
     reg.addEventListener('updatefound', () => {
       const newSW = reg.installing;
       newSW.addEventListener('statechange', () => {
-        if(newSW.state === 'installed' && navigator.serviceWorker.controller){
-          showToast('App updated — tap to reload', 'info', 8000, () => {
-            newSW.postMessage('skipWaiting');
-            window.location.reload();
-          });
+        if(newSW.state === 'installed' && navigator.serviceWorker.controller) {
+          // SW installed and waiting — skipWaiting already called so
+          // controllerchange will fire shortly and trigger auto-reload above.
+          showToast('Updating to latest version…', 'info');
         }
       });
     });
+
+    // Re-init notifications after SW active
+    const prefs = JSON.parse(localStorage.getItem('notifPrefs') || '[]');
+    if(prefs.length) checkPendingNotifications();
+
     // Flush offline queue once SW ready
     flushOfflineQueue();
   } catch(e) { console.log('SW reg failed:', e.message); }
+}
+
+function showUpdateOverlay() {
+  let el = document.getElementById('update-overlay');
+  if(!el) {
+    el = document.createElement('div');
+    el.id = 'update-overlay';
+    el.style.cssText = `
+      position:fixed;inset:0;z-index:99999;
+      background:#0a0a0a;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    `;
+    el.innerHTML = `
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:#f0ede8">
+        GYM<span style="color:#ff4520">X</span>
+      </div>
+      <div style="font-size:11px;letter-spacing:2px;color:#444;text-transform:uppercase">Updating…</div>
+      <div style="width:32px;height:32px;border:2.5px solid #1c1c1c;border-top-color:#ff4520;border-radius:50%;animation:splash-spin .7s linear infinite"></div>
+    `;
+    document.body.appendChild(el);
+  }
 }
 
 // ============================================================
