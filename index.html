@@ -50,6 +50,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .topnav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:52px;flex-shrink:0;z-index:10}
 .topnav-brand{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px}
 .topnav-brand span{color:var(--p1)}
+.notif-bell{background:none;border:none;cursor:pointer;font-size:17px;padding:6px;line-height:1;-webkit-tap-highlight-color:transparent;opacity:.45;transition:opacity .2s}
+.notif-bell.on{opacity:1}
 .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--dim);transition:background .3s;flex-shrink:0}
 .sync-dot.syncing{background:var(--yellow);animation:pulse 1s infinite}
 .sync-dot.synced{background:var(--p3)}
@@ -96,6 +98,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .ph-btn[data-ph="3"].active{border-color:var(--p3);background:rgba(34,197,94,.1);color:var(--p3)}
 .ph-btn[data-ph="4"].active{border-color:var(--p4);background:rgba(59,130,246,.1);color:var(--p4)}
 .ph-btn[data-ph="5"].active{border-color:var(--p5);background:rgba(168,85,247,.1);color:var(--p5)}
+.week-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px 6px;gap:8px}
+.week-nav-btn{background:var(--surface);border:1.5px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;line-height:1.4;transition:all .15s}
+.week-nav-btn:active{background:var(--surface3)}
+.week-nav-label{font-size:12px;font-weight:600;color:var(--muted);flex:1;text-align:center;letter-spacing:.03em}
+.week-nav-today{background:none;border:none;color:var(--p1);font-size:12px;font-weight:600;cursor:pointer;padding:2px 6px;border-radius:6px;display:none}
+.week-nav-today.visible{display:block}
 .week-strip{padding:0 16px 12px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 .week-strip::-webkit-scrollbar{display:none}
 .day-pill{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 10px;border-radius:12px;background:var(--surface);border:1.5px solid var(--border);cursor:pointer;min-width:44px;flex-shrink:0;transition:all .15s}
@@ -384,7 +392,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 <div class="app">
 <div class="topnav">
   <div class="topnav-brand">ROHAN'S <span>GYM</span></div>
-  <div style="display:flex;align-items:center;gap:8px">
+  <div style="display:flex;align-items:center;gap:4px">
+    <button class="notif-bell" id="notif-bell" onclick="handleNotifBellTap()" aria-label="Notifications">🔔</button>
     <div style="display:flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;padding:6px 0 6px 8px" onclick="manualSync()" aria-label="Sync now">
       <div style="font-size:11px;color:var(--muted)" id="sync-label">connecting...</div>
       <div class="sync-dot" id="sync-dot"></div>
@@ -406,6 +415,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
     <button class="ph-btn" data-ph="5" onclick="selectPhase(5,this)">P5 Wk18+</button>
   </div>
   <div id="phase-banner-wrap"></div>
+  <div class="week-nav" id="week-nav">
+    <button class="week-nav-btn" onclick="navWeek(-1)">&#8249;</button>
+    <span class="week-nav-label" id="week-nav-label"></span>
+    <button class="week-nav-today" id="week-nav-today" onclick="navWeek(0, true)">Today</button>
+    <button class="week-nav-btn" onclick="navWeek(1)">&#8250;</button>
+  </div>
   <div class="week-strip" id="week-strip">
     <div class="sk-pill-row">
       <div class="sk sk-pill"></div><div class="sk sk-pill"></div>
@@ -736,18 +751,19 @@ function getTodayDowIndex() {
   return js === 0 ? 6 : js - 1;
 }
 
-// Memoized — same result for entire day, recomputes at midnight
+// Memoized — same result for entire day, recomputes at midnight or when week offset changes
 let _weekDatesMemo = null;
 let _weekDatesMemoKey = null;
+let viewingWeekOffset = 0; // 0=current week, -1=last week, +1=next week, etc.
 function getWeekDates() {
-  const todayKey = localDateStr();
+  const todayKey = localDateStr() + '_' + viewingWeekOffset;
   if (_weekDatesMemoKey === todayKey && _weekDatesMemo) return _weekDatesMemo;
   // Use date arithmetic on local calendar — no millisecond offsets
   const today = new Date(); today.setHours(0,0,0,0);
   const dayOfWeek = today.getDay(); // 0=Sun
   const daysToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const mon = new Date(today);
-  mon.setDate(today.getDate() + daysToMon);
+  mon.setDate(today.getDate() + daysToMon + viewingWeekOffset * 7);
   mon.setHours(0,0,0,0);
   // Build 7 days from Monday using local date increment — DST safe
   _weekDatesMemo = Array.from({length:7}, (_, i) => {
@@ -758,6 +774,34 @@ function getWeekDates() {
   });
   _weekDatesMemoKey = todayKey;
   return _weekDatesMemo;
+}
+
+function navWeek(delta, jumpToday = false) {
+  if (jumpToday) {
+    viewingWeekOffset = 0;
+  } else {
+    viewingWeekOffset += delta;
+  }
+  _weekDatesMemo = null;
+  _weekDatesMemoKey = null;
+  _stripCache = {};
+  // When jumping to today's week, snap cDay to actual today
+  if (viewingWeekOffset === 0) {
+    cDay = getTodayDowIndex();
+  }
+  const date = getDateForDay(cDay);
+  selectedDateStr = localDateStr(date);
+  sessionId = null;
+  _sessionPromise = null;
+  Object.keys(_prevBestCache).forEach(k => delete _prevBestCache[k]);
+  _workoutRenderKey = null;
+  renderWeekStrip();
+  renderSkeletonWorkout();
+  Promise.all([
+    loadSetsForDate(selectedDateStr, true),
+    loadCheckCache(selectedDateStr),
+    loadHydration(selectedDateStr),
+  ]).then(() => renderWorkout());
 }
 
 function getDateForDay(dowIndex) {
@@ -771,12 +815,13 @@ function getCalendarWeek(date) {
   d.setHours(0,0,0,0);
   // PROGRAMME_START is already a local Date from parseLocalDate(CFG.startDate)
   const start = new Date(PROGRAMME_START.getTime()); start.setHours(0,0,0,0);
-  if(d < start) return 0;
   // Monday of programme start week (IST)
   const startDay = start.getDay();
   const startMonday = new Date(start);
   startMonday.setDate(start.getDate() - (startDay === 0 ? 6 : startDay - 1));
   startMonday.setHours(0,0,0,0);
+  // Dates before the start week entirely return 0
+  if(d < startMonday) return 0;
   // Monday of target date week (IST)
   const dDay = d.getDay();
   const dMonday = new Date(d);
@@ -817,7 +862,7 @@ function getProgrammeState(date) {
   if(dayNum < 0) {
     return { phase:1, week:1, dowIndex, dayNum, beforeStart:true, daysUntil:-dayNum };
   }
-  const calWeek = Math.floor(dayNum/7)+1;
+  const calWeek = getCalendarWeek(d);
   const phaseData = computePhaseFromHistory(weekActivityCache, calWeek);
   return {
     phase: phaseData.phase,
@@ -1825,9 +1870,19 @@ let _stripCache = {};
 function renderWeekStrip(){
   const todayDow = getTodayDowIndex();
   const weekDates = getWeekDates();
+  // Update week nav label + Today button
+  const mon = weekDates[0], sat = weekDates[5];
+  const navLabel = document.getElementById('week-nav-label');
+  const navToday = document.getElementById('week-nav-today');
+  if(navLabel) {
+    const fmt = d => `${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
+    const wk = getCalendarWeek(mon);
+    navLabel.textContent = `Wk ${wk} · ${fmt(mon)} – ${fmt(sat)}`;
+  }
+  if(navToday) navToday.classList.toggle('visible', viewingWeekOffset !== 0);
   const container = document.getElementById('week-strip');
   const pills = container.querySelectorAll('.day-pill');
-  const needsFullRebuild = pills.length !== 7;
+  const needsFullRebuild = pills.length !== 7 || container.dataset.weekOffset !== String(viewingWeekOffset);
 
   if(needsFullRebuild){
     // First render — build full HTML
@@ -1836,7 +1891,7 @@ function renderWeekStrip(){
       const dateState = getProgrammeState(date);
       const isPast = dateState.beforeStart;
       const dateStr = localDateStr(date);
-      const isToday = (i === todayDow);
+      const isToday = (viewingWeekOffset === 0) && (i === todayDow);
       const isSelected = (i === cDay);
       const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(W[cPhase][d],d)));
       const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
@@ -1848,6 +1903,7 @@ function renderWeekStrip(){
         <div class="dp-dot" style="background:${dotColor}"></div>
       </div>`;
     }).join('');
+    container.dataset.weekOffset = String(viewingWeekOffset);
     return;
   }
 
@@ -1857,7 +1913,7 @@ function renderWeekStrip(){
     const dateState = getProgrammeState(date);
     const isPast = dateState.beforeStart;
     const dateStr = localDateStr(date);
-    const isToday = (i === todayDow);
+    const isToday = (viewingWeekOffset === 0) && (i === todayDow);
     const isSelected = (i === cDay);
     const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(W[cPhase][d],d)));
     const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
@@ -1991,6 +2047,85 @@ function patchCheckCache(){
   });
 }
 
+function renderPhaseBanner() {
+  const viewDate = getDateForDay(cDay);
+  const viewState = getProgrammeState(viewDate);
+  if(viewState.beforeStart) return;
+
+  const isViewingToday = (localDateStr(viewDate) === todayStr);
+  const curWeek = viewState.week;
+  const qualifying = viewState.qualifyingInPhase || 0;
+  const remaining = viewState.remaining || (PHASE_WEEKS[cPhase] - qualifying);
+  const phColors = ['','var(--p1)','var(--p2)','var(--p3)','var(--p4)','var(--p5)'];
+  const col = phColors[cPhase];
+  const phasePct = Math.min(100, Math.round(qualifying / (PHASE_WEEKS[cPhase]||4) * 100));
+
+  const weekProgress = getThisWeekProgress(curWeek);
+  const todayDowIndex = getTodayDowIndex();
+
+  const dayDotsHTML = weekProgress.days.map((d, i) => {
+    const isTodayDot = (i === todayDowIndex);
+    let cls = 'phase-day-dot';
+    let icon = '';
+    if(d.isDone){
+      cls += ' done' + (isTodayDot?' today':'');
+      icon = '<div class="pd-check">✓</div>';
+    } else if(d.isFuture){
+      cls += ' future' + (isTodayDot?' today':'');
+    } else {
+      cls += ' missed' + (isTodayDot?' today':'');
+      icon = '<div class="pd-check">–</div>';
+    }
+    return `<div class="${cls}"><div>${d.label}</div>${icon}</div>`;
+  }).join('');
+
+  const daysLeft = MIN_ACTIVE_DAYS - weekProgress.logged;
+  const satDate = weekProgress.days[5];
+  const satPast = satDate && !satDate.isFuture;
+  let weekMsg = '';
+  if(weekProgress.weekLocked || (satPast && weekProgress.logged >= MIN_ACTIVE_DAYS)){
+    weekMsg = `<span class="phase-banner-locked">✅ WEEK ${curWeek} QUALIFIED</span>`;
+  } else if(weekProgress.logged >= MIN_ACTIVE_DAYS){
+    weekMsg = `<strong>${weekProgress.logged}/4</strong> days done — week qualifies on Sunday`;
+  } else if(daysLeft > 0){
+    weekMsg = `<strong>${weekProgress.logged}/4</strong> days — need <strong>${daysLeft}</strong> more to qualify`;
+  }
+
+  let recapHTML = '';
+  const isMonday = new Date().getDay() === 1;
+  const lastStatus = getLastWeekStatus();
+  if(isMonday && isViewingToday && lastStatus){
+    if(lastStatus.qualified){
+      recapHTML = `<div style="margin:0 16px 8px;padding:10px 14px;border-radius:10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);font-size:12px">
+        <span style="font-weight:700;color:var(--p3)">✅ Week ${lastStatus.week} complete</span>
+        <span style="color:var(--muted)"> — ${lastStatus.days} days logged. Phase ${lastStatus.phase} on track.</span>
+      </div>`;
+    } else {
+      recapHTML = `<div style="margin:0 16px 8px;padding:10px 14px;border-radius:10px;background:rgba(255,69,32,.08);border:1px solid rgba(255,69,32,.2);font-size:12px">
+        <span style="font-weight:700;color:var(--p1)">⚠️ Week ${lastStatus.week} missed</span>
+        <span style="color:var(--muted)"> — only ${lastStatus.days} days. Phase ${lastStatus.phase} extended 1 week.</span>
+      </div>`;
+    }
+  }
+
+  const bannerWrap = document.getElementById('phase-banner-wrap');
+  if(bannerWrap){
+    bannerWrap.innerHTML = recapHTML + `<div class="phase-banner">
+      <div class="phase-banner-top">
+        <div class="phase-banner-title" style="color:${col}">PHASE ${cPhase}</div>
+        <div class="phase-banner-meta">${qualifying}/${PHASE_WEEKS[cPhase]} weeks · ${remaining} to go</div>
+      </div>
+      <div class="phase-banner-bar-wrap">
+        <div class="phase-banner-bar" style="width:${phasePct}%;background:${col}"></div>
+      </div>
+      <div class="phase-banner-days">${dayDotsHTML}</div>
+      <div class="phase-banner-footer">
+        <div class="phase-banner-week-msg" data-week-count>${weekMsg}</div>
+      </div>
+    </div>`;
+  }
+}
+
 function renderWorkout(){
   Perf.start('renderWorkout');
   const dk=DAYS[cDay]; const w=W[cPhase][dk];
@@ -2017,91 +2152,10 @@ function renderWorkout(){
   document.getElementById('today-workout-sub').textContent = isBeforeStart ? 'Programme started 13 March 2026' : w.sub;
   const c=document.getElementById('workout-content');
 
-  // ── PHASE PROGRESS BANNER — shown on every day, not just today ──
+  // ── PHASE PROGRESS BANNER — rendered via renderPhaseBanner() ──
   const isViewingToday = (localDateStr(viewDate) === todayStr);
+  renderPhaseBanner();
   let bannerHTML = '';
-  if(!isBeforeStart) {
-    const curWeek = viewState.week;
-    const qualifying = viewState.qualifyingInPhase || 0;
-    const remaining = viewState.remaining || (PHASE_WEEKS[cPhase] - qualifying);
-    const phColors = ['','var(--p1)','var(--p2)','var(--p3)','var(--p4)','var(--p5)'];
-    const col = phColors[cPhase];
-    const phasePct = Math.min(100, Math.round(qualifying / (PHASE_WEEKS[cPhase]||4) * 100));
-
-    // Week day dots (Mon–Sat) showing this week's progress
-    const weekProgress = getThisWeekProgress(curWeek);
-    const todayDowIndex = getTodayDowIndex();
-
-    const dayDotsHTML = weekProgress.days.map((d, i) => {
-      const isTodayDot = (i === todayDowIndex);
-      let cls = 'phase-day-dot';
-      let icon = '';
-      const today = new Date(); today.setHours(0,0,0,0);
-      const dotDate = parseLocalDate(d.dateStr);
-      if(d.isDone){
-        cls += ' done' + (isTodayDot?' today':'');
-        icon = '<div class="pd-check">✓</div>';
-      } else if(d.isFuture){
-        cls += ' future' + (isTodayDot?' today':'');
-        icon = '';
-      } else {
-        // Past day not done — missed
-        cls += ' missed' + (isTodayDot?' today':'');
-        icon = '<div class="pd-check">–</div>';
-      }
-      return `<div class="${cls}"><div>${d.label}</div>${icon}</div>`;
-    }).join('');
-
-    // Status message
-    const daysLeft = MIN_ACTIVE_DAYS - weekProgress.logged;
-    const satDate = weekProgress.days[5]; // Saturday
-    const satPast = satDate && !satDate.isFuture;
-    let weekMsg = '';
-    if(weekProgress.weekLocked || (satPast && weekProgress.logged >= MIN_ACTIVE_DAYS)){
-      weekMsg = `<span class="phase-banner-locked">✅ WEEK ${curWeek} QUALIFIED</span>`;
-    } else if(weekProgress.logged >= MIN_ACTIVE_DAYS){
-      weekMsg = `<strong>${weekProgress.logged}/4</strong> days done — week qualifies on Sunday`;
-    } else if(daysLeft > 0){
-      weekMsg = `<strong>${weekProgress.logged}/4</strong> days — need <strong>${daysLeft}</strong> more to qualify`;
-    }
-
-    // Monday recap — show last week result
-    let recapHTML = '';
-    const isMonday = new Date().getDay() === 1;
-    const lastStatus = getLastWeekStatus();
-    if(isMonday && isViewingToday && lastStatus){
-      if(lastStatus.qualified){
-        recapHTML = `<div style="margin:0 16px 8px;padding:10px 14px;border-radius:10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);font-size:12px">
-          <span style="font-weight:700;color:var(--p3)">✅ Week ${lastStatus.week} complete</span>
-          <span style="color:var(--muted)"> — ${lastStatus.days} days logged. Phase ${lastStatus.phase} on track.</span>
-        </div>`;
-      } else {
-        recapHTML = `<div style="margin:0 16px 8px;padding:10px 14px;border-radius:10px;background:rgba(255,69,32,.08);border:1px solid rgba(255,69,32,.2);font-size:12px">
-          <span style="font-weight:700;color:var(--p1)">⚠️ Week ${lastStatus.week} missed</span>
-          <span style="color:var(--muted)"> — only ${lastStatus.days} days. Phase ${lastStatus.phase} extended 1 week.</span>
-        </div>`;
-      }
-    }
-
-    // Render banner into its own container — independent of workout content
-    const bannerWrap = document.getElementById('phase-banner-wrap');
-    if(bannerWrap){
-      bannerWrap.innerHTML = recapHTML + `<div class="phase-banner">
-        <div class="phase-banner-top">
-          <div class="phase-banner-title" style="color:${col}">PHASE ${cPhase}</div>
-          <div class="phase-banner-meta">${qualifying}/${PHASE_WEEKS[cPhase]} weeks · ${remaining} to go</div>
-        </div>
-        <div class="phase-banner-bar-wrap">
-          <div class="phase-banner-bar" style="width:${phasePct}%;background:${col}"></div>
-        </div>
-        <div class="phase-banner-days">${dayDotsHTML}</div>
-        <div class="phase-banner-footer">
-          <div class="phase-banner-week-msg" data-week-count>${weekMsg}</div>
-        </div>
-      </div>`;
-    }
-    bannerHTML = ''; // banner is now in its own container, not in workout content
-  }
 
   if(isBeforeStart){
     c.innerHTML=`${bannerHTML}<div class="rest-card">
@@ -2980,51 +3034,63 @@ async function saveInBody() {
 async function requestNotificationPermission() {
   if(!('Notification' in window)) return false;
   if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'denied') return false;
   const perm = await Notification.requestPermission();
   return perm === 'granted';
 }
 
-function scheduleInBodyReminder() {
-  const last = localStorage.getItem('lastInBodyDate');
-  if(!last) return;
-  const lastDate = new Date(last);
-  const nextDate = new Date(lastDate.getTime() + 14 * 86400000); // +14 days
-  const now = new Date();
-  const msUntil = nextDate - now;
-  if(msUntil <= 0) return;
-  // Clear any existing timeout
-  if(window._inbodyTimer) clearTimeout(window._inbodyTimer);
-  window._inbodyTimer = setTimeout(() => {
-    if(Notification.permission === 'granted') {
-      new Notification("InBody Due Today 📊", {
-        body: "14 days since your last scan. Head to the gym for your bi-weekly InBody check-in.",
-        icon: '🏋️',
-        badge: '📊',
-        tag: 'inbody-reminder',
-      });
-    }
-  }, msUntil);
+// Show a notification via Service Worker (required on iOS PWA)
+async function swNotify(title, opts) {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, {
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      ...opts,
+    });
+    return true;
+  } catch(e) {
+    console.warn('swNotify failed', e);
+    return false;
+  }
 }
 
-function scheduleWeighInReminder() {
-  // Fire every Monday at 7:30am
-  const now = new Date();
-  const nextMonday = new Date(now);
-  const day = now.getDay();
-  const daysUntilMon = day === 1 ? 7 : (8 - day) % 7;
-  nextMonday.setDate(now.getDate() + daysUntilMon);
-  nextMonday.setHours(7, 30, 0, 0);
-  const msUntil = nextMonday - now;
-  if(window._weighTimer) clearTimeout(window._weighTimer);
-  window._weighTimer = setTimeout(() => {
-    if(Notification.permission === 'granted') {
-      new Notification("Monday Weigh-In ⚖️", {
-        body: "Fasted weight check. Open the app to log and see if you're on track.",
+// On-open check: fire any pending notifications (replaces setTimeout scheduling)
+// Called on app open if permission already granted — covers the case where app was closed
+async function checkPendingNotifications() {
+  if(Notification.permission !== 'granted') return;
+  if(!('serviceWorker' in navigator)) return;
+  const prefs = JSON.parse(localStorage.getItem('notifPrefs') || '[]');
+  if(!prefs.length) return;
+  const now = Date.now();
+
+  // InBody — fire once per day if due
+  if(prefs.includes('inbody') && isInBodyDue()) {
+    const lastShown = parseInt(localStorage.getItem('lastInBodyNotif') || '0');
+    if(now - lastShown > 20 * 3600000) { // max once per 20h
+      const ok = await swNotify('InBody Due 📊', {
+        body: daysSinceInBody()
+          ? `${daysSinceInBody()} days since your last scan — head to the gym for your bi-weekly InBody check-in.`
+          : 'First InBody scan due — head to the gym front desk.',
+        tag: 'inbody-reminder',
+        renotify: true,
+      });
+      if(ok) localStorage.setItem('lastInBodyNotif', String(now));
+    }
+  }
+
+  // Monday weigh-in — fire once per Monday
+  if(prefs.includes('weighin') && new Date().getDay() === 1) {
+    const lastShown = localStorage.getItem('lastWeighInNotif');
+    const todayKey = localDateStr();
+    if(lastShown !== todayKey) {
+      const ok = await swNotify('Monday Weigh-In ⚖️', {
+        body: 'Fasted weight check — open the app to log and see if you\'re on track.',
         tag: 'weighin-reminder',
       });
+      if(ok) localStorage.setItem('lastWeighInNotif', todayKey);
     }
-    scheduleWeighInReminder(); // reschedule for next Monday
-  }, msUntil);
+  }
 }
 
 function scheduleCreatineReminder() {
@@ -3048,14 +3114,50 @@ function scheduleCreatineReminder() {
 
 async function initNotifications(prefs = ['inbody','weighin']) {
   const granted = await requestNotificationPermission();
-  if(!granted) {
-    showToast('Enable notifications in browser settings', 'error');
+  if(!granted) return false;
+  localStorage.setItem('notifPrefs', JSON.stringify(prefs));
+  updateNotifBell();
+  await checkPendingNotifications();
+  return true;
+}
+
+// Bell button — requires user tap (satisfies iOS gesture requirement)
+async function handleNotifBellTap() {
+  // iOS: must be installed to Home Screen for notifications to work
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  if(isIOS && !isStandalone) {
+    showToast('Add to Home Screen first, then enable notifications', 'error');
     return;
   }
-  if(prefs.includes('inbody')) scheduleInBodyReminder();
-  if(prefs.includes('weighin')) scheduleWeighInReminder();
-  localStorage.setItem('notifPrefs', JSON.stringify(prefs));
-  showToast('Notifications enabled ✓');
+  if(!('Notification' in window)) {
+    showToast('Notifications not supported on this browser', 'error');
+    return;
+  }
+  if(Notification.permission === 'denied') {
+    showToast('Notifications blocked — go to Settings › Safari › Notifications to enable', 'error');
+    return;
+  }
+  if(Notification.permission === 'granted') {
+    // Already on — toggle off
+    localStorage.setItem('notifPrefs', '[]');
+    updateNotifBell();
+    showToast('Notifications turned off');
+    return;
+  }
+  // Request permission (must be in user gesture — this tap qualifies)
+  const granted = await initNotifications(['inbody','weighin']);
+  if(granted) showToast('Notifications enabled ✓');
+  else showToast('Permission denied', 'error');
+}
+
+function updateNotifBell() {
+  const bell = document.getElementById('notif-bell');
+  if(!bell) return;
+  const prefs = JSON.parse(localStorage.getItem('notifPrefs') || '[]');
+  const active = Notification.permission === 'granted' && prefs.length > 0;
+  bell.classList.toggle('on', active);
+  bell.title = active ? 'Notifications on — tap to turn off' : 'Tap to enable notifications';
 }
 
 // Check if InBody is due (for banner in Progress tab)
@@ -3601,14 +3703,13 @@ if(window.location.hostname === 'localhost' || window.location.hostname.includes
   }, msUntilMidnight);
 })();
 loadExerciseData().then(init);
-// Auto-request notifications on first load
+// On load: if permission already granted, run pending checks + update bell
+// Never auto-request — iOS requires a user gesture (bell button tap)
 window.addEventListener('load', () => {
-  const prefs = JSON.parse(localStorage.getItem('notifPrefs') || 'null');
-  if(prefs === null) {
-    // First time — request with chosen prefs
-    setTimeout(() => initNotifications(['inbody','weighin']), 3000);
-  } else if(prefs.length) {
-    initNotifications(prefs);
+  updateNotifBell();
+  if(Notification.permission === 'granted') {
+    const prefs = JSON.parse(localStorage.getItem('notifPrefs') || '[]');
+    if(prefs.length) checkPendingNotifications();
   }
 });
 </script>
