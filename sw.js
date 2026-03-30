@@ -1,5 +1,5 @@
 // Auto-bumped by GitHub Actions on every push — do not edit manually
-const SW_VERSION = '2026-03-30-0000';
+const SW_VERSION = '2026-03-30-1127';
 const CACHE = 'gymtracker-' + SW_VERSION;
 
 // Assets to pre-cache (excludes index.html — it always goes network-first)
