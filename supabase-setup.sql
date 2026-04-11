@@ -181,3 +181,21 @@ create table if not exists inbody_logs (
 create index if not exists idx_inbody_logs_date on inbody_logs(date);
 alter table inbody_logs enable row level security;
 create policy "Allow all for anon" on inbody_logs for all using (true) with check (true);
+
+-- ── Apple Health daily vitals ──
+create table if not exists apple_health_logs (
+  id uuid default gen_random_uuid() primary key,
+  date date not null unique,
+  active_calories int,
+  total_calories int,
+  steps int,
+  workout_duration_min int,
+  resting_hr int,
+  sleep_hours numeric(4,2),
+  weight_kg numeric(5,2),
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_apple_health_logs_date on apple_health_logs(date);
+alter table apple_health_logs enable row level security;
+create policy "Allow all for anon" on apple_health_logs for all using (true) with check (true);

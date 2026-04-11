@@ -2443,15 +2443,17 @@ async function renderProgress(){
   const el = document.getElementById('progress-content');
   el.innerHTML = `<div class="empty-state"><div class="es-icon">⏳</div><p>Loading your data...</p></div>`;
   try {
-    // All 3 queries in parallel
-    const [metricsRes, inbodyRes, exLogsRes] = await Promise.all([
+    // All 4 queries in parallel
+    const [metricsRes, inbodyRes, exLogsRes, healthRes] = await Promise.all([
       db.from('body_metrics').select('*').order('date',{ascending:true}),
       db.from('inbody_logs').select('*').order('date',{ascending:true}),
       db.from('exercise_logs').select('*').eq('completed',true).order('date',{ascending:true}),
+      db.from('apple_health_logs').select('*').order('date',{ascending:true}),
     ]);
     const metrics = metricsRes.data;
     const inbodyLogs = inbodyRes.data;
     const exLogs = exLogsRes.data;
+    const healthLogs = healthRes.data || [];
     // Stats
     const latestWeight = metrics && metrics.length>0 ? metrics[metrics.length-1].weight_kg : null;
     const latestInBody = inbodyLogs && inbodyLogs.length>0 ? inbodyLogs[inbodyLogs.length-1] : null;
@@ -2546,6 +2548,39 @@ async function renderProgress(){
       <div class="stat-card"><div class="stat-val" style="color:var(--p2);font-size:20px">${latestInBody.visceral_fat_level||'—'}</div><div class="stat-key">Visceral Fat</div></div>
       <div class="stat-card"><div class="stat-val" style="color:var(--yellow);font-size:20px">${latestInBody.inbody_score||'—'}</div><div class="stat-key">InBody Score</div></div>
     </div>` : ''}
+    ${healthLogs.length > 0 ? (()=>{
+      const latest = healthLogs[healthLogs.length-1];
+      const last7 = healthLogs.slice(-7);
+      const avgCal = last7.filter(h=>h.active_calories).length ? Math.round(last7.reduce((s,h)=>s+(h.active_calories||0),0)/last7.filter(h=>h.active_calories).length) : null;
+      const avgSteps = last7.filter(h=>h.steps).length ? Math.round(last7.reduce((s,h)=>s+(h.steps||0),0)/last7.filter(h=>h.steps).length) : null;
+      const avgSleep = last7.filter(h=>h.sleep_hours).length ? (last7.reduce((s,h)=>s+(h.sleep_hours||0),0)/last7.filter(h=>h.sleep_hours).length).toFixed(1) : null;
+      const avgHR = last7.filter(h=>h.resting_hr).length ? Math.round(last7.reduce((s,h)=>s+(h.resting_hr||0),0)/last7.filter(h=>h.resting_hr).length) : null;
+      return `<div class="chart-card" style="margin-bottom:12px">
+        <div class="chart-title">DAILY VITALS <span style="font-size:11px;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400">via Apple Health</span></div>
+        <div style="font-size:11px;color:var(--dim);margin-bottom:10px">Last synced: ${latest.date}</div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-val" style="color:#ff4520;font-size:18px">${latest.active_calories||'—'}</div><div class="stat-key">Active Cal</div></div>
+          <div class="stat-card"><div class="stat-val" style="color:var(--p3);font-size:18px">${latest.steps ? latest.steps.toLocaleString() : '—'}</div><div class="stat-key">Steps</div></div>
+          <div class="stat-card"><div class="stat-val" style="color:var(--cyan);font-size:18px">${latest.sleep_hours||'—'}h</div><div class="stat-key">Sleep</div></div>
+          <div class="stat-card"><div class="stat-val" style="color:var(--p5);font-size:18px">${latest.resting_hr||'—'}</div><div class="stat-key">Rest HR</div></div>
+        </div>
+        <div style="margin-top:10px;padding:8px;border-radius:8px;background:var(--surface)">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">7-DAY AVERAGES</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text)">
+            <span>🔥 ${avgCal||'—'} cal</span>
+            <span>🚶 ${avgSteps ? avgSteps.toLocaleString() : '—'}</span>
+            <span>😴 ${avgSleep||'—'}h</span>
+            <span>❤️ ${avgHR||'—'} bpm</span>
+          </div>
+        </div>
+        ${last7.length >= 2 ? `<div class="chart-wrap" style="margin-top:12px"><canvas id="vitals-chart"></canvas></div>` : ''}
+      </div>`;
+    })() : `<div class="chart-card" style="margin-bottom:12px">
+      <div class="chart-title">DAILY VITALS</div>
+      <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">
+        Set up the Apple Health Shortcut to sync your daily vitals here
+      </div>
+    </div>`}
     <div class="chart-card" style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div class="chart-title" style="margin-bottom:0">WEEKLY TARGETS</div>
@@ -2625,6 +2660,34 @@ async function renderProgress(){
             ]
           },
           options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#666',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'},min:85,max:110}}}
+        });
+      }
+    }
+
+    // Render vitals chart (steps + calories over last 7 days)
+    if(healthLogs.length >= 2){
+      const vCtx = document.getElementById('vitals-chart')?.getContext('2d');
+      if(vCtx){
+        const last7 = healthLogs.slice(-7);
+        if(window.vitalsChart) window.vitalsChart.destroy();
+        window.vitalsChart = new Chart(vCtx,{
+          type:'bar',
+          data:{
+            labels: last7.map(h=>h.date.slice(5)),
+            datasets:[
+              {label:'Active Cal',data:last7.map(h=>h.active_calories||0),backgroundColor:'rgba(255,69,32,.6)',borderRadius:4,yAxisID:'y'},
+              {label:'Steps',data:last7.map(h=>h.steps||0),type:'line',borderColor:'#22c55e',pointRadius:3,pointBackgroundColor:'#22c55e',tension:.3,yAxisID:'y2'},
+            ]
+          },
+          options:{
+            responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{labels:{color:'#666',font:{size:10}}}},
+            scales:{
+              x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},
+              y:{ticks:{color:'#ff4520',font:{size:9}},grid:{color:'#222'},position:'left',title:{display:true,text:'Calories',color:'#555',font:{size:9}}},
+              y2:{ticks:{color:'#22c55e',font:{size:9}},grid:{display:false},position:'right',title:{display:true,text:'Steps',color:'#555',font:{size:9}}}
+            }
+          }
         });
       }
     }
