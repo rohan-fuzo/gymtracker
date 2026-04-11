@@ -534,18 +534,18 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
     <div class="modal-title" style="color:#c084fc">INBODY 770</div>
     <div class="modal-sub" id="inbody-modal-date">Bi-weekly check-in</div>
 
-    <!-- PHOTO UPLOAD -->
+    <!-- PDF UPLOAD -->
     <div class="inbody-photo-area" onclick="document.getElementById('inbody-file').click()">
-      <input type="file" id="inbody-file" accept="image/*" capture="environment" style="display:none" onchange="handleInBodyPhoto(this)">
-      <div class="ipa-icon">📸</div>
-      <div class="ipa-text">Tap to photograph your InBody printout</div>
-      <div class="ipa-sub">Clear photo · flat surface · all fields visible</div>
+      <input type="file" id="inbody-file" accept="application/pdf" style="display:none" onchange="handleInBodyPDF(this)">
+      <div class="ipa-icon">📄</div>
+      <div class="ipa-text">Tap to upload InBody PDF</div>
+      <div class="ipa-sub">Upload the PDF from your InBody 770 results</div>
     </div>
 
     <!-- PARSING STATE -->
     <div class="parsing-overlay" id="parsing-overlay">
       <div style="font-size:32px;animation:spin 1s linear infinite;display:inline-block;margin-bottom:10px">⚙️</div>
-      <div style="font-size:13px;color:var(--muted)">Reading your InBody report...</div>
+      <div style="font-size:13px;color:var(--muted)">Reading your InBody PDF...</div>
     </div>
 
     <div style="text-align:center;font-size:11px;color:var(--dim);margin-bottom:14px">— or enter manually —</div>
@@ -2927,44 +2927,91 @@ function handleInBodyModalClick(e) {
   if(e.target === document.getElementById('inbody-modal')) closeInBodyModal();
 }
 
-// Photo upload → Claude Vision parse
-async function handleInBodyPhoto(input) {
+// PDF upload → render to image → GPT-4o Vision parse
+async function handleInBodyPDF(input) {
   const file = input.files[0];
   if(!file) return;
+
+  // Check for OpenAI API key
+  let apiKey = localStorage.getItem('openai_api_key');
+  if(!apiKey) {
+    apiKey = prompt('Enter your OpenAI API key (stored locally, never sent to our servers):');
+    if(!apiKey) return;
+    localStorage.setItem('openai_api_key', apiKey.trim());
+    apiKey = apiKey.trim();
+  }
+
   const overlay = document.getElementById('parsing-overlay');
   overlay.classList.add('show');
   try {
-    // Convert image to base64
-    const base64 = await new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result.split(',')[1]);
-      r.onerror = rej;
-      r.readAsDataURL(file);
+    // Lazy-load pdf.js if not already loaded
+    if(typeof pdfjsLib === 'undefined') {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+        s.onload = res;
+        s.onerror = () => rej(new Error('Failed to load PDF library'));
+        document.head.appendChild(s);
+      });
+    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+    // Read PDF as ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+
+    // Render each page to a canvas → base64 image
+    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+    const images = [];
+    for(let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({scale: 2.0}); // high-res for OCR
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      await page.render({canvasContext: ctx, viewport}).promise;
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      images.push(dataUrl.split(',')[1]); // base64 only
+    }
+
+    // Send images to OpenAI GPT-4o Vision
+    const content = [];
+    images.forEach((b64, i) => {
+      content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}`, detail: 'high' } });
     });
-    // Call Claude API to extract InBody fields
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: base64 } },
-            { type: 'text', text: `This is an InBody 770 body composition report. Extract ALL numeric values and return ONLY a JSON object with these exact keys (use null if not found):
+    content.push({ type: 'text', text: `This is an InBody 770 body composition report. Extract ALL numeric values and return ONLY a valid JSON object with these exact keys (use null if not found):
 weight_kg, body_fat_pct, skeletal_muscle_mass, body_fat_mass, bmi,
 total_body_water, intracellular_water, extracellular_water, ecw_ratio,
 bmr, visceral_fat_level, inbody_score,
 lean_right_arm, lean_left_arm, lean_trunk, lean_right_leg, lean_left_leg
-Return only the JSON, no other text.` }
-          ]
-        }]
+Return ONLY the JSON object, no other text or markdown.` });
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content }]
       })
     });
+
+    if(!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      if(resp.status === 401) {
+        localStorage.removeItem('openai_api_key');
+        throw new Error('Invalid API key — removed. Try again.');
+      }
+      throw new Error(err.error?.message || `OpenAI API error ${resp.status}`);
+    }
+
     const data = await resp.json();
-    const text = data.content?.[0]?.text || '{}';
+    const text = data.choices?.[0]?.message?.content || '{}';
     const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+
     // Fill form fields
     const fieldMap = {
       'ib-weight':'weight_kg','ib-bf-pct':'body_fat_pct','ib-smm':'skeletal_muscle_mass',
@@ -2974,15 +3021,21 @@ Return only the JSON, no other text.` }
       'ib-ra':'lean_right_arm','ib-la':'lean_left_arm','ib-trunk':'lean_trunk',
       'ib-rl':'lean_right_leg','ib-ll':'lean_left_leg'
     };
+    let filled = 0;
     Object.entries(fieldMap).forEach(([id, key]) => {
-      if(parsed[key] != null) document.getElementById(id).value = parsed[key];
+      if(parsed[key] != null) { document.getElementById(id).value = parsed[key]; filled++; }
     });
-    showToast('InBody data extracted ✓ — please verify');
+    if(filled > 0) {
+      showToast(`Extracted ${filled} fields ✓ — please verify`);
+    } else {
+      showToast('No values found — enter manually', 'error');
+    }
   } catch(e) {
-    console.error(e);
-    showToast('Could not parse photo — enter manually', 'error');
+    console.error('PDF parse error:', e);
+    showToast(e.message || 'Could not read PDF — enter manually', 'error');
   }
   overlay.classList.remove('show');
+  input.value = ''; // reset so same file can be re-uploaded
 }
 
 async function saveInBody() {
