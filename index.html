@@ -3069,7 +3069,6 @@ async function saveInBody() {
     await db.from('body_metrics').upsert({date:todayStr, weight_kg:record.weight_kg, phase:cPhase}, {onConflict:'date'});
     // Store last InBody date for notification scheduling
     localStorage.setItem('lastInBodyDate', todayStr);
-    scheduleInBodyReminder();
     _progressLastFetch = 0; // invalidate progress cache
     setSyncStatus('synced');
     showToast('InBody saved ✓');
