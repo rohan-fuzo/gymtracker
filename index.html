@@ -96,6 +96,21 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .reset-modal-confirm{flex:1;padding:13px;background:var(--p1);border:none;border-radius:11px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
 .reset-modal-confirm:disabled{opacity:.5;cursor:default}
 
+/* ── TRAVEL MODE ── */
+.travel-toggle-wrap{margin:0 16px 12px;background:rgba(6,182,212,.06);border:1.5px solid rgba(6,182,212,.2);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.travel-toggle-wrap.active{background:rgba(6,182,212,.13);border-color:rgba(6,182,212,.5)}
+.travel-toggle-wrap:active{transform:scale(.98)}
+.travel-toggle-icon{font-size:24px;flex-shrink:0;line-height:1}
+.travel-toggle-body{flex:1;min-width:0}
+.travel-toggle-title{font-size:13px;font-weight:700;color:var(--cyan);letter-spacing:.3px}
+.travel-toggle-sub{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.travel-toggle-switch{width:44px;height:26px;background:var(--surface3);border-radius:13px;border:1.5px solid var(--border);position:relative;flex-shrink:0;transition:background .2s,border-color .2s;pointer-events:none}
+.travel-toggle-switch.on{background:var(--cyan);border-color:var(--cyan)}
+.travel-toggle-switch::after{content:'';position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.travel-toggle-switch.on::after{transform:translateX(18px)}
+.travel-active-banner{margin:0 16px 10px;padding:10px 14px;border-radius:10px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--cyan)}
+.dp-travel{font-size:9px;line-height:1;margin-top:1px;text-align:center}
+
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-sheet{touch-action:pan-x}
@@ -1470,15 +1485,35 @@ async function ensureSession(){
   _sessionPromise = (async () => {
     const dk = DAYS[cDay];
     const w = W[cPhase][dk];
+    const isTravel = getTravelMode(selectedDateStr);
+    const sessionTitle = isTravel ? 'TRAVEL · ' + (w.title || 'Travel Day') : w.title;
     // Try to get existing session first
     const {data:existing} = await db.from('workout_sessions')
       .select('id').eq('date', selectedDateStr).eq('day_of_week', dk).limit(1).single();
-    if(existing?.id){ sessionId = existing.id; return sessionId; }
-    // Create new
-    const {data} = await db.from('workout_sessions').insert({
-      date: selectedDateStr, phase: cPhase, day_of_week: dk, workout_title: w.title
-    }).select().single();
-    if(data) sessionId = data.id;
+    if(existing?.id){
+      sessionId = existing.id;
+      // Update title + travel flag if now in travel mode (fire-and-forget)
+      if(isTravel){
+        db.from('workout_sessions').update({ workout_title: sessionTitle, is_travel: true })
+          .eq('id', sessionId)
+          .then(() => {}).catch(() => {
+            // is_travel column may not exist yet — retry with title only
+            db.from('workout_sessions').update({ workout_title: sessionTitle })
+              .eq('id', sessionId).catch(() => {});
+          });
+      }
+      return sessionId;
+    }
+    // Create new — try with is_travel first, fallback without if column missing
+    const insertBase = { date: selectedDateStr, phase: cPhase, day_of_week: dk, workout_title: sessionTitle };
+    let result = await db.from('workout_sessions')
+      .insert(isTravel ? {...insertBase, is_travel: true} : insertBase)
+      .select().single();
+    if(result.error && isTravel){
+      // Column likely doesn't exist yet — retry without is_travel
+      result = await db.from('workout_sessions').insert(insertBase).select().single();
+    }
+    if(result.data) sessionId = result.data.id;
     return sessionId;
   })();
   try { return await _sessionPromise; } finally { _sessionPromise = null; }
@@ -1490,6 +1525,130 @@ async function ensureSession(){
 let EQ = {};
 
 let W = {};
+
+// ============================================================
+// TRAVEL MODE — bodyweight-only alternative workouts
+// Keyed by day type: push / pull / legs / fullbody
+// ============================================================
+const TRAVEL_WORKOUTS = {
+  push: {
+    type:'push', title:'PUSH — TRAVEL MODE',
+    sub:'Bodyweight only · No equipment needed',
+    dur:'45', kcal:'280', tags:['push'],
+    cd:['Chest & shoulder cross-body stretch 30s each','Tricep overhead stretch 30s each','Wrist circles 10× each direction'],
+    ex:[
+      {n:'Pike Push-Ups',        ic:'🏔️', s:'3×8-10',        r:'60s',  eq:[], note:'Hips high in downward-dog position. Lower forehead toward floor. Targets shoulders heavily. Full ROM.', warn:null},
+      {n:'Incline Push-Ups',     ic:'🔼', s:'3×12-15',       r:'60s',  eq:[], note:'Hands elevated on bed or desk edge. Upper chest focus. 2s descent, pause at chest.', warn:'Wrist mod: use fists if flat-palm position loads wrists.'},
+      {n:'Decline Push-Ups',     ic:'🔽', s:'3×10-12',       r:'60s',  eq:[], note:'Feet elevated on chair or bed. Lower chest + anterior delt. Keep core braced throughout.', warn:null},
+      {n:'Tricep Dips (Chair)',   ic:'💺', s:'3×12',          r:'60s',  eq:[], note:'Hands on chair edge behind you, feet extended forward. Elbows track straight back — not flared.', warn:'Wrist mod: keep hands parallel with fingers pointing forward. Skip if wrists load painfully.'},
+      {n:'Shoulder Taps',        ic:'✋', s:'3×20 taps',     r:'45s',  eq:[], note:'Plank position. Lift one hand, tap opposite shoulder. Minimise hip rotation. Core stays locked.', warn:null},
+    ]
+  },
+  pull: {
+    type:'pull', title:'PULL — TRAVEL MODE',
+    sub:'Bodyweight only · No equipment needed',
+    dur:'45', kcal:'250', tags:['pull'],
+    cd:["Lat stretch 30s each side (arm overhead, lean away)","Child's pose 60s","Thoracic extension on floor 10 reps"],
+    ex:[
+      {n:'Superman Holds',           ic:'🦸', s:'3×10 (3s hold)',       r:'60s',  eq:[], note:'Lie face down. Raise chest + legs simultaneously. Squeeze glutes hard. Hold 3s at top.', warn:null},
+      {n:'Reverse Snow Angels',      ic:'🌨️', s:'3×12',                  r:'60s',  eq:[], note:'Face down, arms by sides. Sweep arms out and overhead in a full arc. Keep chest elevated.', warn:null},
+      {n:'Bodyweight Rows (Table)',   ic:'🪑', s:'3×10-12',              r:'90s',  eq:[], note:'Lie under a sturdy table. Grip edge, pull chest to it. Keep body in a rigid plank — no sagging hips.', warn:'Wrist mod: wrap a towel around table edge for a neutral-grip handle.'},
+      {n:'Prone Y-T-W Holds',        ic:'💪', s:'3×8 each position',    r:'60s',  eq:[], note:'Face down. Arms in Y (overhead), T (90° out), W (bent elbows pulled back). 2s pause per position. Posterior delt gold.', warn:null},
+      {n:'Dead Hangs (If Available)',ic:'🏋️', s:'3×20-30s',              r:'60s',  eq:[], note:'Any overhead bar — door-frame pullup bar, jungle gym, or sturdy beam. Passive hang, shoulders packed.', warn:'Skip if no suitable bar is available — not mandatory.'},
+    ]
+  },
+  legs: {
+    type:'legs', title:'LEGS — TRAVEL MODE',
+    sub:'Bodyweight only · No equipment needed',
+    dur:'50', kcal:'320', tags:['legs'],
+    cd:['Quad stretch 30s each leg','Hip flexor lunge 45s each side','Calf stretch on step or wall 30s each'],
+    ex:[
+      {n:'Bodyweight Squats',        ic:'🦵', s:'4×15-20',      r:'60s',  eq:[], note:'Full depth, heels flat. 1s pause at bottom. Drive through whole foot on the way up.', warn:null},
+      {n:'Reverse Lunges',           ic:'🚶', s:'3×12 each leg', r:'60s',  eq:[], note:'Step back — easier on knees than forward lunge. Front knee stays over ankle. Hip drops close to floor.', warn:null},
+      {n:'Glute Bridges',            ic:'🌉', s:'3×15 (3s hold)', r:'60s', eq:[], note:'Back flat on floor, heels close to glutes. Drive hips up and squeeze hard at top for 3s.', warn:null},
+      {n:'Wall Sit',                 ic:'🧱', s:'3×45-60s',      r:'60s',  eq:[], note:'Thighs parallel to floor, back flat on wall. Hands on quads — not pushing off the wall.', warn:null},
+      {n:'Step-Ups',                 ic:'🪜', s:'3×15 each leg', r:'60s',  eq:[], note:'Use bed, sturdy chair, or stairs. Full hip extension at top. Control the descent.', warn:null},
+      {n:'Single-Leg Calf Raises',   ic:'🦶', s:'3×15 each',    r:'45s',  eq:[], note:'Hold wall lightly for balance only. Full ROM — all the way down, all the way up.', warn:null},
+    ]
+  },
+  fullbody: {
+    type:'fullbody', title:'FULL BODY — TRAVEL MODE',
+    sub:'Bodyweight circuit · No equipment needed',
+    dur:'45', kcal:'350', tags:['push','legs'],
+    cd:['Full body stretch 5 min','Child pose 60s','Pigeon pose 30s each hip'],
+    ex:[
+      {n:'Modified Burpees',     ic:'💥', s:'3×8-10',    r:'90s',  eq:[], note:'Step back instead of jumping — knees thank you. Add push-up optional. Step forward, stand tall.', warn:'Wrist mod: skip the push-up portion or do it on fists to keep wrist neutral.'},
+      {n:'Push-Ups',             ic:'🤸', s:'3×12-15',   r:'60s',  eq:[], note:'Standard or incline. Full range — chest near floor. 1s pause at the bottom.', warn:'Wrist mod: incline push-ups on a raised surface reduce wrist angle significantly.'},
+      {n:'Bodyweight Squats',    ic:'🦵', s:'3×15',      r:'60s',  eq:[], note:'Full depth. 1s pause at bottom. Drive from the whole foot.', warn:null},
+      {n:'Glute Bridges',        ic:'🌉', s:'3×15 (2s hold)', r:'45s', eq:[], note:'On floor, heels close to glutes. Squeeze hard at top for 2s each rep.', warn:null},
+      {n:'Plank Hold',           ic:'🏗️', s:'3×30-45s',  r:'45s',  eq:[], note:'Elbows or straight arms. Hips level. Breathe steadily. Core contracted throughout.', warn:'Wrist mod: forearm plank on elbows avoids wrist load entirely.'},
+      {n:'Mountain Climbers',    ic:'⛰️', s:'3×20 reps', r:'60s',  eq:[], note:'Plank position. Drive alternating knees to chest. Control the pace — this is not a sprint.', warn:'Wrist mod: perform on fists to maintain a neutral wrist angle.'},
+    ]
+  },
+};
+
+// ── Travel mode per-day state (stored in localStorage) ──
+function getTravelMode(dateStr) {
+  try { const d = JSON.parse(localStorage.getItem('travelDays') || '{}'); return !!d[dateStr]; }
+  catch(e) { return false; }
+}
+function setTravelMode(dateStr, active) {
+  try {
+    const d = JSON.parse(localStorage.getItem('travelDays') || '{}');
+    if(active) d[dateStr] = 1; else delete d[dateStr];
+    localStorage.setItem('travelDays', JSON.stringify(d));
+  } catch(e) {}
+}
+
+// Detect which travel workout type maps to the current regular workout
+function getTravelDayType(w) {
+  if(!w || w.isRest) return null;
+  if(w.isLiss) return 'liss';
+  const tags = w.tags || [];
+  const t = (w.title || '').toUpperCase();
+  const hasPush = tags.includes('push') || t.includes('PUSH');
+  const hasPull = tags.includes('pull') || t.includes('PULL');
+  const hasLegs = tags.includes('legs') || t.includes('LEG');
+  const hitCount = [hasPush, hasPull, hasLegs].filter(Boolean).length;
+  if(hitCount >= 2) return 'fullbody';
+  if(hasPush) return 'push';
+  if(hasPull) return 'pull';
+  if(hasLegs) return 'legs';
+  return 'fullbody'; // safe fallback for power/misc days
+}
+
+// Toggle travel mode for the selected day
+function toggleTravelMode() {
+  const dk = DAYS[cDay];
+  const w = W[cPhase][dk];
+  if(!w || w.isRest) return;
+  const newVal = !getTravelMode(selectedDateStr);
+  setTravelMode(selectedDateStr, newVal);
+  _workoutRenderKey = null;  // force full rebuild
+  _stripCache = {};
+  renderWeekStrip();
+  renderWorkout();
+  haptic(newVal ? [6, 30, 6] : [4]);
+  showToast(newVal ? '✈️ Travel mode on — bodyweight workout loaded' : '🏋️ Switched back to regular workout');
+}
+
+// Render the travel toggle banner
+function renderTravelToggle(isActive, travelType) {
+  const typeLabels = {
+    push:'Push Bodyweight', pull:'Pull Bodyweight',
+    legs:'Legs Bodyweight', fullbody:'Full Body Bodyweight',
+    liss:'Walk / Jog / Stairs'
+  };
+  const label = typeLabels[travelType] || 'Bodyweight Workout';
+  return `<div class="travel-toggle-wrap${isActive?' active':''}" onclick="toggleTravelMode()">
+    <div class="travel-toggle-icon">✈️</div>
+    <div class="travel-toggle-body">
+      <div class="travel-toggle-title">Travelling today?</div>
+      <div class="travel-toggle-sub">${isActive ? '🟢 ' + label + ' active' : 'Swap to no-equipment bodyweight workout'}</div>
+    </div>
+    <div class="travel-toggle-switch${isActive?' on':''}"></div>
+  </div>`;
+}
 
 // EXERCISE GIFS — loaded from exercises.json
 let EXERCISE_GIFS = {};
@@ -1946,13 +2105,15 @@ function renderWeekStrip(){
       const isToday = (viewingWeekOffset === 0) && (i === todayDow);
       const isSelected = (i === cDay);
       const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(W[cPhase][d],d)));
+      const isTravelDay = !isPast && getTravelMode(dateStr);
       const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
-      _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor};
+      _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor, isTravelDay};
       return `<div class="day-pill ${isSelected?'active':''} ${isPast?'pre-start':''} ${dayIsDone?'done-day':''}"
         onclick="selectDay(${i})" style="${isPast?'opacity:.35':''}">
         <div class="dp-day">${d}</div>
         <div class="dp-num" style="font-size:12px;font-family:'DM Sans',sans-serif;font-weight:600;line-height:1.2">${formatDate(date)}</div>
         <div class="dp-dot" style="background:${dotColor}"></div>
+        ${isTravelDay ? '<div class="dp-travel">✈️</div>' : ''}
       </div>`;
     }).join('');
     container.dataset.weekOffset = String(viewingWeekOffset);
@@ -1968,12 +2129,13 @@ function renderWeekStrip(){
     const isToday = (viewingWeekOffset === 0) && (i === todayDow);
     const isSelected = (i === cDay);
     const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(W[cPhase][d],d)));
+    const isTravelDay = !isPast && getTravelMode(dateStr);
     const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
 
     const prev = _stripCache[i] || {};
     // Skip if nothing changed for this pill
-    if(prev.isSelected === isSelected && prev.dayIsDone === dayIsDone && prev.dotColor === dotColor) return;
-    _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor};
+    if(prev.isSelected === isSelected && prev.dayIsDone === dayIsDone && prev.dotColor === dotColor && prev.isTravelDay === isTravelDay) return;
+    _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor, isTravelDay};
 
     const pill = pills[i];
     if(!pill) return;
@@ -1983,6 +2145,16 @@ function renderWeekStrip(){
     // Patch dot color
     const dot = pill.querySelector('.dp-dot');
     if(dot) dot.style.background = dotColor;
+    // Patch travel indicator
+    const existingTravel = pill.querySelector('.dp-travel');
+    if(isTravelDay && !existingTravel){
+      const te = document.createElement('div');
+      te.className = 'dp-travel';
+      te.textContent = '✈️';
+      pill.appendChild(te);
+    } else if(!isTravelDay && existingTravel) {
+      existingTravel.remove();
+    }
   });
 }
 
@@ -1994,10 +2166,17 @@ function patchWorkoutSets(){
   // Called when loggedSets changes but day/phase hasn't changed
   const dk = DAYS[cDay];
   const w = W[cPhase][dk];
-  if(!w || !w.ex) return;
-  w.ex.forEach((ex, ei) => {
+  if(!w) return;
+  // Use travel exercises if travel mode is active
+  const isTravel = getTravelMode(selectedDateStr);
+  const travelType = isTravel ? getTravelDayType(w) : null;
+  const travelW = (travelType && travelType !== 'liss') ? TRAVEL_WORKOUTS[travelType] : null;
+  const exList = (isTravel && travelW?.ex) ? travelW.ex : w.ex;
+  if(!exList) return;
+  exList.forEach((ex, ei) => {
     const sp = parseSets(ex.s);
-    const isFirst = ei === 0;
+    // Travel exercises never have MM sets
+    const isFirst = isTravel ? false : (ei === 0);
     const exDone = isExerciseDone(ex.n, sp, isFirst);
     const ek = `ex_${cPhase}_${dk}_${ei}`;
     const rowEl = document.getElementById(ek);
@@ -2218,12 +2397,34 @@ function renderWorkout(){
     return;
   }
   if(w.isRest){ c.innerHTML=`${bannerHTML}<div class="rest-card"><div class="rest-icon">😴</div><h2>REST DAY</h2><p>Recovery is training. Sleep by 10:30pm. Prep meals. Muscles grow while you rest — especially at 35.</p></div>${renderSleepCardHTML()}`; return; }
-  if(w.isLiss){ renderLiss(w,c,bannerHTML); return; }
-  // Pre-fetch previous bests for all exercises on this day (non-blocking)
-  if(w.ex) prefetchPreviousBests(w.ex);
-  const tagH=w.tags.map(t=>`<span class="tag tag-${t}">${t.toUpperCase()}</span>`).join('');
-  const isPowerDay=!!w.isPower;
-  let h=bannerHTML;
+
+  // ── TRAVEL MODE ── detect before LISS check so LISS can carry the travel flag too
+  const isTravelDay = getTravelMode(selectedDateStr);
+  const travelType = getTravelDayType(w);
+
+  if(w.isLiss){ renderLiss(w, c, bannerHTML, isTravelDay); return; }
+
+  // Choose exercise list: travel bodyweight or regular programme
+  const travelW = (isTravelDay && travelType && TRAVEL_WORKOUTS[travelType]) ? TRAVEL_WORKOUTS[travelType] : null;
+  const exList = travelW ? travelW.ex : w.ex;
+
+  // Pre-fetch previous bests for displayed exercises (non-blocking)
+  if(exList) prefetchPreviousBests(exList);
+
+  // Display properties — overridden when in travel mode
+  const displayTitle = travelW ? travelW.title : w.title;
+  const displaySub   = travelW ? travelW.sub   : w.sub;
+  const displayDur   = travelW ? travelW.dur   : w.dur;
+  const displayKcal  = travelW ? travelW.kcal  : w.kcal;
+  const displayTags  = (travelW || w).tags;
+  const tagH = displayTags.map(t=>`<span class="tag tag-${t}">${t.toUpperCase()}</span>`).join('');
+  const isPowerDay = travelW ? false : !!w.isPower; // travel days never render as power
+
+  let h = bannerHTML;
+
+  // Travel toggle — shown on all workout days (not rest, not before-start)
+  h += renderTravelToggle(isTravelDay, travelType || 'fullbody');
+
   h+=`<div class="workout-card">`;
   if(isPowerDay){
     h+=`<div class="power-header"><div class="power-title">⚡ ${w.title}</div><div class="power-sub">${w.sub}</div>
@@ -2231,21 +2432,21 @@ function renderWorkout(){
     <div class="intensity-dots">${[1,2,3,4,5].map(i=>`<div class="dot ${i<=4?'lit':'half'}"></div>`).join('')}</div>
     <div style="font-size:11px;color:var(--gold);margin-left:4px">85% 1RM · 5×3</div></div></div>`;
   } else {
-    h+=`<div class="wc-header"><div><div class="wc-day">${w.title}</div><div style="margin-top:4px">${tagH}</div></div>
-    <div class="wc-meta"><div class="wc-duration">${w.dur}'</div><div class="wc-kcal">${w.kcal} kcal</div></div></div>`;
+    h+=`<div class="wc-header"><div><div class="wc-day">${displayTitle}</div><div style="margin-top:4px">${tagH}</div></div>
+    <div class="wc-meta"><div class="wc-duration">${displayDur}'</div><div class="wc-kcal">${displayKcal} kcal</div></div></div>`;
   }
   h+=`<div class="sec-label" style="border-top:none;padding-top:8px">WARMUP</div>`;
   h+=renderUniversalWarmup(dk, isPowerDay);
   h+=`</div>`;
   h+=`<div class="workout-card" style="border-radius:0 0 16px 16px;margin-top:0">`;
-  h+=`<div class="sec-label" style="border-top:none;padding-top:8px">EXERCISES</div>`;
-  w.ex.forEach((ex,ei)=>{
+  h+=`<div class="sec-label" style="border-top:none;padding-top:8px">EXERCISES${travelW?'<span style="margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:4px;background:rgba(6,182,212,.15);color:var(--cyan);vertical-align:middle">BODYWEIGHT</span>':''}</div>`;
+  exList.forEach((ex,ei)=>{
     const ek=`ex_${cPhase}_${dk}_${ei}`;
     const sp=parseSets(ex.s);
-    const isFirst=(ei===0);
+    // Travel exercises: no MM set. Regular: first exercise gets MM set.
+    const isFirst = travelW ? false : (ei===0);
     const mmKey=`${ex.n}|0|1`;
     const mmDone=loggedSets[mmKey]?.completed;
-    const mmLogged=loggedSets[mmKey];
     const mmChip = isFirst ? `<div class="set-chip mm-chip ${mmDone?'done':''}" onclick="openSetModal('${esc(ex.n)}',0,true,this,${ei})">
       <div class="sc-num" style="color:var(--gold)">MM</div>
       <div class="sc-reps" style="color:var(--gold);opacity:.8">no wt</div>
@@ -2267,7 +2468,7 @@ function renderWorkout(){
       <div class="ex-main" onclick="tEx('${ek}')">
         <div class="ex-icon">${ex.ic}</div>
         <div class="ex-info">
-          <div class="ex-name">${ex.n}</div>
+          <div class="ex-name">${ex.n}${travelW?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(6,182,212,.12);color:var(--cyan);font-weight:700;letter-spacing:.3px">BW</span>':''}</div>
           <div class="ex-sets">${isFirst?'<span style="color:var(--gold);font-size:10px">MM → </span>':''}${ex.s} · ${ex.r} rest</div>
           <div class="ex-equip">${ex.eq.join('')}</div>
         </div>
@@ -2289,7 +2490,8 @@ function renderWorkout(){
     </div>`;
   });
   h+=`</div>`;
-  if(w.fin) h+=renderFinHTML(w.fin,cPhase,dk);
+  // Finisher: skip on travel days (no equipment)
+  if(w.fin && !travelW) h+=renderFinHTML(w.fin,cPhase,dk);
   h+=`<div class="cd-block"><div class="block-title">COOLDOWN</div><ul class="checklist">`;
   w.cd.forEach((it,i)=>{
     const k=`cd_${cPhase}_${dk}_${i}`;
@@ -2318,12 +2520,19 @@ function isExerciseDone(exName, sp, isFirst){
 // Returns true if all exercises done AND all warmup items ticked
 function isDayDone(w, dk){
   if(!w || w.isRest) return false;
-  // LISS day — any cardio logged = done
+  // LISS day — any cardio logged = done (travel or not, LISS is LISS)
   if(w.isLiss){
     const lissKey = 'liss_'+cPhase+'_'+dk;
     return !!(checkCache[lissKey]?.saved || (typeof checkCache[lissKey]==='boolean' && checkCache[lissKey]));
   }
-  // Workout day — all sets logged is enough (warmup + finisher are bonuses, not blockers)
+  // Travel mode — check travel exercises instead
+  const isTravel = getTravelMode(selectedDateStr);
+  if(isTravel){
+    const travelType = getTravelDayType(w);
+    const travelW = (travelType && travelType !== 'liss') ? TRAVEL_WORKOUTS[travelType] : null;
+    if(travelW?.ex) return travelW.ex.every(ex => isExerciseDone(ex.n, parseSets(ex.s), false));
+  }
+  // Regular workout day — all sets logged is enough
   if(!w.ex) return false;
   return w.ex.every((ex, ei) => isExerciseDone(ex.n, parseSets(ex.s), ei===0));
 }
@@ -2462,16 +2671,24 @@ function renderHydrationHTML(){
   </div>`;
 }
 
-function renderLiss(w,c,bannerHTML=''){
+function renderLiss(w,c,bannerHTML='',isTravelDay=false){
   const dk=DAYS[cDay];
   const lissKey = `liss_${cPhase}_${dk}`;
   const targetMins = parseInt(w.dur)||45;
+  // Travel LISS note
+  const travelNote = isTravelDay
+    ? `<div class="travel-active-banner" style="margin:0 0 10px">✈️ <strong>Travel LISS:</strong> Brisk walk, jog, or stair climbing — 30–45 min. No treadmill needed.</div>`
+    : '';
   // Load saved cardio data into checkCache if stored as JSON in notes
-  let h=bannerHTML+`<div class="workout-card"><div class="wc-header">
-    <div><div class="wc-day">${w.title}</div><div style="margin-top:4px"><span class="tag tag-liss">LISS</span></div></div>
+  let h=bannerHTML;
+  // Travel toggle (LISS days too)
+  h += renderTravelToggle(isTravelDay, 'liss');
+  h+=`<div class="workout-card"><div class="wc-header">
+    <div><div class="wc-day">${w.title}${isTravelDay?' <span style="font-size:13px">✈️</span>':''}</div><div style="margin-top:4px"><span class="tag tag-liss">LISS</span></div></div>
     <div class="wc-meta"><div class="wc-duration">${w.dur}'</div></div></div>
-    <div class="liss-main">${w.liss.main}</div>
-    <div class="liss-log-wrap">${renderCardioLogHTML(lissKey,'Incline Treadmill',targetMins)}</div>
+    ${travelNote}
+    <div class="liss-main">${isTravelDay ? '✈️ Travel LISS — choose any of:\n• 30–45 min brisk walk (outdoors or hotel corridor laps)\n• Jog at easy pace — talk test: can still hold a conversation\n• Stair climbing — hotel stairs, any multi-floor building\n• Skipping rope if you have one\n\nLog your time below.' : w.liss.main}</div>
+    <div class="liss-log-wrap">${renderCardioLogHTML(lissKey, isTravelDay ? 'Walk / Jog / Stairs' : 'Incline Treadmill', targetMins)}</div>
     </div>`;
   h+=`<div class="cd-block"><div class="block-title">COOLDOWN</div><ul class="checklist">`;
   w.cd.forEach((it,i)=>{

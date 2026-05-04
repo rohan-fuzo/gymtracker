@@ -210,3 +210,10 @@ create table if not exists programme_config (
 -- Only ever one row — unique constraint enforced via the app (select first row)
 alter table programme_config enable row level security;
 create policy "Allow all for anon" on programme_config for all using (true) with check (true);
+
+-- ============================================================
+-- TRAVEL MODE — flag on workout sessions
+-- Run this if you have an existing database (safe to run multiple times)
+-- ============================================================
+alter table workout_sessions add column if not exists is_travel boolean default false;
+create index if not exists idx_workout_sessions_travel on workout_sessions(is_travel) where is_travel = true;
