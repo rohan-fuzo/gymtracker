@@ -199,3 +199,14 @@ create table if not exists apple_health_logs (
 create index if not exists idx_apple_health_logs_date on apple_health_logs(date);
 alter table apple_health_logs enable row level security;
 create policy "Allow all for anon" on apple_health_logs for all using (true) with check (true);
+
+-- ── Programme configuration (start date, editable from Settings) ──
+create table if not exists programme_config (
+  id uuid default gen_random_uuid() primary key,
+  start_date date not null,
+  updated_at timestamptz default now()
+);
+
+-- Only ever one row — unique constraint enforced via the app (select first row)
+alter table programme_config enable row level security;
+create policy "Allow all for anon" on programme_config for all using (true) with check (true);

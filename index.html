@@ -66,6 +66,36 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .screen.active{display:block}
 .screen::-webkit-scrollbar{display:none}
 
+/* SETTINGS SCREEN */
+.settings-wrap{padding:16px;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.settings-card-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:14px 16px 0}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.settings-row-label{font-size:13px;font-weight:500;color:var(--text)}
+.settings-row-val{font-size:13px;color:var(--muted);font-weight:600}
+.settings-date-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:16px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s;-webkit-appearance:none;margin-top:10px}
+.settings-date-input:focus{border-color:var(--p1)}
+.settings-hint{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px;padding:0 16px 14px}
+.settings-apply-btn{width:calc(100% - 32px);margin:0 16px 16px;padding:13px;background:rgba(255,69,32,.12);border:1.5px solid rgba(255,69,32,.35);border-radius:11px;color:var(--p1);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .15s}
+.settings-apply-btn:active{background:rgba(255,69,32,.22)}
+.settings-apply-btn:disabled{opacity:.4;cursor:default}
+
+/* RESET CONFIRMATION MODAL */
+.reset-modal{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.reset-modal.open{opacity:1;pointer-events:all}
+.reset-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.7)}
+.reset-modal-sheet{position:relative;background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 44px;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,1.1,.5,1)}
+.reset-modal.open .reset-modal-sheet{transform:translateY(0)}
+.reset-modal-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1.5px;color:var(--p1);margin-bottom:6px}
+.reset-modal-sub{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.5}
+.reset-modal-detail{background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:20px;font-size:12px;line-height:1.7}
+.reset-modal-detail strong{color:var(--text)}
+.reset-modal-btns{display:flex;gap:10px}
+.reset-modal-cancel{flex:1;padding:13px;background:var(--surface2);border:1.5px solid var(--border);border-radius:11px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
+.reset-modal-confirm{flex:1;padding:13px;background:var(--p1);border:none;border-radius:11px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.reset-modal-confirm:disabled{opacity:.5;cursor:default}
+
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-sheet{touch-action:pan-x}
@@ -466,6 +496,24 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
   <div class="spacer"></div>
 </div>
 
+<div class="screen" id="screen-settings">
+  <div class="settings-wrap" id="settings-content"></div>
+</div>
+
+<!-- RESET PROGRAMME MODAL -->
+<div class="reset-modal" id="reset-modal">
+  <div class="reset-modal-backdrop" onclick="closeResetModal()"></div>
+  <div class="reset-modal-sheet">
+    <div class="reset-modal-title">Reset Programme?</div>
+    <div class="reset-modal-sub" id="reset-modal-sub">This will recalculate your week and phase from the new start date.</div>
+    <div class="reset-modal-detail" id="reset-modal-detail"></div>
+    <div class="reset-modal-btns">
+      <button class="reset-modal-cancel" onclick="closeResetModal()">Cancel</button>
+      <button class="reset-modal-confirm" id="reset-modal-confirm" onclick="confirmReset()">Yes, Apply</button>
+    </div>
+  </div>
+</div>
+
 <!-- REST TIMER -->
 <div id="rest-timer">
   <div>
@@ -481,6 +529,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
   <button class="botnav-btn" onclick="showScreen('progress',this)" aria-label="Progress"><div class="icon">📈</div><div>PROGRESS</div></button>
   <button class="botnav-btn" onclick="showScreen('diet',this)" aria-label="Diet plan"><div class="icon">🥗</div><div>DIET</div></button>
   <button class="botnav-btn" onclick="showScreen('mob',this)" aria-label="Mobility"><div class="icon">🧘</div><div>MOBILITY</div></button>
+  <button class="botnav-btn" onclick="showScreen('settings',this)" aria-label="Settings"><div class="icon">⚙️</div><div>SETTINGS</div></button>
 </div>
 </div>
 
@@ -1336,10 +1385,13 @@ async function init(){
   renderSkeletonWeekStrip();
   renderSkeletonWorkout();
   try {
+    // Load programme config FIRST — may override PROGRAMME_START from CFG
+    // Must run before any date/week/phase calculations
+    await loadProgrammeConfig();
     todayStr = getTodayDateStr();
     selectedDateStr = todayStr;
     cDay = getTodayDowIndex();
-    // Load week activity FIRST — phase is derived from this
+    // Load week activity — phase is derived from this
     await loadWeekActivity();
     const todayState = getProgrammeState(new Date());
     cPhase = todayState.phase;
@@ -2149,7 +2201,7 @@ function renderWorkout(){
   const weekLabel = isBeforeStart ? 'Before start' : `Week ${calWeekNum}`;
   document.getElementById('today-date-label').textContent=`${formatDate(viewDate).toUpperCase()} · ${weekLabel.toUpperCase()} · PHASE ${cPhase}`;
   document.getElementById('today-workout-title').textContent = isBeforeStart ? 'NOT STARTED' : w.title;
-  document.getElementById('today-workout-sub').textContent = isBeforeStart ? 'Programme started 13 March 2026' : w.sub;
+  document.getElementById('today-workout-sub').textContent = isBeforeStart ? 'Programme starts ' + formatDate(PROGRAMME_START) : w.sub;
   const c=document.getElementById('workout-content');
 
   // ── PHASE PROGRESS BANNER — rendered via renderPhaseBanner() ──
@@ -2161,7 +2213,7 @@ function renderWorkout(){
     c.innerHTML=`${bannerHTML}<div class="rest-card">
       <div class="rest-icon">🗓️</div>
       <h2>BEFORE START</h2>
-      <p>This day is before 13 March 2026.<br>No workout to show.</p>
+      <p>This day is before ${formatDate(PROGRAMME_START)}.<br>No workout to show.</p>
     </div>`;
     return;
   }
@@ -2972,11 +3024,119 @@ function showScreen(id,btn){
   if(id==='progress') renderProgress();  // has internal 60s cache
   if(id==='diet' && !_screenRendered.diet){ renderDiet(); _screenRendered.diet=true; }
   if(id==='mob' && !_screenRendered.mob){ renderMobility(); _screenRendered.mob=true; }
+  if(id==='settings') renderSettings(); // always re-render — reflects latest state
 }
 
 // ============================================================
 // INBODY MODAL
 // ============================================================
+// ============================================================
+// SETTINGS SCREEN
+// ============================================================
+function renderSettings() {
+  const el = document.getElementById('settings-content');
+  if (!el) return;
+
+  const state   = getProgrammeState(new Date());
+  const startStr = localDateStr(PROGRAMME_START);
+  const curWeek  = state.beforeStart ? '—' : state.week;
+  const curPhase = state.beforeStart ? '—' : state.phase;
+  const qualWks  = state.qualifyingInPhase || 0;
+  const needed   = PHASE_WEEKS[cPhase] || 4;
+  const dayName  = state.beforeStart ? '—' : DAYS[state.dowIndex];
+
+  el.innerHTML = `
+    <!-- Current programme status -->
+    <div class="settings-card">
+      <div class="settings-card-title">Current Programme</div>
+      <div class="settings-row">
+        <div class="settings-row-label">Start Date</div>
+        <div class="settings-row-val">${formatDate(PROGRAMME_START)}</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Today</div>
+        <div class="settings-row-val">Week ${curWeek} · ${dayName}</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Phase</div>
+        <div class="settings-row-val">Phase ${curPhase} of 5</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Phase Progress</div>
+        <div class="settings-row-val">${qualWks} / ${needed} qualifying weeks</div>
+      </div>
+    </div>
+
+    <!-- Change start date -->
+    <div class="settings-card">
+      <div class="settings-card-title">Change Start Date</div>
+      <div style="padding:0 16px">
+        <input
+          class="settings-date-input"
+          type="date"
+          id="settings-date-picker"
+          value="${startStr}"
+          max="${localDateStr()}"
+        >
+      </div>
+      <div class="settings-hint">
+        Moving the start date recalculates your current week, phase, and all
+        progress milestones. Your logged workouts and sets are <strong style="color:var(--text)">not deleted</strong>.
+      </div>
+      <button class="settings-apply-btn" id="settings-apply-btn" onclick="openResetModal()">
+        Apply New Start Date
+      </button>
+    </div>
+
+    <!-- Danger zone -->
+    <div style="padding:4px 4px 0;font-size:11px;color:var(--muted);text-align:center;line-height:1.6">
+      Programme config is saved to Supabase and persists across devices and sessions.
+    </div>
+  `;
+}
+
+let _pendingResetDate = null;
+
+function openResetModal() {
+  const picker = document.getElementById('settings-date-picker');
+  if (!picker || !picker.value) { showToast('Pick a date first', 'error'); return; }
+  const newDate   = picker.value; // YYYY-MM-DD
+  const newParsed = parseLocalDate(newDate);
+  const newState  = (() => {
+    // Temporarily compute what state would look like with the new date
+    const saved = PROGRAMME_START;
+    PROGRAMME_START = newParsed;
+    const s = getProgrammeState(new Date());
+    PROGRAMME_START = saved;
+    return s;
+  })();
+
+  _pendingResetDate = newDate;
+
+  const detail = document.getElementById('reset-modal-detail');
+  if (detail) {
+    detail.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div><strong>New start date</strong> &nbsp;${formatDate(newParsed)}</div>
+        <div><strong>Becomes</strong> &nbsp;Week ${newState.beforeStart ? 0 : newState.week}, Phase ${newState.beforeStart ? 1 : newState.phase}</div>
+        <div style="margin-top:4px;color:var(--muted)">Logged workouts &amp; sets are untouched.</div>
+      </div>
+    `;
+  }
+
+  document.getElementById('reset-modal').classList.add('open');
+}
+
+function closeResetModal() {
+  document.getElementById('reset-modal').classList.remove('open');
+  _pendingResetDate = null;
+}
+
+function confirmReset() {
+  if (!_pendingResetDate) return;
+  applyNewStartDate(_pendingResetDate);
+}
+
 function openInBodyModal() {
   const today = new Date();
   document.getElementById('inbody-modal-date').textContent =
@@ -3288,6 +3448,95 @@ function daysSinceInBody() {
   const last = localStorage.getItem('lastInBodyDate');
   if(!last) return null;
   return Math.floor((new Date() - new Date(last)) / 86400000);
+}
+
+// ============================================================
+// PROGRAMME CONFIG — persisted in Supabase programme_config table
+// ============================================================
+
+// Cached config row id — used for upsert without re-fetching
+let _programmeConfigId = null;
+
+async function loadProgrammeConfig() {
+  try {
+    const { data, error } = await db
+      .from('programme_config')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+    if (error) { console.warn('loadProgrammeConfig:', error.message); return; }
+    if (data?.start_date) {
+      _programmeConfigId = data.id;
+      PROGRAMME_START = parseLocalDate(data.start_date);
+    }
+    // No row yet → PROGRAMME_START stays as CFG.startDate (set by applyExerciseData)
+  } catch(e) {
+    console.warn('loadProgrammeConfig exception:', e);
+  }
+}
+
+async function saveProgrammeConfig(dateStr) {
+  const payload = { start_date: dateStr, updated_at: new Date().toISOString() };
+  if (_programmeConfigId) {
+    const { error } = await db
+      .from('programme_config')
+      .update(payload)
+      .eq('id', _programmeConfigId);
+    if (error) throw error;
+  } else {
+    const { data, error } = await db
+      .from('programme_config')
+      .insert(payload)
+      .select('id')
+      .single();
+    if (error) throw error;
+    _programmeConfigId = data.id;
+  }
+}
+
+// Apply a new start date: persist → update globals → rebuild all caches → re-render
+async function applyNewStartDate(dateStr) {
+  const confirmBtn = document.getElementById('reset-modal-confirm');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Applying…'; }
+  try {
+    await saveProgrammeConfig(dateStr);
+    PROGRAMME_START = parseLocalDate(dateStr);
+    // Invalidate all caches that depend on PROGRAMME_START
+    _weekDatesMemo    = null;
+    _weekDatesMemoKey = null;
+    _stripCache       = {};
+    _workoutRenderKey = null;
+    weekActivityCache = {};
+    doneDatesCache    = new Set();
+    viewingWeekOffset = 0;
+    // Reload from current date
+    todayStr        = getTodayDateStr();
+    selectedDateStr = todayStr;
+    cDay            = getTodayDowIndex();
+    await loadWeekActivity();
+    const state = getProgrammeState(new Date());
+    cPhase = state.phase;
+    document.querySelectorAll('#phase-strip .ph-btn').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.ph) === cPhase);
+    });
+    const [sessionRes] = await Promise.all([
+      db.from('workout_sessions').select('*').eq('date', todayStr).eq('day_of_week', DAYS[cDay]).limit(1),
+      loadSetsForDate(todayStr, true),
+      loadCheckCache(todayStr),
+      loadHydration(todayStr),
+    ]);
+    if (sessionRes.data?.length) sessionId = sessionRes.data[0].id;
+    closeResetModal();
+    renderWeekStrip();
+    renderWorkout();
+    renderSettings();
+    showToast(`Programme starts ${formatDate(PROGRAMME_START)} ✓`);
+  } catch(e) {
+    console.error('applyNewStartDate:', e);
+    showToast('Failed to save — check connection', 'error');
+  } finally {
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Yes, Apply'; }
+  }
 }
 
 // ============================================================
