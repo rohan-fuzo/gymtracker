@@ -966,10 +966,14 @@ function getThisWeekProgress(calWeek) {
     const isFuture = d > todayLocal;
     const isSelectedDay = (i === cDay);
 
-    // Check done: DB cache OR live state for selected day
+    // Check done: DB cache OR live state for selected day.
+    // inCache intentionally NOT gated on !isFuture: the user can complete a different
+    // day's workout plan earlier in the week (e.g., doing Thu's plan on Tue by navigating
+    // to Thu's slot — sets are stored with Thu's date). The DB is the source of truth:
+    // if doneDatesCache has the date, it was worked out regardless of calendar order.
     const inCache = doneDatesCache.has(dateStr);
     const liveCheck = isSelectedDay && !isFuture && isDayDone(W[cPhase][DAYS[i]], DAYS[i]);
-    const isDone = !isFuture && (inCache || liveCheck);
+    const isDone = inCache || (!isFuture && liveCheck);
 
     days.push({ dateStr, isDone, isFuture, label: DAYS[i] });
   }
