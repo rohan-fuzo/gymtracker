@@ -1462,17 +1462,24 @@ async function loadCheckCache(dateStr){
     db.from('checklist_logs').select('*').eq('date',dateStr),
     db.from('warmup_logs').select('*').eq('date',dateStr),
   ]);
-  checkCache = {};
+  // Build the full cache locally before a single store assignment.
+  // Previously, checkCache = {} fired a store notification immediately,
+  // triggering renderWorkout() with an empty cache (blank LISS inputs) and
+  // setting _workoutRenderKey. Subsequent per-key mutations (checkCache[k]=v)
+  // bypass the store, so the final .then(renderWorkout) hit the patch path
+  // which does not update cardio input values. One assignment = one render.
+  const newCache = {};
   if(checkRes.data) checkRes.data.forEach(r=>{
-    // Cardio logs store JSON in notes — restore as object
+    // Cardio logs store JSON in notes — restore as object with values
     if(r.item_type==='cardio' && r.notes){
-      try { checkCache[r.item_key] = {...JSON.parse(r.notes), saved:true}; }
-      catch(e){ checkCache[r.item_key] = r.completed; }
+      try { newCache[r.item_key] = {...JSON.parse(r.notes), saved:true}; }
+      catch(e){ newCache[r.item_key] = r.completed; }
     } else {
-      checkCache[r.item_key] = r.completed;
+      newCache[r.item_key] = r.completed;
     }
   });
-  if(warmupRes.data) warmupRes.data.forEach(r=>{ checkCache[r.item_key] = r.completed; });
+  if(warmupRes.data) warmupRes.data.forEach(r=>{ newCache[r.item_key] = r.completed; });
+  checkCache = newCache;
 }
 
 async function loadHydration(dateStr){
@@ -2279,6 +2286,23 @@ function patchCheckCache(){
       d.textContent = `${wuDone}/${WARMUP_ITEMS.length} complete`;
       d.style.color = pct===100 ? 'var(--yellow)' : 'var(--dim)';
     }
+  });
+  // Cardio log inputs (LISS + cardio finishers) — patch saved values into DOM.
+  // Handles the timing edge case where loadSetsForDate resolves before
+  // loadCheckCache, causing this function to run instead of a full renderWorkout.
+  Object.keys(checkCache).forEach(key => {
+    const cardio = checkCache[key];
+    if (!cardio || typeof cardio !== 'object' || !cardio.saved) return;
+    const incEl = document.getElementById(key+'-inc');
+    const spdEl = document.getElementById(key+'-spd');
+    const minEl = document.getElementById(key+'-min');
+    if (!incEl && !spdEl && !minEl) return; // not a cardio log block on screen
+    if (incEl) { incEl.value = cardio.incline != null ? cardio.incline : ''; incEl.readOnly = true; }
+    if (spdEl) { spdEl.value = cardio.speed   != null ? cardio.speed   : ''; spdEl.readOnly = true; }
+    if (minEl) { minEl.value = cardio.mins     != null ? cardio.mins    : ''; minEl.readOnly = true; }
+    const wrap = (incEl || spdEl || minEl).closest('.cardio-log');
+    const btn  = wrap?.querySelector('.cardio-save-btn');
+    if (btn && !btn.disabled) { btn.textContent = '✓ LOGGED'; btn.classList.add('saved'); btn.disabled = true; }
   });
 }
 

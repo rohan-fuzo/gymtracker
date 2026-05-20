@@ -51,6 +51,7 @@ create table if not exists checklist_logs (
   item_type text not null,
   item_key text not null,
   completed boolean default false,
+  notes text,                               -- JSON payload for cardio logs: {incline, speed, mins}
   created_at timestamptz default now(),
   unique(date, item_key)
 );
@@ -217,3 +218,9 @@ create policy "Allow all for anon" on programme_config for all using (true) with
 -- ============================================================
 alter table workout_sessions add column if not exists is_travel boolean default false;
 create index if not exists idx_workout_sessions_travel on workout_sessions(is_travel) where is_travel = true;
+
+-- ============================================================
+-- CHECKLIST LOGS — notes column for cardio log data
+-- Run this if you have an existing database (safe to run multiple times)
+-- ============================================================
+alter table checklist_logs add column if not exists notes text;
