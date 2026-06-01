@@ -431,13 +431,23 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .progress-tab-btn.active{border-color:var(--p3);background:rgba(34,197,94,.1);color:var(--p3)}
 .progress-tab-btn:active{transform:scale(.97)}
 /* Measurement form */
-.meas-modal-sheet{max-height:92vh;overflow-y:auto}
+.meas-modal-sheet{max-height:88vh;overflow-y:auto}
 .meas-group-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 0 6px;border-top:1px solid var(--border);margin-top:6px}
 .meas-group-title.first{border-top:none;margin-top:0;padding-top:0}
 .meas-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .meas-field label{font-size:10px;font-weight:600;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:4px}
 .meas-field input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:10px 10px;color:var(--text);font-size:16px;font-family:'Bebas Neue',sans-serif;letter-spacing:.5px;outline:none;transition:border-color .15s;-webkit-appearance:none}
 .meas-field input:focus{border-color:var(--p3)}
+/* Accordion sections */
+.meas-acc-section{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px}
+.meas-acc-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.meas-acc-hdr:active{background:var(--surface3)}
+.meas-acc-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text)}
+.meas-acc-count{font-size:10px;color:var(--muted);margin-top:2px}
+.meas-acc-chevron{font-size:18px;color:var(--muted);transition:transform .22s cubic-bezier(.4,0,.2,1);line-height:1}
+.meas-acc-section.open .meas-acc-chevron{transform:rotate(180deg)}
+.meas-acc-body{display:none;padding:12px 14px 14px}
+.meas-acc-section.open .meas-acc-body{display:block}
 /* Unit toggle */
 .unit-toggle{display:inline-flex;border-radius:8px;overflow:hidden;border:1.5px solid var(--border)}
 .unit-btn{padding:6px 12px;background:none;border:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;font-family:'DM Sans',sans-serif;transition:all .15s}
@@ -3600,26 +3610,34 @@ function openMeasModal(dateStr){
 function closeMeasModal(){ document.getElementById('meas-modal')?.classList.remove('open'); }
 function handleMeasModalClick(e){ if(e.target===document.getElementById('meas-modal')) closeMeasModal(); }
 
+function toggleMeasAccordion(label){
+  const sec=document.querySelector(`.meas-acc-section[data-group="${label}"]`);
+  if(sec) sec.classList.toggle('open');
+}
+
 function renderMeasFields(existing, curDate){
   const wrap=document.getElementById('meas-fields-wrap');
   if(!wrap) return;
   const u=getMeasureUnit();
-  // Find most recent entry before curDate for placeholder
+  // Most recent entry before curDate — used for placeholder hints
   let prevEntry=null;
   if(_bodyData&&_bodyData.length){
     const sorted=[..._bodyData].sort((a,b)=>a.date.localeCompare(b.date));
     prevEntry=sorted.filter(e=>!curDate||e.date<curDate).pop()||null;
   }
   let html='';
-  MEAS_GROUPS.forEach(group=>{
-    html+=`<div class="meas-group-title" style="margin-top:16px">${group.label}</div><div class="meas-grid">`;
+  MEAS_GROUPS.forEach((group,gi)=>{
+    const filledCount=group.sites.filter(k=>existing?.[k]!=null).length;
+    // Open first group by default; also open any group that already has data
+    const isOpen = gi===0 || filledCount>0;
+    let fieldsHtml='';
     group.sites.forEach(siteKey=>{
       const site=MEASURE_SITES.find(s=>s.key===siteKey);
       const val=existing?.[siteKey];
       const prevVal=prevEntry?.[siteKey];
       const displayVal=val!=null?(u==='in'?cmToIn(val):parseFloat(val).toFixed(1)):'';
       const pholder=prevVal!=null?(u==='in'?cmToIn(prevVal):parseFloat(prevVal).toFixed(1)):'';
-      html+=`<div class="meas-field">
+      fieldsHtml+=`<div class="meas-field">
         <label style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">${site.label}</label>
         <input type="number" id="mf-${siteKey}" step="0.1" inputmode="decimal"
           value="${displayVal}" placeholder="${pholder||'—'}"
@@ -3628,7 +3646,19 @@ function renderMeasFields(existing, curDate){
         ${pholder?`<div style="font-size:10px;color:var(--dim);margin-top:2px">Last: ${pholder}${u==='in'?'"':' cm'}</div>`:''}
       </div>`;
     });
-    html+=`</div>`;
+    const countLabel = filledCount>0 ? `${filledCount}/${group.sites.length} filled` : `${group.sites.length} sites`;
+    html+=`<div class="meas-acc-section${isOpen?' open':''}" data-group="${group.label}">
+      <div class="meas-acc-hdr" onclick="toggleMeasAccordion('${group.label}')">
+        <div>
+          <div class="meas-acc-label">${group.label}</div>
+          <div class="meas-acc-count">${countLabel}</div>
+        </div>
+        <div class="meas-acc-chevron">⌄</div>
+      </div>
+      <div class="meas-acc-body">
+        <div class="meas-grid">${fieldsHtml}</div>
+      </div>
+    </div>`;
   });
   wrap.innerHTML=html;
 }
