@@ -424,6 +424,58 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-state .es-icon{font-size:40px;margin-bottom:12px}
 .empty-state p{font-size:13px;line-height:1.6}
+
+/* ── BODY MEASUREMENTS MODULE ── */
+.progress-tab-bar{display:flex;gap:6px;padding:16px 16px 12px}
+.progress-tab-btn{flex:1;padding:9px 10px;border-radius:10px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.progress-tab-btn.active{border-color:var(--p3);background:rgba(34,197,94,.1);color:var(--p3)}
+.progress-tab-btn:active{transform:scale(.97)}
+/* Measurement form */
+.meas-modal-sheet{max-height:92vh;overflow-y:auto}
+.meas-group-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 0 6px;border-top:1px solid var(--border);margin-top:6px}
+.meas-group-title.first{border-top:none;margin-top:0;padding-top:0}
+.meas-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meas-field label{font-size:10px;font-weight:600;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:4px}
+.meas-field input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:10px 10px;color:var(--text);font-size:16px;font-family:'Bebas Neue',sans-serif;letter-spacing:.5px;outline:none;transition:border-color .15s;-webkit-appearance:none}
+.meas-field input:focus{border-color:var(--p3)}
+/* Unit toggle */
+.unit-toggle{display:inline-flex;border-radius:8px;overflow:hidden;border:1.5px solid var(--border)}
+.unit-btn{padding:6px 12px;background:none;border:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px;font-family:'DM Sans',sans-serif;transition:all .15s}
+.unit-btn.active{background:var(--surface3);color:var(--text)}
+/* Site rows */
+.meas-site-row{display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.meas-site-row:last-child{border-bottom:none}
+.meas-site-name{font-size:13px;font-weight:500;flex:1;color:var(--text)}
+.meas-site-vals{text-align:right}
+.meas-site-val{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.5px;line-height:1}
+.meas-delta{font-size:10px;font-weight:600;margin-top:2px;line-height:1.5}
+.meas-delta-good{color:var(--p3)}
+.meas-delta-bad{color:var(--p1)}
+.meas-delta-neutral{color:var(--muted)}
+/* Derived metrics */
+.derived-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.derived-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.derived-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--cyan)}
+.derived-key{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.3}
+/* Log CTA */
+.meas-log-cta{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.meas-log-cta-text{flex:1}
+.meas-log-btn{padding:10px 16px;background:var(--p3);border:none;border-radius:10px;color:#000;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:opacity .15s}
+.meas-log-btn:active{opacity:.8}
+/* Comparison */
+.compare-row{display:grid;grid-template-columns:1.2fr 1fr 1fr .9fr;gap:4px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.compare-row.hdr{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.compare-row:last-child{border-bottom:none}
+/* Monthly summary */
+.month-summary-row{padding:8px 0;border-bottom:1px solid var(--border)}
+.month-summary-row:last-child{border-bottom:none}
+.month-summary-label{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
+.month-summary-changes{font-size:12px;color:var(--text);line-height:1.8}
+/* History */
+.meas-history-row{background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
+.meas-history-date{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.meas-history-pills{display:flex;flex-wrap:wrap;gap:4px}
+.meas-history-pill{font-size:10px;padding:2px 6px;background:var(--surface3);border-radius:4px;color:var(--dim)}
 </style>
 </head>
 <body>
@@ -656,6 +708,47 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
   </div>
 </div>
 
+<!-- BODY MEASUREMENTS MODAL -->
+<div class="modal-overlay" id="meas-modal" onclick="handleMeasModalClick(event)">
+  <div class="modal-sheet meas-modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">LOG MEASUREMENTS</div>
+      <div class="unit-toggle" style="margin-top:6px">
+        <button class="unit-btn" id="meas-unit-cm" onclick="setMeasUnit('cm')">CM</button>
+        <button class="unit-btn" id="meas-unit-in" onclick="setMeasUnit('in')">IN</button>
+      </div>
+    </div>
+    <div class="modal-sub">Tape measure · all sites optional</div>
+    <div style="margin-bottom:14px;margin-top:16px">
+      <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">DATE</label>
+      <input type="date" id="meas-date" class="settings-date-input" style="margin-top:0;font-family:'DM Sans',sans-serif;font-size:14px">
+    </div>
+    <div id="meas-fields-wrap"></div>
+    <div style="margin-top:12px">
+      <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">NOTES</label>
+      <input type="text" id="meas-notes" placeholder="Phase, conditions, how it went..." style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:11px 12px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s">
+    </div>
+    <button class="modal-btn" style="background:var(--p3);color:#000;margin-top:16px" onclick="saveMeasurement()">SAVE MEASUREMENTS ✓</button>
+    <button class="modal-btn skip" onclick="closeMeasModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- HEIGHT PROMPT MODAL -->
+<div class="modal-overlay" id="height-modal" onclick="handleHeightModalClick(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">YOUR HEIGHT</div>
+    <div class="modal-sub">Used for waist-to-height ratio · entered once</div>
+    <div class="modal-field" style="margin-bottom:16px;margin-top:16px">
+      <label>Height (cm)</label>
+      <input type="number" id="height-cm-input" placeholder="175" step="0.5" min="140" max="220" inputmode="decimal" style="width:100%;font-size:32px;padding:16px">
+    </div>
+    <button class="modal-btn" style="background:var(--cyan);color:#000" onclick="saveHeight()">SAVE HEIGHT</button>
+    <button class="modal-btn skip" onclick="skipHeight()">Skip for now</button>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // SUPABASE CONFIG
@@ -667,13 +760,14 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── Schema constants — change column names here, not scattered across 50 callsites ──
 const TABLES = Object.freeze({
-  SESSIONS:   'workout_sessions',
-  EXERCISES:  'exercise_logs',
-  WARMUP:     'warmup_logs',
-  CHECKLIST:  'checklist_logs',
-  BODY:       'body_metrics',
-  HYDRATION:  'hydration_logs',
-  INBODY:     'inbody_logs',
+  SESSIONS:     'workout_sessions',
+  EXERCISES:    'exercise_logs',
+  WARMUP:       'warmup_logs',
+  CHECKLIST:    'checklist_logs',
+  BODY:         'body_metrics',
+  HYDRATION:    'hydration_logs',
+  INBODY:       'inbody_logs',
+  MEASUREMENTS: 'body_measurements',
 });
 const CONFLICTS = Object.freeze({
   EXERCISES:  'date,exercise_name,set_number,is_mm_set',
@@ -1597,6 +1691,68 @@ const TRAVEL_WORKOUTS = {
     ]
   },
 };
+
+// ============================================================
+// BODY MEASUREMENTS — constants, helpers, module state
+// ============================================================
+const MEASURE_SITES = [
+  {key:'neck',      label:'Neck',       group:'UPPER BODY', goal:'increase'},
+  {key:'shoulders', label:'Shoulders',  group:'UPPER BODY', goal:'increase'},
+  {key:'chest',     label:'Chest',      group:'UPPER BODY', goal:'increase'},
+  {key:'bicep',     label:'Bicep',      group:'UPPER BODY', goal:'increase'},
+  {key:'forearm',   label:'Forearm',    group:'UPPER BODY', goal:'neutral'},
+  {key:'wrist',     label:'Wrist',      group:'UPPER BODY', goal:'neutral'},
+  {key:'upper_abs', label:'Upper Abs',  group:'TORSO',      goal:'decrease'},
+  {key:'waist',     label:'Waist',      group:'TORSO',      goal:'decrease'},
+  {key:'lower_abs', label:'Lower Abs',  group:'TORSO',      goal:'decrease'},
+  {key:'hips',      label:'Hips',       group:'TORSO',      goal:'decrease'},
+  {key:'glutes',    label:'Glutes',     group:'TORSO',      goal:'neutral'},
+  {key:'thighs',    label:'Thighs',     group:'LOWER BODY', goal:'decrease'},
+  {key:'calves',    label:'Calves',     group:'LOWER BODY', goal:'increase'},
+  {key:'ankle',     label:'Ankle',      group:'LOWER BODY', goal:'neutral'},
+];
+const MEAS_GROUPS = [
+  {label:'UPPER BODY', sites:['neck','shoulders','chest','bicep','forearm','wrist']},
+  {label:'TORSO',      sites:['upper_abs','waist','lower_abs','hips','glutes']},
+  {label:'LOWER BODY', sites:['thighs','calves','ankle']},
+];
+
+// Unit helpers — values always stored in cm
+function getMeasureUnit(){ return localStorage.getItem('measureUnit')||'cm'; }
+function cmToIn(cm){ return (parseFloat(cm)/2.54).toFixed(1); }
+function inToCm(inches){ return (parseFloat(inches)*2.54).toFixed(1); }
+function fmtM(cmVal){
+  if(cmVal==null) return '—';
+  const u=getMeasureUnit();
+  return u==='in' ? cmToIn(cmVal)+'"' : parseFloat(cmVal).toFixed(1)+' cm';
+}
+function fmtMDelta(cmDelta){
+  if(cmDelta==null) return null;
+  const u=getMeasureUnit();
+  const v=u==='in' ? (cmDelta/2.54) : cmDelta;
+  const sign=v>0?'+':'';
+  return sign+Math.abs(v).toFixed(1)+(u==='in'?'"':' cm');
+}
+
+// Module-level cache
+let _progressTab = 'weight'; // 'weight' | 'body'
+let _bodyLastFetch = 0;
+let _bodyData = null;        // array of body_measurements rows
+let _inbodyForBody = null;   // array of inbody_logs rows (reused in body tab)
+let _measChart = null;
+
+// Measurement due helpers
+function isMeasurementDue(){
+  const last = localStorage.getItem('lastMeasurementDate');
+  if(!last) return true;
+  const interval = parseInt(localStorage.getItem('measureReminderDays')||'14');
+  return Math.floor((Date.now()-new Date(last))/86400000) >= interval;
+}
+function daysSinceMeasurement(){
+  const last = localStorage.getItem('lastMeasurementDate');
+  if(!last) return null;
+  return Math.floor((Date.now()-new Date(last))/86400000);
+}
 
 // ── Travel mode per-day state (stored in localStorage) ──
 function getTravelMode(dateStr) {
@@ -2732,13 +2888,36 @@ function renderLiss(w,c,bannerHTML='',isTravelDay=false){
 // ============================================================
 // _progressLastFetch now in store
 
+function switchProgressTab(tab){
+  _progressTab = tab;
+  _progressLastFetch = 0; // force weight tab re-render when re-entering
+  _bodyLastFetch = 0;     // force body tab re-render when re-entering
+  renderProgress();
+}
+
 async function renderProgress(){
-  const now = Date.now();
-  // Skip re-fetch if rendered less than 60 seconds ago
-  if(now - _progressLastFetch < 60000 && document.getElementById('progress-content').children.length > 0) return;
-  _progressLastFetch = now;
   const el = document.getElementById('progress-content');
-  el.innerHTML = `<div class="empty-state"><div class="es-icon">⏳</div><p>Loading your data...</p></div>`;
+  // Inject tab bar + container once
+  if(!document.getElementById('progress-tab-content')){
+    el.innerHTML = `
+      <div class="progress-tab-bar">
+        <button class="progress-tab-btn" id="ptab-weight" onclick="switchProgressTab('weight')">⚖️ WEIGHT</button>
+        <button class="progress-tab-btn" id="ptab-body" onclick="switchProgressTab('body')">📏 BODY</button>
+      </div>
+      <div id="progress-tab-content"></div>`;
+  }
+  document.getElementById('ptab-weight')?.classList.toggle('active', _progressTab==='weight');
+  document.getElementById('ptab-body')?.classList.toggle('active', _progressTab==='body');
+  if(_progressTab==='weight') await renderWeightTab();
+  else await renderBodyTab();
+}
+
+async function renderWeightTab(){
+  const now = Date.now();
+  const tabEl = document.getElementById('progress-tab-content');
+  if(now - _progressLastFetch < 60000 && tabEl?.dataset.tab === 'weight') return;
+  _progressLastFetch = now;
+  if(tabEl) { tabEl.dataset.tab='weight'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading your data...</p></div>`; }
   try {
     // All 4 queries in parallel
     const [metricsRes, inbodyRes, exLogsRes, healthRes] = await Promise.all([
@@ -2937,7 +3116,7 @@ async function renderProgress(){
     }
 
     h+=`<div class="spacer"></div>`;
-    el.innerHTML = h;
+    if(tabEl) tabEl.innerHTML = h;
 
     // Render weight chart
     if(metrics && metrics.length > 1){
@@ -3025,8 +3204,486 @@ async function renderProgress(){
 
   } catch(e){
     console.error(e);
-    el.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load data. Check connection.</p></div>`;
+    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load data. Check connection.</p></div>`;
   }
+}
+
+// ============================================================
+// BODY MEASUREMENTS TAB
+// ============================================================
+
+async function renderBodyTab(){
+  const now = Date.now();
+  const tabEl = document.getElementById('progress-tab-content');
+  if(now - _bodyLastFetch < 60000 && tabEl?.dataset.tab === 'body') return;
+  _bodyLastFetch = now;
+  if(tabEl){ tabEl.dataset.tab='body'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading measurements...</p></div>`; }
+  try {
+    const [measRes, inbodyRes] = await Promise.all([
+      db.from(TABLES.MEASUREMENTS).select('*').order('date',{ascending:true}),
+      db.from(TABLES.INBODY).select('*').order('date',{ascending:true}),
+    ]);
+    _bodyData = measRes.data || [];
+    _inbodyForBody = inbodyRes.data || [];
+    const latest  = _bodyData.length > 0 ? _bodyData[_bodyData.length-1] : null;
+    const prev    = _bodyData.length > 1 ? _bodyData[_bodyData.length-2] : null;
+    const first   = _bodyData.length > 0 ? _bodyData[0] : null;
+    const latestIB = _inbodyForBody.length > 0 ? _inbodyForBody[_inbodyForBody.length-1] : null;
+    const u = getMeasureUnit();
+    let h = '';
+
+    // Measurement due banner
+    const measDue = isMeasurementDue();
+    const dSince  = daysSinceMeasurement();
+    if(measDue){
+      h += `<div class="notif-banner" style="border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06);margin-bottom:0">
+        <div class="notif-banner-icon">📏</div>
+        <div class="notif-banner-text">
+          <div class="notif-banner-title">MEASUREMENTS DUE${dSince?` — ${dSince} DAYS AGO`:' — FIRST LOG'}</div>
+          <div class="notif-banner-sub">Bi-weekly tape measure · same time of day</div>
+        </div>
+        <button class="notif-banner-btn" style="background:var(--p3);color:#000" onclick="openMeasModal()">LOG</button>
+      </div>`;
+    }
+
+    // Log CTA + unit toggle bar
+    h += `<div class="meas-log-cta">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--text)">${latest?`LAST: ${latest.date}`:'NO MEASUREMENTS YET'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${_bodyData.length} entr${_bodyData.length===1?'y':'ies'} logged</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="unit-toggle">
+            <button class="unit-btn${u==='cm'?' active':''}" onclick="setMeasUnit('cm')">CM</button>
+            <button class="unit-btn${u==='in'?' active':''}" onclick="setMeasUnit('in')">IN</button>
+          </div>
+          <button class="meas-log-btn" onclick="openMeasModal()">+ LOG</button>
+        </div>
+      </div>
+    </div>`;
+
+    // Derived metrics (waist:hip, waist:height)
+    if(latest){
+      const heightCm = parseFloat(localStorage.getItem('userHeightCm')||'0');
+      const waist = parseFloat(latest.waist||0);
+      const hips  = parseFloat(latest.hips||0);
+      const whr   = (waist && hips)     ? (waist/hips).toFixed(2)   : null;
+      const whtr  = (waist && heightCm) ? (waist/heightCm).toFixed(2): null;
+      if(whr || whtr || !heightCm){
+        const whrRisk  = whr  ? (whr>0.9?'HIGH':whr>0.8?'MODERATE':'LOW') : null;
+        const whtrRisk = whtr ? (whtr>0.5?'HIGH':whtr>0.43?'MODERATE':'LOW') : null;
+        const riskCol  = r => r==='LOW'?'var(--p3)':r==='MODERATE'?'var(--yellow)':'var(--p1)';
+        h += `<div class="chart-card" style="margin-bottom:12px">
+          <div class="chart-title">DERIVED METRICS</div>
+          <div class="derived-grid">
+            ${whr?`<div class="derived-card">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Waist : Hip</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:${riskCol(whrRisk)}">${whr}</div>
+              <div style="font-size:10px;color:${riskCol(whrRisk)};font-weight:700">${whrRisk} RISK</div>
+            </div>`:''}
+            ${whtr?`<div class="derived-card">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Waist : Height</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:${riskCol(whtrRisk)}">${whtr}</div>
+              <div style="font-size:10px;color:${riskCol(whtrRisk)};font-weight:700">${whtrRisk} RISK</div>
+            </div>`:''}
+            ${!heightCm?`<div class="derived-card" onclick="openHeightModal()" style="cursor:pointer;border:1.5px dashed var(--border)">
+              <div style="font-size:11px;color:var(--muted)">Waist:Height</div>
+              <div style="font-size:12px;color:var(--cyan);margin-top:6px">+ Add height</div>
+            </div>`:''}
+          </div>
+        </div>`;
+      }
+    }
+
+    // InBody composition mini-card
+    if(latestIB){
+      h += `<div class="chart-card" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="chart-title" style="margin-bottom:0">INBODY COMPOSITION</div>
+          <div style="font-size:11px;color:var(--muted)">${latestIB.date}</div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-val" style="color:var(--p5);font-size:18px">${latestIB.body_fat_pct||'—'}%</div><div class="stat-key">Body Fat</div></div>
+          <div class="stat-card"><div class="stat-val" style="color:var(--p3);font-size:18px">${latestIB.skeletal_muscle_mass||'—'}kg</div><div class="stat-key">Muscle</div></div>
+          <div class="stat-card"><div class="stat-val" style="color:var(--p2);font-size:18px">${latestIB.bmr||'—'}</div><div class="stat-key">BMR</div></div>
+          <div class="stat-card"><div class="stat-val" style="color:var(--yellow);font-size:18px">${latestIB.inbody_score||'—'}</div><div class="stat-key">Score</div></div>
+        </div>
+      </div>`;
+    }
+
+    // Per-group site rows with deltas
+    if(latest){
+      MEAS_GROUPS.forEach(group=>{
+        const rows = group.sites.map(siteKey=>{
+          const site = MEASURE_SITES.find(s=>s.key===siteKey);
+          const val  = latest[siteKey];
+          if(val==null) return '';
+          const d = deltaForSite(siteKey, latest, prev, first);
+          return `<div class="meas-site-row">
+            <div style="font-size:13px;color:var(--text);min-width:80px">${site.label}</div>
+            <div class="meas-site-val">${fmtM(val)}</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
+              ${renderDeltaBadge(d.fromLast,site,'Last')}
+              ${renderDeltaBadge(d.fromFirst,site,'Start')}
+            </div>
+          </div>`;
+        }).join('');
+        if(rows.trim()){
+          h += `<div class="chart-card" style="margin-bottom:12px">
+            <div class="meas-group-title">${group.label}</div>${rows}</div>`;
+        }
+      });
+    } else {
+      h += `<div class="chart-card" style="margin-bottom:12px">
+        <div style="text-align:center;padding:28px 16px;color:var(--muted)">
+          <div style="font-size:32px;margin-bottom:8px">📏</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;color:var(--text)">No measurements yet</div>
+          <div style="font-size:12px">Tap <strong style="color:var(--p3)">+ LOG</strong> above to start tracking your body measurements</div>
+        </div>
+      </div>`;
+    }
+
+    // Site trend chart
+    if(_bodyData.length > 1){
+      const sitesWithData = MEASURE_SITES.filter(s=>_bodyData.some(d=>d[s.key]!=null));
+      if(sitesWithData.length){
+        const opts = sitesWithData.map(s=>`<option value="${s.key}">${s.label}</option>`).join('');
+        h += `<div class="chart-card" style="margin-bottom:12px">
+          <div class="chart-title">MEASUREMENT TREND</div>
+          <select class="ex-select" id="meas-site-select" onchange="updateMeasChart(this.value)" style="margin-bottom:10px">${opts}</select>
+          <div class="chart-wrap"><canvas id="meas-trend-chart"></canvas></div>
+        </div>`;
+      }
+    }
+
+    // Side-by-side comparison
+    if(_bodyData.length > 1){
+      const dOpts = _bodyData.map(d=>`<option value="${d.date}">${d.date}</option>`).join('');
+      h += `<div class="chart-card" style="margin-bottom:12px">
+        <div class="chart-title">COMPARE DATES</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <div style="flex:1">
+            <label style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">DATE A</label>
+            <select id="comp-date-a" class="ex-select" onchange="updateComparison()" style="width:100%">${dOpts}</select>
+          </div>
+          <div style="flex:1">
+            <label style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">DATE B</label>
+            <select id="comp-date-b" class="ex-select" onchange="updateComparison()" style="width:100%">${dOpts}</select>
+          </div>
+        </div>
+        <div id="comparison-table"></div>
+      </div>`;
+    }
+
+    // Monthly summary
+    if(_bodyData.length > 0){
+      const ms = buildMonthlySummary(_bodyData);
+      if(ms.length){
+        h += `<div class="chart-card" style="margin-bottom:12px">
+          <div class="chart-title">MONTHLY SUMMARY</div>
+          ${ms.map(m=>`<div class="month-summary-row">
+            <div class="month-summary-label">${m.label}</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6">${m.text}</div>
+          </div>`).join('')}
+        </div>`;
+      }
+    }
+
+    // History list (most recent 10)
+    if(_bodyData.length > 0){
+      const recent = [..._bodyData].reverse().slice(0,10);
+      h += `<div class="chart-card" style="margin-bottom:12px">
+        <div class="chart-title">HISTORY</div>
+        ${recent.map(entry=>{
+          const logged = MEASURE_SITES.filter(s=>entry[s.key]!=null);
+          return `<div class="meas-history-row" onclick="openMeasModal('${entry.date}')">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${entry.date}</div>
+              <div style="font-size:11px;color:var(--cyan)">${logged.length} sites</div>
+            </div>
+            <div class="meas-history-pills">
+              ${logged.slice(0,6).map(s=>`<span class="meas-history-pill">${s.label}: ${fmtM(entry[s.key])}</span>`).join('')}
+              ${logged.length>6?`<span class="meas-history-pill" style="color:var(--muted)">+${logged.length-6} more</span>`:''}
+            </div>
+            ${entry.notes?`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${entry.notes}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    h += `<div class="spacer"></div>`;
+    if(tabEl){ tabEl.dataset.tab='body'; tabEl.innerHTML=h; }
+
+    // Trend chart: first available site
+    if(_bodyData.length > 1){
+      const firstSite = MEASURE_SITES.find(s=>_bodyData.some(d=>d[s.key]!=null));
+      if(firstSite) updateMeasChart(firstSite.key);
+    }
+
+    // Comparison: default to last two entries
+    if(_bodyData.length > 1){
+      const selA = document.getElementById('comp-date-a');
+      const selB = document.getElementById('comp-date-b');
+      if(selA && selB){
+        selA.value = _bodyData[_bodyData.length-2].date;
+        selB.value = _bodyData[_bodyData.length-1].date;
+        updateComparison();
+      }
+    }
+
+  } catch(e){
+    console.error(e);
+    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load measurements.</p></div>`;
+  }
+}
+
+// ── Delta helpers ──
+function deltaForSite(siteKey, latest, prev, first){
+  const val      = parseFloat(latest?.[siteKey]);
+  const prevVal  = parseFloat(prev?.[siteKey]);
+  const firstVal = parseFloat(first?.[siteKey]);
+  if(!val || isNaN(val)) return {fromLast:null,fromFirst:null};
+  return {
+    fromLast:  (!isNaN(prevVal)  && prev  !== latest) ? val - prevVal  : null,
+    fromFirst: (!isNaN(firstVal) && first !== latest) ? val - firstVal : null,
+  };
+}
+
+function renderDeltaBadge(delta, site, label){
+  if(delta==null || Math.abs(delta)<0.05) return '';
+  const u = getMeasureUnit();
+  const dv = u==='in' ? delta/2.54 : delta;
+  const sign = dv>0?'+':'';
+  const str = sign+Math.abs(dv).toFixed(1)+(u==='in'?'"':'cm');
+  let cls = 'meas-delta-neutral';
+  if(site.goal==='increase') cls = delta>0?'meas-delta-good':'meas-delta-bad';
+  if(site.goal==='decrease') cls = delta<0?'meas-delta-good':'meas-delta-bad';
+  return `<span class="meas-delta ${cls}" title="vs ${label}">${str}</span>`;
+}
+
+function updateMeasChart(siteKey){
+  const site = MEASURE_SITES.find(s=>s.key===siteKey);
+  if(!site || !_bodyData) return;
+  const rows = _bodyData.filter(d=>d[siteKey]!=null);
+  if(rows.length<2) return;
+  const ctx = document.getElementById('meas-trend-chart')?.getContext('2d');
+  if(!ctx) return;
+  if(_measChart) _measChart.destroy();
+  const u = getMeasureUnit();
+  const data = rows.map(d=>u==='in'?parseFloat(cmToIn(d[siteKey])):parseFloat(d[siteKey]));
+  const color = site.goal==='decrease'?'#ff4520':site.goal==='increase'?'#22c55e':'#06b6d4';
+  _measChart = new Chart(ctx,{
+    type:'line',
+    data:{
+      labels: rows.map(d=>d.date.slice(5)),
+      datasets:[{
+        label:`${site.label} (${u})`,
+        data,
+        borderColor:color,
+        backgroundColor:color+'22',
+        tension:.3,
+        pointRadius:4,
+        pointBackgroundColor:color,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#666',font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},
+        y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'}}
+      }
+    }
+  });
+}
+
+function updateComparison(){
+  const aDate = document.getElementById('comp-date-a')?.value;
+  const bDate = document.getElementById('comp-date-b')?.value;
+  const tableEl = document.getElementById('comparison-table');
+  if(!tableEl||!aDate||!bDate||!_bodyData) return;
+  const aEntry = _bodyData.find(d=>d.date===aDate);
+  const bEntry = _bodyData.find(d=>d.date===bDate);
+  if(!aEntry||!bEntry) return;
+  const u = getMeasureUnit();
+  let rows = `<div class="compare-row hdr">
+    <div>Site</div><div>${aDate.slice(5)}</div><div>${bDate.slice(5)}</div><div>Δ</div>
+  </div>`;
+  MEASURE_SITES.forEach(site=>{
+    const av = aEntry[site.key], bv = bEntry[site.key];
+    if(av==null && bv==null) return;
+    let deltaHTML = '—';
+    if(av!=null && bv!=null){
+      const delta = parseFloat(bv)-parseFloat(av);
+      const dv = u==='in'?delta/2.54:delta;
+      const sign = dv>0?'+':'';
+      const cls = site.goal==='decrease'?(delta<0?'meas-delta-good':'meas-delta-bad')
+                : site.goal==='increase'?(delta>0?'meas-delta-good':'meas-delta-bad')
+                : 'meas-delta-neutral';
+      deltaHTML=`<span class="meas-delta ${cls}">${sign}${Math.abs(dv).toFixed(1)}${u==='in'?'"':'cm'}</span>`;
+    }
+    rows+=`<div class="compare-row">
+      <div style="font-size:12px;color:var(--text)">${site.label}</div>
+      <div style="font-size:12px;color:var(--muted)">${fmtM(av)}</div>
+      <div style="font-size:12px;color:var(--muted)">${fmtM(bv)}</div>
+      <div>${deltaHTML}</div>
+    </div>`;
+  });
+  tableEl.innerHTML = rows;
+}
+
+function buildMonthlySummary(data){
+  if(data.length<2) return [];
+  const byMonth={};
+  data.forEach(entry=>{
+    const m=entry.date.slice(0,7);
+    if(!byMonth[m]) byMonth[m]=[];
+    byMonth[m].push(entry);
+  });
+  return Object.entries(byMonth).map(([month,entries])=>{
+    const last     = entries[entries.length-1];
+    const monthIdx = data.indexOf(entries[0]);
+    const prevE    = monthIdx>0 ? data[monthIdx-1] : null;
+    const u = getMeasureUnit();
+    const changes=[];
+    if(prevE){
+      MEASURE_SITES.forEach(site=>{
+        const f=parseFloat(prevE[site.key]);
+        const l=parseFloat(last[site.key]);
+        if(!f||!l||isNaN(f)||isNaN(l)) return;
+        const delta=l-f;
+        if(Math.abs(delta)<0.1) return;
+        const dv=u==='in'?delta/2.54:delta;
+        const sign=dv>0?'+':'';
+        changes.push(`${site.label} ${sign}${Math.abs(dv).toFixed(1)}${u==='in'?'"':'cm'}`);
+      });
+    }
+    const [y,m2]=month.split('-');
+    const label=new Date(parseInt(y),parseInt(m2)-1,1).toLocaleString('default',{month:'long',year:'numeric'});
+    return {
+      label,
+      text:changes.length>0?changes.join(' · '):entries.length===1?'1 entry — log next measurement for deltas':'No notable changes',
+    };
+  }).reverse();
+}
+
+// ── Measurement unit toggle ──
+function setMeasUnit(u){
+  localStorage.setItem('measureUnit',u);
+  document.querySelectorAll('.unit-btn').forEach(btn=>{
+    btn.classList.toggle('active', btn.textContent.toLowerCase()===u.toLowerCase());
+  });
+  _bodyLastFetch=0;
+  if(_progressTab==='body') renderBodyTab();
+}
+
+// ── Measurement modal ──
+function openMeasModal(dateStr){
+  const modal=document.getElementById('meas-modal');
+  if(!modal) return;
+  const d=dateStr||localDateStr();
+  const dateInput=document.getElementById('meas-date');
+  if(dateInput) dateInput.value=d;
+  const existing=_bodyData?.find(e=>e.date===d)||null;
+  renderMeasFields(existing, d);
+  const u=getMeasureUnit();
+  document.getElementById('meas-unit-cm')?.classList.toggle('active',u==='cm');
+  document.getElementById('meas-unit-in')?.classList.toggle('active',u==='in');
+  const notesEl=document.getElementById('meas-notes');
+  if(notesEl) notesEl.value=existing?.notes||'';
+  modal.classList.add('open');
+  if(!localStorage.getItem('userHeightCm')&&!localStorage.getItem('heightPromptSkipped')){
+    setTimeout(()=>openHeightModal(),300);
+  }
+}
+function closeMeasModal(){ document.getElementById('meas-modal')?.classList.remove('open'); }
+function handleMeasModalClick(e){ if(e.target===document.getElementById('meas-modal')) closeMeasModal(); }
+
+function renderMeasFields(existing, curDate){
+  const wrap=document.getElementById('meas-fields-wrap');
+  if(!wrap) return;
+  const u=getMeasureUnit();
+  // Find most recent entry before curDate for placeholder
+  let prevEntry=null;
+  if(_bodyData&&_bodyData.length){
+    const sorted=[..._bodyData].sort((a,b)=>a.date.localeCompare(b.date));
+    prevEntry=sorted.filter(e=>!curDate||e.date<curDate).pop()||null;
+  }
+  let html='';
+  MEAS_GROUPS.forEach(group=>{
+    html+=`<div class="meas-group-title" style="margin-top:16px">${group.label}</div><div class="meas-grid">`;
+    group.sites.forEach(siteKey=>{
+      const site=MEASURE_SITES.find(s=>s.key===siteKey);
+      const val=existing?.[siteKey];
+      const prevVal=prevEntry?.[siteKey];
+      const displayVal=val!=null?(u==='in'?cmToIn(val):parseFloat(val).toFixed(1)):'';
+      const pholder=prevVal!=null?(u==='in'?cmToIn(prevVal):parseFloat(prevVal).toFixed(1)):'';
+      html+=`<div class="meas-field">
+        <label style="font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px">${site.label}</label>
+        <input type="number" id="mf-${siteKey}" step="0.1" inputmode="decimal"
+          value="${displayVal}" placeholder="${pholder||'—'}"
+          style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none"
+          onfocus="this.style.borderColor='var(--p3)'" onblur="this.style.borderColor='var(--border)'">
+        ${pholder?`<div style="font-size:10px;color:var(--dim);margin-top:2px">Last: ${pholder}${u==='in'?'"':' cm'}</div>`:''}
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  wrap.innerHTML=html;
+}
+
+async function saveMeasurement(){
+  const dateInput=document.getElementById('meas-date');
+  const date=dateInput?.value||localDateStr();
+  const u=getMeasureUnit();
+  const payload={date,phase:cPhase};
+  let hasAny=false;
+  MEASURE_SITES.forEach(site=>{
+    const inp=document.getElementById(`mf-${site.key}`);
+    if(!inp||inp.value==='') return;
+    let val=parseFloat(inp.value);
+    if(isNaN(val)) return;
+    if(u==='in') val=parseFloat(inToCm(val));
+    payload[site.key]=val;
+    hasAny=true;
+  });
+  const notes=document.getElementById('meas-notes')?.value;
+  if(notes) payload.notes=notes;
+  if(!hasAny){ showToast('Enter at least one measurement','error'); return; }
+  setSyncStatus('syncing');
+  try {
+    const {error}=await db.from(TABLES.MEASUREMENTS).upsert(payload,{onConflict:'date'});
+    if(error) throw error;
+    setSyncStatus('synced');
+    localStorage.setItem('lastMeasurementDate',date);
+    closeMeasModal();
+    showToast('Measurements saved ✓');
+    _bodyLastFetch=0;
+    if(_progressTab==='body') renderBodyTab();
+  } catch(e){
+    setSyncStatus('error');
+    showToast('Save failed','error');
+    console.error(e);
+  }
+}
+
+// ── Height modal ──
+function openHeightModal(){ document.getElementById('height-modal')?.classList.add('open'); setTimeout(()=>document.getElementById('height-cm-input')?.focus(),300); }
+function closeHeightModal(){ document.getElementById('height-modal')?.classList.remove('open'); }
+function handleHeightModalClick(e){ if(e.target===document.getElementById('height-modal')) closeHeightModal(); }
+function saveHeight(){
+  const val=parseFloat(document.getElementById('height-cm-input')?.value);
+  if(!val||val<140||val>220){ showToast('Enter a valid height (140–220 cm)','error'); return; }
+  localStorage.setItem('userHeightCm',String(val));
+  closeHeightModal();
+  showToast(`Height saved: ${val}cm ✓`);
+  _bodyLastFetch=0;
+  if(_progressTab==='body') renderBodyTab();
+}
+function skipHeight(){
+  localStorage.setItem('heightPromptSkipped','1');
+  closeHeightModal();
 }
 
 function renderStrengthChartData(exName, exLogs){
@@ -3611,6 +4268,22 @@ async function checkPendingNotifications() {
       if(ok) localStorage.setItem('lastWeighInNotif', todayKey);
     }
   }
+
+  // Measurements — fire once per 20h if overdue
+  if(prefs.includes('measurements') && isMeasurementDue()) {
+    const lastShown = parseInt(localStorage.getItem('lastMeasNotif') || '0');
+    if(now - lastShown > 20 * 3600000) {
+      const dSince = daysSinceMeasurement();
+      const ok = await swNotify('Measurements Due 📏', {
+        body: dSince
+          ? `${dSince} days since your last tape measurement — time for your bi-weekly check-in.`
+          : 'Start tracking your body measurements in the Progress tab.',
+        tag: 'meas-reminder',
+        renotify: true,
+      });
+      if(ok) localStorage.setItem('lastMeasNotif', String(now));
+    }
+  }
 }
 
 function scheduleCreatineReminder() {
@@ -3666,7 +4339,7 @@ async function handleNotifBellTap() {
     return;
   }
   // Request permission (must be in user gesture — this tap qualifies)
-  const granted = await initNotifications(['inbody','weighin']);
+  const granted = await initNotifications(['inbody','weighin','measurements']);
   if(granted) showToast('Notifications enabled ✓');
   else showToast('Permission denied', 'error');
 }

@@ -224,3 +224,38 @@ create index if not exists idx_workout_sessions_travel on workout_sessions(is_tr
 -- Run this if you have an existing database (safe to run multiple times)
 -- ============================================================
 alter table checklist_logs add column if not exists notes text;
+
+-- ============================================================
+-- BODY MEASUREMENTS — tape measurements at 14 sites
+-- All values stored in cm regardless of display unit.
+-- Display unit (cm / in) preference is kept in localStorage.
+-- ============================================================
+create table if not exists body_measurements (
+  id           uuid default gen_random_uuid() primary key,
+  date         date not null unique,
+  phase        int,
+  -- Upper body
+  neck         numeric(5,1),
+  shoulders    numeric(5,1),
+  chest        numeric(5,1),
+  bicep        numeric(5,1),     -- dominant arm
+  forearm      numeric(5,1),
+  wrist        numeric(5,1),
+  -- Torso
+  upper_abs    numeric(5,1),
+  waist        numeric(5,1),
+  lower_abs    numeric(5,1),
+  hips         numeric(5,1),
+  glutes       numeric(5,1),
+  -- Lower body
+  thighs       numeric(5,1),     -- dominant leg
+  calves       numeric(5,1),
+  ankle        numeric(5,1),
+  notes        text,
+  created_at   timestamptz default now()
+);
+
+create index if not exists idx_body_measurements_date on body_measurements(date);
+alter table body_measurements enable row level security;
+create policy "Allow all for anon" on body_measurements
+  for all using (true) with check (true);
