@@ -1033,6 +1033,7 @@ function navWeek(delta, jumpToday = false) {
   sessionId = null;
   _sessionPromise = null;
   Object.keys(_prevBestCache).forEach(k => delete _prevBestCache[k]);
+  Object.keys(_prevHistoryCache).forEach(k => delete _prevHistoryCache[k]);
   _workoutRenderKey = null;
   renderWeekStrip();
   renderSkeletonWorkout();
@@ -2375,7 +2376,7 @@ async function fetchAIProgression(exName, exIndex, phase, dk){
   showAILoadingCard(ek);
 
   try {
-    const context = await assembleProgressionContext(exName, phase);
+    const context = assembleProgressionContext(exName, phase); // sync — no DB calls
     const suggestion = await callProgressionAI(exName, context, apiKey);
     if(suggestion){
       _aiSuggestions[cacheKey].text = suggestion;
@@ -2392,61 +2393,44 @@ async function fetchAIProgression(exName, exIndex, phase, dk){
   }
 }
 
-async function assembleProgressionContext(exName, phase){
-  const today = selectedDateStr;
-  const d7 = new Date(today); d7.setDate(d7.getDate()-7);
-  const d7str = localDateStr(d7);
+function assembleProgressionContext(exName, phase){
+  // Entirely in-memory — no Supabase calls.
+  // _prevHistoryCache is populated by prefetchPreviousBests() when the workout renders.
+  // _inbodyForBody is populated when the Progress tab is opened.
+  // checkCache holds today's LISS log.
 
-  const [histRes, bodyRes, ibRes, lissRes] = await Promise.all([
-    // Last 6 sessions of this exercise (up to ~60 sets), excluding today
-    db.from('exercise_logs')
-      .select('date,set_number,weight_kg,reps,rpe')
-      .eq('exercise_name', exName)
-      .eq('completed', true)
-      .eq('is_mm_set', false)
-      .lt('date', today)
-      .order('date', {ascending: false})
-      .limit(60),
-    // Latest body weight
-    db.from('body_metrics').select('date,weight_kg').order('date',{ascending:false}).limit(1),
-    // Latest InBody
-    db.from('inbody_logs').select('date,weight_kg,body_fat_pct,skeletal_muscle_mass,bmr').order('date',{ascending:false}).limit(1),
-    // LISS logs last 7 days
-    db.from('checklist_logs').select('date,notes').gte('date',d7str).like('item_key','liss_%'),
-  ]);
-
-  // Today's sets from in-memory loggedSets cache (already confirmed saved)
+  // Today's sets for this exercise
   const todaySets = Object.entries(loggedSets)
     .filter(([k]) => k.startsWith(exName+'|') && k.endsWith('|0'))
-    .map(([k,v]) => ({set: parseInt(k.split('|')[1]), weight_kg:v.weight, reps:v.reps, rpe:v.rpe}))
-    .sort((a,b)=>a.set-b.set);
+    .map(([k,v]) => ({set: parseInt(k.split('|')[1]), weight_kg:v.weight, reps:v.reps, rpe:v.rpe??null}))
+    .sort((a,b) => a.set - b.set);
 
-  // Group history by date → last 6 distinct dates
-  const hist = histRes.data || [];
-  const byDate = {};
-  hist.forEach(r=>{ if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
-  const sessions = Object.keys(byDate).sort().reverse().slice(0,6).map(date=>({
-    date,
-    sets: byDate[date].sort((a,b)=>a.set_number-b.set_number)
-          .map(r=>({set:r.set_number, weight_kg:r.weight_kg, reps:r.reps, rpe:r.rpe}))
-  }));
+  // Historical sessions from prefetch cache (last 6 dates, already grouped)
+  const sessions = _prevHistoryCache[exName] || [];
 
-  // LISS summary
-  const liss = (lissRes.data||[]).map(row=>{
-    try { const n=JSON.parse(row.notes||'{}'); return n.mins?{date:row.date,...n}:null; }
-    catch(_){ return null; }
-  }).filter(Boolean);
+  // Latest InBody from progress tab cache (null if tab never opened)
+  const latestIB = _inbodyForBody?.length
+    ? (({date,weight_kg,body_fat_pct,skeletal_muscle_mass,bmr}) =>
+        ({date,weight_kg,body_fat_pct,skeletal_muscle_mass,bmr}))(_inbodyForBody[_inbodyForBody.length-1])
+    : null;
+
+  // Today's LISS log from checkCache
+  const dk = DAYS[cDay];
+  const lissKey = `liss_${cPhase}_${dk}`;
+  const lissRaw = checkCache[lissKey];
+  const todayLiss = (lissRaw && typeof lissRaw === 'object' && lissRaw.saved)
+    ? {date: selectedDateStr, incline: lissRaw.incline, speed: lissRaw.speed, mins: lissRaw.mins}
+    : null;
 
   const ps = getProgrammeState(new Date());
   return {
-    exercise: exName,
-    training_phase: `Phase ${phase}`,
-    programme_week: ps.week,
-    today_sets: todaySets,
+    exercise:          exName,
+    training_phase:    `Phase ${phase}`,
+    programme_week:    ps.week,
+    today_sets:        todaySets,
     previous_sessions: sessions,
-    body_weight: bodyRes.data?.[0]||null,
-    inbody: ibRes.data?.[0]||null,
-    recent_liss_7d: liss,
+    inbody:            latestIB,
+    liss_today:        todayLiss,
   };
 }
 
@@ -2698,23 +2682,45 @@ async function commitSet(weight, reps, completed){
 
 // Cache of previous bests: "exName|setNum|isMM" -> {weight,reps,date}
 const _prevBestCache = {};
+// Full session history per exercise: exName → [{date, sets:[{set,weight_kg,reps,rpe}]}]
+// Populated by the same single query that feeds _prevBestCache — zero extra DB calls.
+const _prevHistoryCache = {};
 
 async function prefetchPreviousBests(exercises){
-  // Fetch all previous logs for today's exercises in one query, excluding today
+  // One query fetches all historical rows for every exercise on today's plan.
+  // Both _prevBestCache (for the set modal "previous best" label) and
+  // _prevHistoryCache (for AI context) are built from this single result set.
   const names = exercises.map(ex=>ex.n);
   if(!names.length) return;
   const {data} = await db.from('exercise_logs')
-    .select('exercise_name,set_number,is_mm_set,weight_kg,reps,date')
+    .select('exercise_name,set_number,is_mm_set,weight_kg,reps,rpe,date')
     .in('exercise_name', names)
     .eq('completed', true)
     .neq('date', selectedDateStr)
     .eq('is_mm_set', false)
     .order('date', {ascending:false});
   if(!data) return;
-  // For each exercise+set keep the most recent result
+
+  // _prevBestCache — most-recent result per exercise+set (used in set modal)
   data.forEach(row=>{
     const key=`${row.exercise_name}|${row.set_number}|0`;
     if(!_prevBestCache[key]) _prevBestCache[key]={weight:row.weight_kg,reps:row.reps,date:row.date};
+  });
+
+  // _prevHistoryCache — full sessions grouped by exercise (used by AI context)
+  const byEx = {};
+  data.forEach(row=>{
+    if(!byEx[row.exercise_name]) byEx[row.exercise_name]={};
+    if(!byEx[row.exercise_name][row.date]) byEx[row.exercise_name][row.date]=[];
+    byEx[row.exercise_name][row.date].push(row);
+  });
+  Object.entries(byEx).forEach(([exName, byDate])=>{
+    // Keep last 6 distinct dates, sets sorted ascending
+    _prevHistoryCache[exName] = Object.keys(byDate).sort().reverse().slice(0,6).map(date=>({
+      date,
+      sets: byDate[date].sort((a,b)=>a.set_number-b.set_number)
+            .map(r=>({set:r.set_number, weight_kg:r.weight_kg, reps:r.reps, rpe:r.rpe??null}))
+    }));
   });
 }
 
@@ -2744,6 +2750,7 @@ function selectDay(d){
   _sessionPromise=null;
   // Clear prev best cache — stale for new day
   Object.keys(_prevBestCache).forEach(k => delete _prevBestCache[k]);
+  Object.keys(_prevHistoryCache).forEach(k => delete _prevHistoryCache[k]);
   const date = getDateForDay(d);
   selectedDateStr = localDateStr(date);
   // Reset render key so next renderWorkout does full rebuild
