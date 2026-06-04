@@ -273,9 +273,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .tag-pull{background:rgba(59,130,246,.15);color:#60a5fa}
 .tag-legs{background:rgba(34,197,94,.15);color:var(--p3)}
 .tag-liss{background:rgba(255,140,0,.15);color:var(--p2)}
-.tag-power{background:rgba(245,158,11,.2);color:var(--gold)}
-.tag-mob{background:rgba(6,182,212,.15);color:var(--cyan)}
-.tag-core{background:rgba(34,197,94,.1);color:var(--p3)}
 .new-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:rgba(245,158,11,.15);color:var(--gold);margin-left:4px;vertical-align:middle}
 
 /* CREATINE / SLEEP */
@@ -322,24 +319,16 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .pr-name{font-size:13px;font-weight:600}
 .pr-val{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold)}
 .pr-date{font-size:10px;color:var(--muted);margin-top:1px}
-.callout{margin:0 0 10px;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.6;border-left:3px solid}
-.callout.info{background:rgba(59,130,246,.08);border-color:var(--p4);color:#93c5fd}
-.callout.ok{background:rgba(34,197,94,.08);border-color:var(--p3);color:#86efac}
-.callout.gold{background:rgba(245,158,11,.08);border-color:var(--gold);color:#d4a855}
-.callout strong{color:var(--text)}
 .spacer{height:20px}
 .notif-banner{margin:0 16px 10px;padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:12px;border:1px solid}
 .notif-banner.inbody{background:rgba(168,85,247,.08);border-color:rgba(168,85,247,.3)}
-.notif-banner.weighin{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3)}
 .notif-banner-icon{font-size:24px;flex-shrink:0}
 .notif-banner-text{flex:1}
 .notif-banner-title{font-size:12px;font-weight:700;letter-spacing:.5px}
 .notif-banner.inbody .notif-banner-title{color:#c084fc}
-.notif-banner.weighin .notif-banner-title{color:var(--p3)}
 .notif-banner-sub{font-size:11px;color:var(--muted);margin-top:2px}
 .notif-banner-btn{padding:7px 12px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0}
 .notif-banner.inbody .notif-banner-btn{background:rgba(168,85,247,.2);color:#c084fc}
-.notif-banner.weighin .notif-banner-btn{background:rgba(34,197,94,.2);color:var(--p3)}
 .inbody-modal{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:150;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .inbody-modal.open{opacity:1;pointer-events:all}
 .inbody-sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:20px 20px 40px;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,1.1,.5,1)}
@@ -455,21 +444,16 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 /* Site rows */
 .meas-site-row{display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
 .meas-site-row:last-child{border-bottom:none}
-.meas-site-name{font-size:13px;font-weight:500;flex:1;color:var(--text)}
-.meas-site-vals{text-align:right}
 .meas-site-val{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.5px;line-height:1}
-.meas-delta{font-size:10px;font-weight:600;margin-top:2px;line-height:1.5}
+.meas-delta{font-size:10px;font-weight:600;padding:2px 5px;border-radius:4px;line-height:1.5}
 .meas-delta-good{color:var(--p3)}
 .meas-delta-bad{color:var(--p1)}
 .meas-delta-neutral{color:var(--muted)}
 /* Derived metrics */
 .derived-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .derived-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
-.derived-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--cyan)}
-.derived-key{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.3}
 /* Log CTA */
 .meas-log-cta{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
-.meas-log-cta-text{flex:1}
 .meas-log-btn{padding:10px 16px;background:var(--p3);border:none;border-radius:10px;color:#000;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:opacity .15s}
 .meas-log-btn:active{opacity:.8}
 /* Comparison */
@@ -480,10 +464,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .month-summary-row{padding:8px 0;border-bottom:1px solid var(--border)}
 .month-summary-row:last-child{border-bottom:none}
 .month-summary-label{font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:3px}
-.month-summary-changes{font-size:12px;color:var(--text);line-height:1.8}
 /* History */
 .meas-history-row{background:var(--surface2);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
-.meas-history-date{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
 .meas-history-pills{display:flex;flex-wrap:wrap;gap:4px}
 .meas-history-pill{font-size:10px;padding:2px 6px;background:var(--surface3);border-radius:4px;color:var(--dim)}
 </style>
@@ -831,7 +813,7 @@ class Store {
   // Subscribe to state changes — fn called when any of keys change
   // Returns unsubscribe function
   subscribe(keys, fn) {
-    const sub = {keys: new Set(keys), fn};
+    const sub = {keys, fn}; // keep as plain array — no spread needed in _notify
     this._subs.push(sub);
     return () => { this._subs = this._subs.filter(s => s !== sub); };
   }
@@ -839,7 +821,7 @@ class Store {
   _notify(changedKeys) {
     const changed = new Set(changedKeys);
     this._subs.forEach(sub => {
-      if([...sub.keys].some(k => changed.has(k))) {
+      if(sub.keys.some(k => changed.has(k))) {
         try { sub.fn(this._state); } catch(e) { console.error('Store subscriber error:', e); }
       }
     });
@@ -1020,10 +1002,11 @@ function computePhaseFromHistory(history, currentCalendarWeek) {
   return { phase, qualifyingInPhase, remaining, neededTotal: needed() };
 }
 
-function getProgrammeState(date) {
+function getProgrammeState(date, overrideStart) {
   const d = (typeof date === 'string') ? parseLocalDate(date) : new Date(date);
   d.setHours(0,0,0,0);
-  const start = new Date(PROGRAMME_START.getTime()); start.setHours(0,0,0,0);
+  const startSrc = overrideStart || PROGRAMME_START;
+  const start = new Date(startSrc.getTime()); start.setHours(0,0,0,0);
   const dayNum = Math.floor((d - start) / 86400000);
   const js = d.getDay();
   const dowIndex = js === 0 ? 6 : js - 1;
@@ -1435,9 +1418,9 @@ document.addEventListener('visibilitychange', () => {
 
 // 3. Periodic retry — every 30 seconds while app is open and online
 //    Catches cases where network exists but Supabase was temporarily unreachable
-(function startPeriodicSync() {
+const _periodicSyncIntervalId = (function startPeriodicSync() {
   const INTERVAL_MS = 30 * 1000; // 30 seconds
-  setInterval(async () => {
+  return setInterval(async () => {
     if (!navigator.onLine) return;           // skip if offline
     if (_flushing) return;                   // skip if already flushing
     const items = await SyncDB.getAll().catch(() => []);
@@ -1447,7 +1430,7 @@ document.addEventListener('visibilitychange', () => {
     console.log(`[Sync] ${total} item(s) pending — retrying...`);
     await flushOfflineQueue();
   }, INTERVAL_MS);
-})();
+}());
 
 // 4. Before page unload — last attempt to flush pending saves
 window.addEventListener('beforeunload', () => {
@@ -1726,6 +1709,8 @@ const MEAS_GROUPS = [
   {label:'TORSO',      sites:['upper_abs','waist','lower_abs','hips','glutes']},
   {label:'LOWER BODY', sites:['thighs','calves','ankle']},
 ];
+// O(1) lookup map — built once at module parse time
+const MEASURE_SITES_MAP = new Map(MEASURE_SITES.map(s => [s.key, s]));
 
 // Unit helpers — values always stored in cm
 function getMeasureUnit(){ return localStorage.getItem('measureUnit')||'cm'; }
@@ -1750,6 +1735,7 @@ let _bodyLastFetch = 0;
 let _bodyData = null;        // array of body_measurements rows
 let _inbodyForBody = null;   // array of inbody_logs rows (reused in body tab)
 let _measChart = null;
+let _exLogs = null;          // exercise_logs cache for strength chart (module-level, not window)
 
 // Measurement due helpers
 function isMeasurementDue(){
@@ -1886,7 +1872,6 @@ async function toggleWarmup(itemKey, label, el){
   const pct = Math.round(wuDone/WARMUP_ITEMS.length*100);
   const fill = document.querySelector('.wu-progress-fill');
   if(fill) fill.style.width = pct+'%';
-  const countEl = document.querySelector('.wu-block [style*="wuDone"], .wu-block div[style*="color"]');
   // Find the count label by content pattern
   document.querySelectorAll('.wu-block div').forEach(d=>{
     if(d.textContent.match(/^\d+\/\d+ complete$/)){
@@ -1968,8 +1953,15 @@ async function toggleGlass(num){
 function renderHydrationRow(){
   const el = document.getElementById('hyd-row');
   if(!el) return;
-  const glassH = Array(8).fill(0).map((_,i)=>`<div class="glass-btn ${i<hydrationGlasses?'filled':''}" onclick="toggleGlass(${i+1})">💧</div>`).join('');
-  el.querySelector('.hyd-glasses').innerHTML = glassH;
+  const btns = el.querySelectorAll('.glass-btn');
+  if(btns.length === 0){
+    // First render — build DOM once
+    const wrap = el.querySelector('.hyd-glasses');
+    wrap.innerHTML = Array(8).fill(0).map((_,i)=>`<div class="glass-btn ${i<hydrationGlasses?'filled':''}" onclick="toggleGlass(${i+1})">💧</div>`).join('');
+  } else {
+    // Subsequent renders — toggle class only, no DOM rebuild
+    btns.forEach((btn, i) => btn.classList.toggle('filled', i < hydrationGlasses));
+  }
   el.querySelector('.hyd-total span').textContent = (hydrationGlasses*.5).toFixed(1)+'L';
 }
 
@@ -1984,6 +1976,7 @@ function haptic(pattern=[10]){
 // REST TIMER
 // ============================================================
 let _restTimerInterval = null;
+let _restTimerDismiss = null;
 let _restTimerTotal = 0;
 let _restTimerLeft = 0;
 
@@ -2018,9 +2011,10 @@ function startRestTimer(secs){
       count.textContent = 'GO!';
       count.style.color = 'var(--p3)';
       haptic([30, 50, 30, 50, 80]);
-      setTimeout(() => {
+      _restTimerDismiss = setTimeout(() => {
         el.classList.remove('show');
         count.style.color = 'var(--text)';
+        _restTimerDismiss = null;
       }, 1500);
     } else {
       count.textContent = _restTimerLeft + 's';
@@ -2032,6 +2026,7 @@ function startRestTimer(secs){
 
 function skipRestTimer(){
   clearInterval(_restTimerInterval);
+  if(_restTimerDismiss){ clearTimeout(_restTimerDismiss); _restTimerDismiss = null; }
   document.getElementById('rest-timer')?.classList.remove('show');
   document.getElementById('rest-timer-count').style.color = 'var(--text)';
   haptic([8]);
@@ -2580,23 +2575,22 @@ function renderWorkout(){
   // ── PHASE PROGRESS BANNER — rendered via renderPhaseBanner() ──
   const isViewingToday = (localDateStr(viewDate) === todayStr);
   renderPhaseBanner();
-  let bannerHTML = '';
 
   if(isBeforeStart){
-    c.innerHTML=`${bannerHTML}<div class="rest-card">
+    c.innerHTML=`<div class="rest-card">
       <div class="rest-icon">🗓️</div>
       <h2>BEFORE START</h2>
       <p>This day is before ${formatDate(PROGRAMME_START)}.<br>No workout to show.</p>
     </div>`;
     return;
   }
-  if(w.isRest){ c.innerHTML=`${bannerHTML}<div class="rest-card"><div class="rest-icon">😴</div><h2>REST DAY</h2><p>Recovery is training. Sleep by 10:30pm. Prep meals. Muscles grow while you rest — especially at 35.</p></div>${renderSleepCardHTML()}`; return; }
+  if(w.isRest){ c.innerHTML=`<div class="rest-card"><div class="rest-icon">😴</div><h2>REST DAY</h2><p>Recovery is training. Sleep by 10:30pm. Prep meals. Muscles grow while you rest — especially at 35.</p></div>${renderSleepCardHTML()}`; return; }
 
   // ── TRAVEL MODE ── detect before LISS check so LISS can carry the travel flag too
   const isTravelDay = getTravelMode(selectedDateStr);
   const travelType = getTravelDayType(w);
 
-  if(w.isLiss){ renderLiss(w, c, bannerHTML, isTravelDay); return; }
+  if(w.isLiss){ renderLiss(w, c, isTravelDay); return; }
 
   // Choose exercise list: travel bodyweight or regular programme
   const travelW = (isTravelDay && travelType && TRAVEL_WORKOUTS[travelType]) ? TRAVEL_WORKOUTS[travelType] : null;
@@ -2614,7 +2608,7 @@ function renderWorkout(){
   const tagH = displayTags.map(t=>`<span class="tag tag-${t}">${t.toUpperCase()}</span>`).join('');
   const isPowerDay = travelW ? false : !!w.isPower; // travel days never render as power
 
-  let h = bannerHTML;
+  let h = '';
 
   // Travel toggle — shown on all workout days (not rest, not before-start)
   h += renderTravelToggle(isTravelDay, travelType || 'fullbody');
@@ -2700,7 +2694,7 @@ function renderWorkout(){
   Perf.end('renderWorkout');
 }
 
-function esc(s){ return s.replace(/'/g,"\'"); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 // Returns true if every set (including MM if isFirst) for an exercise is logged complete
 function isExerciseDone(exName, sp, isFirst){
@@ -2865,7 +2859,7 @@ function renderHydrationHTML(){
   </div>`;
 }
 
-function renderLiss(w,c,bannerHTML='',isTravelDay=false){
+function renderLiss(w,c,isTravelDay=false){
   const dk=DAYS[cDay];
   const lissKey = `liss_${cPhase}_${dk}`;
   const targetMins = parseInt(w.dur)||45;
@@ -2874,7 +2868,7 @@ function renderLiss(w,c,bannerHTML='',isTravelDay=false){
     ? `<div class="travel-active-banner" style="margin:0 0 10px">✈️ <strong>Travel LISS:</strong> Brisk walk, jog, or stair climbing — 30–45 min. No treadmill needed.</div>`
     : '';
   // Load saved cardio data into checkCache if stored as JSON in notes
-  let h=bannerHTML;
+  let h='';
   // Travel toggle (LISS days too)
   h += renderTravelToggle(isTravelDay, 'liss');
   h+=`<div class="workout-card"><div class="wc-header">
@@ -2929,16 +2923,18 @@ async function renderWeightTab(){
   _progressLastFetch = now;
   if(tabEl) { tabEl.dataset.tab='weight'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading your data...</p></div>`; }
   try {
-    // All 4 queries in parallel
+    // All 4 queries in parallel — select only columns we actually use
     const [metricsRes, inbodyRes, exLogsRes, healthRes] = await Promise.all([
       db.from('body_metrics').select('*').order('date',{ascending:true}),
       db.from('inbody_logs').select('*').order('date',{ascending:true}),
-      db.from('exercise_logs').select('*').eq('completed',true).order('date',{ascending:true}),
+      db.from('exercise_logs').select('date,exercise_name,weight_kg,reps,is_mm_set').eq('completed',true).order('date',{ascending:true}),
       db.from('apple_health_logs').select('*').order('date',{ascending:true}),
     ]);
     const metrics = metricsRes.data;
     const inbodyLogs = inbodyRes.data;
+    _inbodyForBody = inbodyLogs; // share with body tab — avoids duplicate fetch on tab switch
     const exLogs = exLogsRes.data;
+    _exLogs = exLogs;
     const healthLogs = healthRes.data || [];
     // Stats
     const latestWeight = metrics && metrics.length>0 ? metrics[metrics.length-1].weight_kg : null;
@@ -3181,7 +3177,7 @@ async function renderWeightTab(){
     // Render strength chart for first exercise
     if(uniqueEx.length > 0 && exLogs){
       renderStrengthChartData(uniqueEx[0], exLogs);
-      window._exLogs = exLogs;
+      _exLogs = exLogs;
     }
 
     // Render recomposition chart
@@ -3229,12 +3225,13 @@ async function renderBodyTab(){
   _bodyLastFetch = now;
   if(tabEl){ tabEl.dataset.tab='body'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading measurements...</p></div>`; }
   try {
-    const [measRes, inbodyRes] = await Promise.all([
-      db.from(TABLES.MEASUREMENTS).select('*').order('date',{ascending:true}),
-      db.from(TABLES.INBODY).select('*').order('date',{ascending:true}),
-    ]);
+    // Fetch measurements; reuse cached inbody data from weight tab if available
+    const measRes = await db.from(TABLES.MEASUREMENTS).select('*').order('date',{ascending:true});
+    if(_inbodyForBody === null) {
+      const ibRes = await db.from(TABLES.INBODY).select('*').order('date',{ascending:true});
+      _inbodyForBody = ibRes.data || [];
+    }
     _bodyData = measRes.data || [];
-    _inbodyForBody = inbodyRes.data || [];
     const latest  = _bodyData.length > 0 ? _bodyData[_bodyData.length-1] : null;
     const prev    = _bodyData.length > 1 ? _bodyData[_bodyData.length-2] : null;
     const first   = _bodyData.length > 0 ? _bodyData[0] : null;
@@ -3326,7 +3323,7 @@ async function renderBodyTab(){
     if(latest){
       MEAS_GROUPS.forEach(group=>{
         const rows = group.sites.map(siteKey=>{
-          const site = MEASURE_SITES.find(s=>s.key===siteKey);
+          const site = MEASURE_SITES_MAP.get(siteKey);
           const val  = latest[siteKey];
           if(val==null) return '';
           const d = deltaForSite(siteKey, latest, prev, first);
@@ -3473,7 +3470,7 @@ function renderDeltaBadge(delta, site, label){
 }
 
 function updateMeasChart(siteKey){
-  const site = MEASURE_SITES.find(s=>s.key===siteKey);
+  const site = MEASURE_SITES_MAP.get(siteKey);
   if(!site || !_bodyData) return;
   const rows = _bodyData.filter(d=>d[siteKey]!=null);
   if(rows.length<2) return;
@@ -3545,17 +3542,17 @@ function updateComparison(){
 
 function buildMonthlySummary(data){
   if(data.length<2) return [];
+  const u = getMeasureUnit(); // hoist — unit doesn't change during iteration
+  // Build month→{entries, dataIndex} in one pass — avoids O(n²) data.indexOf later
   const byMonth={};
-  data.forEach(entry=>{
+  data.forEach((entry, idx)=>{
     const m=entry.date.slice(0,7);
-    if(!byMonth[m]) byMonth[m]=[];
-    byMonth[m].push(entry);
+    if(!byMonth[m]) byMonth[m]={entries:[], firstIdx: idx};
+    byMonth[m].entries.push(entry);
   });
-  return Object.entries(byMonth).map(([month,entries])=>{
-    const last     = entries[entries.length-1];
-    const monthIdx = data.indexOf(entries[0]);
-    const prevE    = monthIdx>0 ? data[monthIdx-1] : null;
-    const u = getMeasureUnit();
+  return Object.entries(byMonth).map(([month,{entries, firstIdx}])=>{
+    const last  = entries[entries.length-1];
+    const prevE = firstIdx>0 ? data[firstIdx-1] : null;
     const changes=[];
     if(prevE){
       MEASURE_SITES.forEach(site=>{
@@ -3619,11 +3616,13 @@ function renderMeasFields(existing, curDate){
   const wrap=document.getElementById('meas-fields-wrap');
   if(!wrap) return;
   const u=getMeasureUnit();
-  // Most recent entry before curDate — used for placeholder hints
+  // Most recent entry before curDate — _bodyData is already sorted ascending by date (from Supabase)
   let prevEntry=null;
   if(_bodyData&&_bodyData.length){
-    const sorted=[..._bodyData].sort((a,b)=>a.date.localeCompare(b.date));
-    prevEntry=sorted.filter(e=>!curDate||e.date<curDate).pop()||null;
+    // Walk backwards to find last entry before curDate in O(n) without copying the array
+    for(let i=_bodyData.length-1;i>=0;i--){
+      if(!curDate||_bodyData[i].date<curDate){ prevEntry=_bodyData[i]; break; }
+    }
   }
   let html='';
   MEAS_GROUPS.forEach((group,gi)=>{
@@ -3632,7 +3631,7 @@ function renderMeasFields(existing, curDate){
     const isOpen = gi===0 || filledCount>0;
     let fieldsHtml='';
     group.sites.forEach(siteKey=>{
-      const site=MEASURE_SITES.find(s=>s.key===siteKey);
+      const site=MEASURE_SITES_MAP.get(siteKey);
       const val=existing?.[siteKey];
       const prevVal=prevEntry?.[siteKey];
       const displayVal=val!=null?(u==='in'?cmToIn(val):parseFloat(val).toFixed(1)):'';
@@ -3737,7 +3736,7 @@ function renderStrengthChartData(exName, exLogs){
 }
 
 function updateStrengthChart(exName){
-  if(window._exLogs) renderStrengthChartData(exName, window._exLogs);
+  if(_exLogs) renderStrengthChartData(exName, _exLogs);
 }
 
 // Weigh-in modal
@@ -4034,14 +4033,7 @@ function openResetModal() {
   if (!picker || !picker.value) { showToast('Pick a date first', 'error'); return; }
   const newDate   = picker.value; // YYYY-MM-DD
   const newParsed = parseLocalDate(newDate);
-  const newState  = (() => {
-    // Temporarily compute what state would look like with the new date
-    const saved = PROGRAMME_START;
-    PROGRAMME_START = newParsed;
-    const s = getProgrammeState(new Date());
-    PROGRAMME_START = saved;
-    return s;
-  })();
+  const newState = getProgrammeState(new Date(), newParsed); // pass override — no global mutation
 
   _pendingResetDate = newDate;
 
@@ -4365,6 +4357,7 @@ async function handleNotifBellTap() {
     // Already on — toggle off
     localStorage.setItem('notifPrefs', '[]');
     updateNotifBell();
+    if(window._creatineTimer){ clearTimeout(window._creatineTimer); window._creatineTimer = null; }
     showToast('Notifications turned off');
     return;
   }
@@ -4645,8 +4638,8 @@ store.subscribe(['syncStatus'], ({syncStatus}) => {
     syncStatus==='synced'  ? 'synced'    :
     syncStatus==='syncing' ? 'saving...' :
     syncStatus==='error'   ? 'offline'   : 'connecting...';
-  // Show pending count if there are items in the queue
-  updatePendingBadge();
+  // Only read IDB when the operation settles — not on every 'syncing' transition
+  if(syncStatus === 'synced' || syncStatus === 'error') updatePendingBadge();
 });
 
 async function manualSync(){
