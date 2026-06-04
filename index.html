@@ -410,6 +410,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 /* Suggestion text (Phase 2) */
 .scc-text{font-size:14px;color:var(--text);line-height:1.65}
 .scc-tag{font-size:9px;color:var(--dim);margin-top:5px;letter-spacing:.3px}
+.ai-coach-prefix{color:#93c5fd;font-weight:700;margin-right:4px}
+.ai-cursor{color:#93c5fd;font-weight:300;animation:ai-caret .75s step-end infinite}
+@keyframes ai-caret{0%,100%{opacity:1}50%{opacity:0}}
 
 /* ── PHASE PROGRESS BANNER ── */
 .phase-banner{margin:0 16px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--border);overflow:hidden}
@@ -2273,26 +2276,55 @@ function cancelSetCoachCard(){
 function _updateSetCoachSuggestion(text){
   if(!_setCoach || _setCoach.dismissed) return;
   const row = document.getElementById('scc-ai-row');
-  if(row) row.innerHTML = `<div class="scc-text">${text.replace(/\n/g,'<br>')}</div>
-    <div class="scc-tag">✦ AI COACH · gpt-4o-mini</div>`;
+  if(!row) return;
+  row.innerHTML = `<div class="scc-text" id="scc-tw-wrap"></div>
+    <div class="scc-tag">gpt-4o-mini</div>`;
+  _typewriter(row.querySelector('#scc-tw-wrap'), text);
 }
 function _clearSetCoachAIRow(){
   const row = document.getElementById('scc-ai-row');
   if(row) row.innerHTML = '';
 }
 
-async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex){
-  // Build context entirely from in-memory data — no DB queries, fires instantly
-  const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex);
-
-  // Reuse the same key-prompt pattern as the InBody PDF feature
+// ── Shared profile helper — prompts once for missing values, reads everything else from memory ──
+async function _getAIProfile(){
   let apiKey = localStorage.getItem('openai_api_key');
   if(!apiKey){
-    apiKey = prompt('Enter your OpenAI API key to enable AI coaching (stored locally on this device):');
-    if(!apiKey){ _clearSetCoachAIRow(); return; }
+    apiKey = prompt('Enter your OpenAI API key to enable AI coaching (stored on this device only):');
+    if(!apiKey) return null;
     apiKey = apiKey.trim();
     localStorage.setItem('openai_api_key', apiKey);
   }
+  let age = parseInt(localStorage.getItem('userAge')||'0')||null;
+  if(!age){
+    const raw = prompt('Your age — helps personalise AI coaching (stored locally, enter once):');
+    const n = parseInt(raw||'');
+    if(n > 10 && n < 100){ age = n; localStorage.setItem('userAge', String(n)); }
+  }
+  const heightCm   = parseFloat(localStorage.getItem('userHeightCm')||'0')||null;
+  const latestInBody = _inbodyForBody?.length ? _inbodyForBody[_inbodyForBody.length-1] : null;
+  return { apiKey, age, heightCm, latestInBody };
+}
+
+// ── Typewriter renderer — "AI Coach: <text types out>" ──
+function _typewriter(containerEl, text, speed=18){
+  containerEl.innerHTML =
+    `<span class="ai-coach-prefix">AI Coach:</span><span id="_tw"></span><span class="ai-cursor">▌</span>`;
+  const tw  = containerEl.querySelector('#_tw');
+  const cur = containerEl.querySelector('.ai-cursor');
+  let i = 0;
+  const iv = setInterval(()=>{
+    tw.textContent += text[i++];
+    if(i >= text.length){ clearInterval(iv); cur.remove(); }
+  }, speed);
+}
+
+async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex){
+  // Build context entirely from in-memory data — no DB queries, fires instantly
+  const profile = await _getAIProfile();
+  if(!profile){ _clearSetCoachAIRow(); return; }
+  const { apiKey } = profile;
+  const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex, profile);
 
   // 20-second hard timeout so the card never hangs past its own timer
   const ctrl = new AbortController();
@@ -2308,7 +2340,7 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex){
         max_tokens: 60,
         temperature: 0.25,
         messages: [
-          {role:'system', content:`You are a strength coach. Review this set and give one sharp suggestion for the next set. Max 2 sentences. Be specific about weight or reps. No fluff.`},
+          {role:'system', content:`You are a personal strength coach. You have the athlete's age, height, body composition and training history. Use this to give one sharp, personalised suggestion for their next set — specific weight or rep target. Max 2 sentences. No fluff.`},
           {role:'user', content: JSON.stringify(ctx)}
         ]
       })
@@ -2334,7 +2366,7 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex){
   }
 }
 
-function _buildSetCoachContext(exName, setNum, weight, reps, exIndex){
+function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, profile={}){
   const dk = DAYS[cDay];
   const w  = W[cPhase]?.[dk];
   const ex = w?.ex?.[exIndex];
@@ -2355,15 +2387,28 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex){
   const setsInExercise = parseSets(ex?.s||'').length;
   const setsLeft = Math.max(0, setsInExercise - setNum);
 
+  // Personal profile (age, height, body composition from InBody cache)
+  const ib = profile.latestInBody;
+  const athlete = {
+    age:               profile.age        || null,
+    height_cm:         profile.heightCm   || null,
+    weight_kg:         ib?.weight_kg      || null,
+    body_fat_pct:      ib?.body_fat_pct   || null,
+    muscle_mass_kg:    ib?.skeletal_muscle_mass || null,
+    bmr:               ib?.bmr            || null,
+    inbody_date:       ib?.date           || null,
+  };
+
   return {
-    set_just_logged:   {set:setNum, weight_kg:weight, reps},
-    exercise:          exName,
-    sets_today:        todaySets,
+    athlete,
+    set_just_logged:       {set:setNum, weight_kg:weight, reps},
+    exercise:              exName,
+    sets_today:            todaySets,
     sets_left_in_exercise: setsLeft,
     exercises_left_today:  exercisesLeft,
-    personal_record:   prevBest,
-    phase:             `Phase ${cPhase}`,
-    week:              getProgrammeState(new Date()).week,
+    personal_record:       prevBest,
+    phase:                 `Phase ${cPhase}`,
+    week:                  getProgrammeState(new Date()).week,
   };
 }
 
@@ -2374,20 +2419,16 @@ async function fetchAIProgression(exName, exIndex, phase, dk){
   const cacheKey = `${exName}||${selectedDateStr}`;
   if(_aiSuggestions[cacheKey]) return;               // already triggered this session
 
-  let apiKey = localStorage.getItem('openai_api_key');
-  if(!apiKey){
-    apiKey = prompt('Enter your OpenAI API key to enable AI coaching (stored locally on this device):');
-    if(!apiKey){ removeAICard(ek); delete _aiSuggestions[cacheKey]; return; }
-    apiKey = apiKey.trim();
-    localStorage.setItem('openai_api_key', apiKey);
-  }
+  const profile = await _getAIProfile();
+  if(!profile){ removeAICard(ek); delete _aiSuggestions[cacheKey]; return; }
+  const apiKey = profile.apiKey;
 
   const ek = `ex_${phase}_${dk}_${exIndex}`;
   _aiSuggestions[cacheKey] = {ek, text: null, loading: true};
   showAILoadingCard(ek);
 
   try {
-    const context = assembleProgressionContext(exName, phase); // sync — no DB calls
+    const context = assembleProgressionContext(exName, phase, profile); // sync — no DB calls
     const suggestion = await callProgressionAI(exName, context, apiKey);
     if(suggestion){
       _aiSuggestions[cacheKey].text = suggestion;
@@ -2404,11 +2445,8 @@ async function fetchAIProgression(exName, exIndex, phase, dk){
   }
 }
 
-function assembleProgressionContext(exName, phase){
+function assembleProgressionContext(exName, phase, profile={}){
   // Entirely in-memory — no Supabase calls.
-  // _prevHistoryCache is populated by prefetchPreviousBests() when the workout renders.
-  // _inbodyForBody is populated when the Progress tab is opened.
-  // checkCache holds today's LISS log.
 
   // Today's sets for this exercise
   const todaySets = Object.entries(loggedSets)
@@ -2416,31 +2454,36 @@ function assembleProgressionContext(exName, phase){
     .map(([k,v]) => ({set: parseInt(k.split('|')[1]), weight_kg:v.weight, reps:v.reps, rpe:v.rpe??null}))
     .sort((a,b) => a.set - b.set);
 
-  // Historical sessions from prefetch cache (last 6 dates, already grouped)
+  // Historical sessions from prefetch cache
   const sessions = _prevHistoryCache[exName] || [];
-
-  // Latest InBody from progress tab cache (null if tab never opened)
-  const latestIB = _inbodyForBody?.length
-    ? (({date,weight_kg,body_fat_pct,skeletal_muscle_mass,bmr}) =>
-        ({date,weight_kg,body_fat_pct,skeletal_muscle_mass,bmr}))(_inbodyForBody[_inbodyForBody.length-1])
-    : null;
 
   // Today's LISS log from checkCache
   const dk = DAYS[cDay];
-  const lissKey = `liss_${cPhase}_${dk}`;
-  const lissRaw = checkCache[lissKey];
+  const lissRaw = checkCache[`liss_${cPhase}_${dk}`];
   const todayLiss = (lissRaw && typeof lissRaw === 'object' && lissRaw.saved)
-    ? {date: selectedDateStr, incline: lissRaw.incline, speed: lissRaw.speed, mins: lissRaw.mins}
+    ? {incline: lissRaw.incline, speed: lissRaw.speed, mins: lissRaw.mins}
     : null;
+
+  // Personal profile
+  const ib = profile.latestInBody || (_inbodyForBody?.length ? _inbodyForBody[_inbodyForBody.length-1] : null);
+  const athlete = {
+    age:            profile.age              || parseInt(localStorage.getItem('userAge')||'0')||null,
+    height_cm:      profile.heightCm         || parseFloat(localStorage.getItem('userHeightCm')||'0')||null,
+    weight_kg:      ib?.weight_kg            || null,
+    body_fat_pct:   ib?.body_fat_pct         || null,
+    muscle_mass_kg: ib?.skeletal_muscle_mass || null,
+    bmr:            ib?.bmr                  || null,
+    inbody_date:    ib?.date                 || null,
+  };
 
   const ps = getProgrammeState(new Date());
   return {
+    athlete,
     exercise:          exName,
     training_phase:    `Phase ${phase}`,
     programme_week:    ps.week,
     today_sets:        todaySets,
     previous_sessions: sessions,
-    inbody:            latestIB,
     liss_today:        todayLiss,
   };
 }
@@ -2496,7 +2539,9 @@ function showAISuggestionCard(ek, text){
     row.insertAdjacentElement('afterend', card);
   }
   card.className = 'ai-suggestion-card';
-  card.innerHTML = _aiCardHTML(text.replace(/\n/g,'<br>'));
+  // Shell with empty body — typewriter fills it in
+  card.innerHTML = _aiCardHTML(`<span id="aitw-${ek}"></span>`);
+  _typewriter(card.querySelector(`#aitw-${ek}`), text);
 }
 function removeAICard(ek){
   document.getElementById('ai-'+ek)?.remove();
