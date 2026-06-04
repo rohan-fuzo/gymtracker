@@ -2843,8 +2843,10 @@ async function commitSet(weight, reps, completed){
     if(_ex?.r && !isMM && !_setCoach){
       startRestTimer(parseRestSecs(_ex.r));
     }
-    // AI progression suggestion — fires once when all sets of this exercise are done
-    if(_ex && !isMM && completed && isExerciseDone(exName, parseSets(_ex.s), exIndex===0)){
+    // AI progression suggestion — only fires when no set-coach card is active.
+    // When the set-coach card IS active (normal live logging), it handles AI coaching
+    // via _startSetCoachAI after RPE resolves, so this would create a duplicate card.
+    if(_ex && !isMM && completed && !_setCoach && isExerciseDone(exName, parseSets(_ex.s), exIndex===0)){
       fetchAIProgression(exName, exIndex, cPhase, DAYS[cDay]);
     }
     // Refresh week activity — debounced for today, immediate for past dates
