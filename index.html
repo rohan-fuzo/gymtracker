@@ -2222,13 +2222,8 @@ function openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs){
     }
   }, 1000);
 
-  // Fire AI in parallel — if no key, replace wave with neutral label immediately
-  if(apiKey){
-    _fetchSetCoachAI(exName, setNum, weight, reps, exIndex);
-  } else {
-    const aiRow = card.querySelector('#scc-ai-row');
-    if(aiRow) aiRow.innerHTML = `<div style="font-size:11px;color:var(--dim);letter-spacing:.3px">Focus on form and breathing</div>`;
-  }
+  // Fire AI — prompt for key first time if missing (same pattern as InBody PDF)
+  _fetchSetCoachAI(exName, setNum, weight, reps, exIndex);
 }
 
 function _sccHTML(timeLeft, restSecs, phase, suggestion){
@@ -2281,12 +2276,23 @@ function _updateSetCoachSuggestion(text){
   if(row) row.innerHTML = `<div class="scc-text">${text.replace(/\n/g,'<br>')}</div>
     <div class="scc-tag">✦ AI COACH · gpt-4o-mini</div>`;
 }
+function _clearSetCoachAIRow(){
+  const row = document.getElementById('scc-ai-row');
+  if(row) row.innerHTML = '';
+}
 
 async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex){
   // Build context entirely from in-memory data — no DB queries, fires instantly
   const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex);
-  const apiKey = localStorage.getItem('openai_api_key');
-  if(!apiKey) return;
+
+  // Reuse the same key-prompt pattern as the InBody PDF feature
+  let apiKey = localStorage.getItem('openai_api_key');
+  if(!apiKey){
+    apiKey = prompt('Enter your OpenAI API key to enable AI coaching (stored locally on this device):');
+    if(!apiKey){ _clearSetCoachAIRow(); return; }
+    apiKey = apiKey.trim();
+    localStorage.setItem('openai_api_key', apiKey);
+  }
 
   // 20-second hard timeout so the card never hangs past its own timer
   const ctrl = new AbortController();
@@ -2368,8 +2374,13 @@ async function fetchAIProgression(exName, exIndex, phase, dk){
   const cacheKey = `${exName}||${selectedDateStr}`;
   if(_aiSuggestions[cacheKey]) return;               // already triggered this session
 
-  const apiKey = localStorage.getItem('openai_api_key');
-  if(!apiKey) return;                                // key not set — silent skip
+  let apiKey = localStorage.getItem('openai_api_key');
+  if(!apiKey){
+    apiKey = prompt('Enter your OpenAI API key to enable AI coaching (stored locally on this device):');
+    if(!apiKey){ removeAICard(ek); delete _aiSuggestions[cacheKey]; return; }
+    apiKey = apiKey.trim();
+    localStorage.setItem('openai_api_key', apiKey);
+  }
 
   const ek = `ex_${phase}_${dk}_${exIndex}`;
   _aiSuggestions[cacheKey] = {ek, text: null, loading: true};
