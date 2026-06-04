@@ -364,6 +364,19 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .parsing-overlay{display:none;text-align:center;padding:16px 0}
 .parsing-overlay.show{display:block}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── AI PROGRESSION CARD ── */
+.ai-suggestion-card{margin:0 16px 10px;border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(168,85,247,.07),rgba(59,130,246,.06));border:1px solid rgba(168,85,247,.22);transition:opacity .3s}
+.ai-suggestion-card.ai-loading{opacity:.55}
+.ai-card-hdr{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.ai-sparkle{font-size:12px;line-height:1}
+.ai-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#a78bfa}
+.ai-model-tag{font-size:9px;color:var(--dim);margin-left:auto;letter-spacing:.3px}
+.ai-body{font-size:13px;color:var(--text);line-height:1.65}
+.ai-dots{display:flex;gap:4px;align-items:center;height:16px}
+.ai-dot{width:5px;height:5px;border-radius:50%;background:#a78bfa;animation:ai-bounce .9s infinite ease-in-out}
+.ai-dot:nth-child(2){animation-delay:.15s}
+.ai-dot:nth-child(3){animation-delay:.30s}
+@keyframes ai-bounce{0%,80%,100%{transform:scale(.6);opacity:.35}40%{transform:scale(1);opacity:1}}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;z-index:200;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{border-color:var(--p3);color:var(--p3)}
@@ -1788,6 +1801,8 @@ let _inbodyForBody = null;   // array of inbody_logs rows (reused in body tab)
 let _measChart = null;
 let _exLogs = null;          // exercise_logs cache for strength chart (module-level, not window)
 let _pendingRPE = null;      // {date, exName, setNum, isMM, key, chipEl} — set before RPE sheet opens
+// AI progression suggestions: "exName||date" → {ek, text, loading}
+const _aiSuggestions = {};
 
 // Measurement due helpers
 function isMeasurementDue(){
@@ -2129,6 +2144,159 @@ function setRPEBadge(chipEl, rpe){
   badge.textContent = `RPE ${rpe}`;
 }
 
+// ============================================================
+// AI PROGRESSION SUGGESTION
+// ============================================================
+async function fetchAIProgression(exName, exIndex, phase, dk){
+  const cacheKey = `${exName}||${selectedDateStr}`;
+  if(_aiSuggestions[cacheKey]) return;               // already triggered this session
+
+  const apiKey = localStorage.getItem('openai_api_key');
+  if(!apiKey) return;                                // key not set — silent skip
+
+  const ek = `ex_${phase}_${dk}_${exIndex}`;
+  _aiSuggestions[cacheKey] = {ek, text: null, loading: true};
+  showAILoadingCard(ek);
+
+  try {
+    const context = await assembleProgressionContext(exName, phase);
+    const suggestion = await callProgressionAI(exName, context, apiKey);
+    if(suggestion){
+      _aiSuggestions[cacheKey].text = suggestion;
+      _aiSuggestions[cacheKey].loading = false;
+      showAISuggestionCard(ek, suggestion);
+    } else {
+      delete _aiSuggestions[cacheKey];
+      removeAICard(ek);
+    }
+  } catch(e){
+    console.error('[AI Progression]', e?.message);
+    delete _aiSuggestions[cacheKey];
+    removeAICard(ek);
+  }
+}
+
+async function assembleProgressionContext(exName, phase){
+  const today = selectedDateStr;
+  const d7 = new Date(today); d7.setDate(d7.getDate()-7);
+  const d7str = localDateStr(d7);
+
+  const [histRes, bodyRes, ibRes, lissRes] = await Promise.all([
+    // Last 6 sessions of this exercise (up to ~60 sets), excluding today
+    db.from('exercise_logs')
+      .select('date,set_number,weight_kg,reps,rpe')
+      .eq('exercise_name', exName)
+      .eq('completed', true)
+      .eq('is_mm_set', false)
+      .lt('date', today)
+      .order('date', {ascending: false})
+      .limit(60),
+    // Latest body weight
+    db.from('body_metrics').select('date,weight_kg').order('date',{ascending:false}).limit(1),
+    // Latest InBody
+    db.from('inbody_logs').select('date,weight_kg,body_fat_pct,skeletal_muscle_mass,bmr').order('date',{ascending:false}).limit(1),
+    // LISS logs last 7 days
+    db.from('checklist_logs').select('date,notes').gte('date',d7str).like('item_key','liss_%'),
+  ]);
+
+  // Today's sets from in-memory loggedSets cache (already confirmed saved)
+  const todaySets = Object.entries(loggedSets)
+    .filter(([k]) => k.startsWith(exName+'|') && k.endsWith('|0'))
+    .map(([k,v]) => ({set: parseInt(k.split('|')[1]), weight_kg:v.weight, reps:v.reps, rpe:v.rpe}))
+    .sort((a,b)=>a.set-b.set);
+
+  // Group history by date → last 6 distinct dates
+  const hist = histRes.data || [];
+  const byDate = {};
+  hist.forEach(r=>{ if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
+  const sessions = Object.keys(byDate).sort().reverse().slice(0,6).map(date=>({
+    date,
+    sets: byDate[date].sort((a,b)=>a.set_number-b.set_number)
+          .map(r=>({set:r.set_number, weight_kg:r.weight_kg, reps:r.reps, rpe:r.rpe}))
+  }));
+
+  // LISS summary
+  const liss = (lissRes.data||[]).map(row=>{
+    try { const n=JSON.parse(row.notes||'{}'); return n.mins?{date:row.date,...n}:null; }
+    catch(_){ return null; }
+  }).filter(Boolean);
+
+  const ps = getProgrammeState(new Date());
+  return {
+    exercise: exName,
+    training_phase: `Phase ${phase}`,
+    programme_week: ps.week,
+    today_sets: todaySets,
+    previous_sessions: sessions,
+    body_weight: bodyRes.data?.[0]||null,
+    inbody: ibRes.data?.[0]||null,
+    recent_liss_7d: liss,
+  };
+}
+
+async function callProgressionAI(exName, context, apiKey){
+  const resp = await fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      max_tokens: 120,
+      temperature: 0.25,
+      messages:[
+        {role:'system', content:`You are a strength and conditioning coach analysing a user's gym performance data. Based on the data provided, give a single clear progression suggestion for the next session of this exercise. Be specific — recommend an exact weight increase (e.g. +2.5kg), keeping the same weight, or a deload if warranted. Factor in RPE trends, consistency across sessions, phase of training, and overall fatigue signals from LISS and body composition. Keep the response under 4 lines. Be direct, no fluff.`},
+        {role:'user', content:`Exercise: ${exName}\n\n${JSON.stringify(context,null,2)}`}
+      ]
+    })
+  });
+  if(!resp.ok){
+    const err = await resp.json().catch(()=>({}));
+    if(resp.status===401) localStorage.removeItem('openai_api_key');
+    throw new Error(err.error?.message||`OpenAI ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content?.trim()||null;
+}
+
+// ── AI card DOM helpers ──
+function _aiCardHTML(content){
+  return `<div class="ai-card-hdr">
+    <span class="ai-sparkle">✦</span>
+    <span class="ai-label">AI COACH</span>
+    <span class="ai-model-tag">gpt-4o-mini</span>
+  </div>
+  <div class="ai-body">${content}</div>`;
+}
+function showAILoadingCard(ek){
+  const dots = `<div class="ai-dots"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>`;
+  let card = document.getElementById('ai-'+ek);
+  if(!card){
+    const row = document.getElementById(ek); if(!row) return;
+    card = document.createElement('div'); card.id = 'ai-'+ek;
+    row.insertAdjacentElement('afterend', card);
+  }
+  card.className = 'ai-suggestion-card ai-loading';
+  card.innerHTML = _aiCardHTML(dots);
+}
+function showAISuggestionCard(ek, text){
+  let card = document.getElementById('ai-'+ek);
+  if(!card){
+    const row = document.getElementById(ek); if(!row) return;
+    card = document.createElement('div'); card.id = 'ai-'+ek;
+    row.insertAdjacentElement('afterend', card);
+  }
+  card.className = 'ai-suggestion-card';
+  card.innerHTML = _aiCardHTML(text.replace(/\n/g,'<br>'));
+}
+function removeAICard(ek){
+  document.getElementById('ai-'+ek)?.remove();
+}
+function reinjectAICards(dk){
+  Object.values(_aiSuggestions).forEach(({ek, text})=>{
+    if(!text) return; // still loading — will insert itself when done
+    if(!document.getElementById('ai-'+ek)) showAISuggestionCard(ek, text);
+  });
+}
+
 function skipRestTimer(){
   clearInterval(_restTimerInterval);
   if(_restTimerDismiss){ clearTimeout(_restTimerDismiss); _restTimerDismiss = null; }
@@ -2271,6 +2439,10 @@ async function commitSet(weight, reps, completed){
     const _ex = _w?.ex?.[exIndex];
     if(_ex?.r && !isMM){
       startRestTimer(parseRestSecs(_ex.r));
+    }
+    // AI progression suggestion — fires once when all sets of this exercise are done
+    if(_ex && !isMM && completed && isExerciseDone(exName, parseSets(_ex.s), exIndex===0)){
+      fetchAIProgression(exName, exIndex, cPhase, DAYS[cDay]);
     }
     // Refresh week activity — debounced for today, immediate for past dates
     clearTimeout(window._weekRefreshTimer);
@@ -2807,6 +2979,8 @@ function renderWorkout(){
   h+=renderSleepCardHTML();
   h+=renderHydrationHTML();
   c.innerHTML=h;
+  // Re-inject any cached AI suggestion cards that survived from this session
+  reinjectAICards(dk);
   Perf.end('renderWorkout');
 }
 
