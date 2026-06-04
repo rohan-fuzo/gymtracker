@@ -2221,8 +2221,13 @@ function openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs){
     }
   }, 1000);
 
-  // Fire AI in parallel (silent if no key)
-  if(apiKey) _fetchSetCoachAI(exName, setNum, weight, reps, exIndex);
+  // Fire AI in parallel — if no key, replace wave with neutral label immediately
+  if(apiKey){
+    _fetchSetCoachAI(exName, setNum, weight, reps, exIndex);
+  } else {
+    const aiRow = card.querySelector('#scc-ai-row');
+    if(aiRow) aiRow.innerHTML = `<div style="font-size:11px;color:var(--dim);letter-spacing:.3px">Focus on form and breathing</div>`;
+  }
 }
 
 function _sccHTML(timeLeft, restSecs, phase, suggestion){
@@ -2277,97 +2282,81 @@ function _updateSetCoachSuggestion(text){
 }
 
 async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex){
+  // Build context entirely from in-memory data — no DB queries, fires instantly
+  const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex);
+  const apiKey = localStorage.getItem('openai_api_key');
+  if(!apiKey) return;
+
+  // 20-second hard timeout so the card never hangs past its own timer
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 20000);
+
   try {
-    const apiKey = localStorage.getItem('openai_api_key');
-    if(!apiKey) return;
-    const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex);
-    const [histRes, bodyRes, ibRes, lissRes] = await Promise.all([
-      db.from('exercise_logs')
-        .select('date,set_number,weight_kg,reps,rpe')
-        .eq('exercise_name', exName).eq('completed', true).eq('is_mm_set', false)
-        .lt('date', selectedDateStr).order('date',{ascending:false}).limit(60),
-      db.from('body_metrics').select('date,weight_kg').order('date',{ascending:false}).limit(1),
-      db.from('inbody_logs').select('date,weight_kg,body_fat_pct,skeletal_muscle_mass,bmr')
-        .order('date',{ascending:false}).limit(1),
-      db.from('checklist_logs').select('date,notes')
-        .gte('date', (()=>{ const d=new Date(selectedDateStr); d.setDate(d.getDate()-7); return localDateStr(d); })())
-        .like('item_key','liss_%'),
-    ]);
-
-    // Group history into sessions (last 6 distinct dates)
-    const byDate = {};
-    (histRes.data||[]).forEach(r=>{ if(!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
-    const sessions = Object.keys(byDate).sort().reverse().slice(0,6).map(date=>({
-      date, sets: byDate[date].sort((a,b)=>a.set_number-b.set_number)
-            .map(r=>({set:r.set_number,weight_kg:r.weight_kg,reps:r.reps,rpe:r.rpe}))
-    }));
-
-    // LISS
-    const liss = (lissRes.data||[]).map(r=>{
-      try{ const n=JSON.parse(r.notes||'{}'); return n.mins?{date:r.date,...n}:null; }catch(_){return null;}
-    }).filter(Boolean);
-
-    const ps = getProgrammeState(new Date());
-    ctx.previous_sessions = sessions;
-    ctx.body_weight = bodyRes.data?.[0]||null;
-    ctx.inbody = ibRes.data?.[0]||null;
-    ctx.recent_liss_7d = liss;
-    ctx.training_phase = `Phase ${cPhase}`;
-    ctx.programme_week = ps.week;
-
-    const resp = await fetch('https://api.openai.com/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: {'Content-Type':'application/json', 'Authorization':`Bearer ${apiKey}`},
       body: JSON.stringify({
-        model:'gpt-4o-mini', max_tokens:80, temperature:0.25,
-        messages:[
-          {role:'system', content:`You are a strength and conditioning coach reviewing a user's set mid-workout. Based on the set just logged, their history for this exercise, RPE, and the rest of today's planned workout, give a short sharp suggestion for the next set. Examples: 'Good set. Same weight, aim for 1 more rep.' or 'RPE was low — bump to 17.5kg next set.' or 'Strong session so far but you have 4 more exercises — keep this weight and save energy.' Max 2 sentences. Be direct, specific, no fluff.`},
-          {role:'user', content:JSON.stringify(ctx,null,2)}
+        model: 'gpt-4o-mini',
+        max_tokens: 60,
+        temperature: 0.25,
+        messages: [
+          {role:'system', content:`You are a strength coach. Review this set and give one sharp suggestion for the next set. Max 2 sentences. Be specific about weight or reps. No fluff.`},
+          {role:'user', content: JSON.stringify(ctx)}
         ]
       })
     });
+    clearTimeout(timeout);
+
     if(!resp.ok){
       const err = await resp.json().catch(()=>({}));
       if(resp.status===401) localStorage.removeItem('openai_api_key');
-      throw new Error(err.error?.message||`OpenAI ${resp.status}`);
+      throw new Error(err.error?.message || `OpenAI ${resp.status}`);
     }
     const data = await resp.json();
     const text = data.choices?.[0]?.message?.content?.trim();
     if(text) _updateSetCoachSuggestion(text);
   } catch(e){
-    console.error('[SetCoach AI]', e?.message);
-    // Fail silently — card stays visible with timer only
+    clearTimeout(timeout);
+    if(e.name === 'AbortError'){
+      console.warn('[SetCoach] AI timed out after 20s');
+    } else {
+      console.error('[SetCoach AI]', e?.message);
+    }
+    // Fail silently — card stays visible showing just the timer
   }
 }
 
 function _buildSetCoachContext(exName, setNum, weight, reps, exIndex){
   const dk = DAYS[cDay];
-  const w = W[cPhase][dk];
+  const w  = W[cPhase]?.[dk];
+  const ex = w?.ex?.[exIndex];
 
-  // Today's logged sets for this exercise (from in-memory cache)
+  // All sets logged today for this exercise (already in memory)
   const todaySets = Object.entries(loggedSets)
-    .filter(([k])=>k.startsWith(exName+'|')&&k.endsWith('|0'))
-    .map(([k,v])=>({set:parseInt(k.split('|')[1]),weight_kg:v.weight,reps:v.reps,rpe:v.rpe}))
-    .sort((a,b)=>a.set-b.set);
+    .filter(([k]) => k.startsWith(exName+'|') && k.endsWith('|0'))
+    .map(([k,v]) => ({set:parseInt(k.split('|')[1]), weight_kg:v.weight, reps:v.reps, rpe:v.rpe??null}))
+    .sort((a,b) => a.set - b.set);
 
-  // Full workout plan for today + what's been logged per exercise
-  const workoutPlan = (w?.ex||[]).map((ex,ei)=>{
-    const sp = parseSets(ex.s);
-    const logged = sp.map((_,si)=>{
-      const ls = loggedSets[`${ex.n}|${si+1}|0`];
-      return ls?.completed ? {set:si+1,weight_kg:ls.weight,reps:ls.reps,rpe:ls.rpe} : null;
-    }).filter(Boolean);
-    const remaining = sp.length - logged.length;
-    return {exercise:ex.n, sets_planned:ex.s, sets_logged:logged,
-            sets_remaining:remaining, is_current:ei===exIndex};
-  });
+  // Previous best for this exercise from prefetch cache (no extra query)
+  const prevBest = _prevBestCache[`${exName}|1|0`] || null;
+
+  // How many exercises remain after this one today
+  const exercisesLeft = (w?.ex||[]).slice(exIndex + 1).length;
+
+  // Sets remaining in this exercise
+  const setsInExercise = parseSets(ex?.s||'').length;
+  const setsLeft = Math.max(0, setsInExercise - setNum);
 
   return {
-    set_just_logged: {set:setNum, weight_kg:weight, reps},
-    exercise: exName,
-    today_sets_this_exercise: todaySets,
-    todays_workout_plan: workoutPlan,
-    // previous_sessions, body_weight, inbody, recent_liss_7d filled in async
+    set_just_logged:   {set:setNum, weight_kg:weight, reps},
+    exercise:          exName,
+    sets_today:        todaySets,
+    sets_left_in_exercise: setsLeft,
+    exercises_left_today:  exercisesLeft,
+    personal_record:   prevBest,
+    phase:             `Phase ${cPhase}`,
+    week:              getProgrammeState(new Date()).week,
   };
 }
 
