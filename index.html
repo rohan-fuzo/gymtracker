@@ -2139,6 +2139,7 @@ function handleRPEClick(e){
 function skipRPE(){
   _pendingRPE = null;
   closeRPESheet();
+  _startSetCoachAI(null); // RPE skipped — fire AI with rpe=null
 }
 async function selectRPE(rpeValue){
   closeRPESheet();
@@ -2153,6 +2154,8 @@ async function selectRPE(rpeValue){
   }
   // Update badge on chip
   setRPEBadge(chipEl, rpeValue);
+  // Fire AI with the confirmed RPE value (also refreshes if user re-rates)
+  _startSetCoachAI(rpeValue);
 
   // Persist — update the row that commitSet already wrote
   try {
@@ -2184,18 +2187,21 @@ function setRPEBadge(chipEl, rpe){
 function openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs){
   cancelSetCoachCard(); // one card at a time
 
-  const apiKey = localStorage.getItem('openai_api_key');
   const ek = `ex_${cPhase}_${DAYS[cDay]}_${exIndex}`;
   const rowEl = document.getElementById(ek);
   if(!rowEl) return;
 
-  _setCoach = {ek, timeLeft: restSecs, restSecs, timerId: null, dismissed: false};
+  // Store all params — AI card fires after RPE is resolved
+  _setCoach = {
+    ek, timeLeft: restSecs, restSecs, timerId: null, dismissed: false,
+    exName, setNum, weight, reps, exIndex, aiAbortCtrl: null,
+  };
 
-  // Build card DOM
+  // Build pure timer card (no AI content)
   const card = document.createElement('div');
   card.id = 'set-coach-card';
   card.className = 'set-coach-card';
-  card.innerHTML = _sccHTML(restSecs, restSecs, 'loading');
+  card.innerHTML = _sccHTML(restSecs);
   rowEl.insertAdjacentElement('afterend', card);
 
   // Animate bar: 100% → 0% over restSecs
@@ -2203,12 +2209,12 @@ function openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs){
   if(bar){
     bar.style.transition = 'none';
     bar.style.width = '100%';
-    bar.offsetHeight; // force reflow
+    bar.offsetHeight;
     bar.style.transition = `width ${restSecs}s linear`;
     bar.style.width = '0%';
   }
 
-  // Countdown interval — only updates the number, doesn't rebuild HTML
+  // Countdown — surgical number update only
   _setCoach.timerId = setInterval(() => {
     if(!_setCoach || _setCoach.dismissed) return;
     _setCoach.timeLeft--;
@@ -2224,43 +2230,63 @@ function openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs){
       _dismissSetCoachFade();
     }
   }, 1000);
-
-  // Fire AI — prompt for key first time if missing (same pattern as InBody PDF)
-  _fetchSetCoachAI(exName, setNum, weight, reps, exIndex);
+  // NOTE: AI call fires only after RPE sheet resolves — see _startSetCoachAI()
 }
 
-function _sccHTML(timeLeft, restSecs, phase, suggestion){
-  const urgent = timeLeft <= 10;
-  let aiHTML;
-  if(phase === 'loading'){
-    aiHTML = `<div class="scc-thinking">
-      <span class="scc-think-lbl">✦ AI COACH</span>
-      <div class="scc-wave">
-        <div class="scc-wb"></div><div class="scc-wb"></div><div class="scc-wb"></div>
-        <div class="scc-wb"></div><div class="scc-wb"></div>
-      </div>
-      <span style="font-size:11px;color:var(--dim)">thinking…</span>
-    </div>`;
-  } else {
-    aiHTML = `<div class="scc-text">${(suggestion||'').replace(/\n/g,'<br>')}</div>
-      <div class="scc-tag">✦ AI COACH · gpt-4o-mini</div>`;
-  }
+function _sccHTML(timeLeft){
   return `
     <div class="scc-hdr">
       <span class="scc-hdr-label">REST &amp; NEXT SET</span>
       <button class="scc-x" onclick="dismissSetCoachCard()" aria-label="Dismiss">✕</button>
     </div>
-    <div id="scc-num" class="scc-timer-num${urgent?' scc-urgent':''}">${timeLeft}s</div>
-    <div class="scc-bar-wrap"><div class="scc-bar"></div></div>
-    <div id="scc-ai-row" class="scc-ai-row">${aiHTML}</div>`;
+    <div id="scc-num" class="scc-timer-num${timeLeft<=10?' scc-urgent':''}">${timeLeft}s</div>
+    <div class="scc-bar-wrap"><div class="scc-bar"></div></div>`;
+}
+
+// Fire AI coaching card after RPE resolves — called by selectRPE and skipRPE
+function _startSetCoachAI(rpeValue){
+  if(!_setCoach || _setCoach.dismissed) return;
+
+  // Abort any in-flight request (handles RPE re-submission refresh)
+  if(_setCoach.aiAbortCtrl){ _setCoach.aiAbortCtrl.abort(); _setCoach.aiAbortCtrl = null; }
+
+  // Find anchor: AI card sits after the timer card (or after exercise row as fallback)
+  const anchor = document.getElementById('set-coach-card') || document.getElementById(_setCoach.ek);
+  if(!anchor) return;
+
+  // Get or create standalone AI card
+  let aiCard = document.getElementById('set-coach-ai-card');
+  if(!aiCard){
+    aiCard = document.createElement('div');
+    aiCard.id = 'set-coach-ai-card';
+    aiCard.className = 'set-coach-card';
+    anchor.insertAdjacentElement('afterend', aiCard);
+  }
+
+  // Reset to loading state (works for first-time and refresh after RPE change)
+  aiCard.innerHTML = `
+    <div class="scc-hdr" style="margin-bottom:0">
+      <div class="scc-thinking">
+        <span class="scc-think-lbl">✦ AI COACH</span>
+        <div class="scc-wave">
+          <div class="scc-wb"></div><div class="scc-wb"></div><div class="scc-wb"></div>
+          <div class="scc-wb"></div><div class="scc-wb"></div>
+        </div>
+        <span style="font-size:11px;color:var(--dim)">thinking…</span>
+      </div>
+    </div>`;
+
+  const {exName, setNum, weight, reps, exIndex} = _setCoach;
+  _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue);
 }
 
 function _dismissSetCoachFade(){
   if(!_setCoach) return;
   _setCoach.dismissed = true;
   clearInterval(_setCoach.timerId);
-  const card = document.getElementById('set-coach-card');
-  if(card){ card.classList.add('scc-fading'); setTimeout(()=>card.remove(), 460); }
+  _setCoach.aiAbortCtrl?.abort();
+  [document.getElementById('set-coach-card'), document.getElementById('set-coach-ai-card')]
+    .filter(Boolean).forEach(c=>{ c.classList.add('scc-fading'); setTimeout(()=>c.remove(),460); });
   _setCoach = null;
 }
 
@@ -2269,21 +2295,23 @@ function dismissSetCoachCard(){ _dismissSetCoachFade(); }
 function cancelSetCoachCard(){
   if(!_setCoach) return;
   clearInterval(_setCoach.timerId);
+  _setCoach.aiAbortCtrl?.abort();
   _setCoach = null;
   document.getElementById('set-coach-card')?.remove();
+  document.getElementById('set-coach-ai-card')?.remove();
 }
 
 function _updateSetCoachSuggestion(text){
   if(!_setCoach || _setCoach.dismissed) return;
-  const row = document.getElementById('scc-ai-row');
-  if(!row) return;
-  row.innerHTML = `<div class="scc-text" id="scc-tw-wrap"></div>
-    <div class="scc-tag">gpt-4o-mini</div>`;
-  _typewriter(row.querySelector('#scc-tw-wrap'), text);
-}
-function _clearSetCoachAIRow(){
-  const row = document.getElementById('scc-ai-row');
-  if(row) row.innerHTML = '';
+  const aiCard = document.getElementById('set-coach-ai-card');
+  if(!aiCard) return;
+  aiCard.innerHTML = `
+    <div class="scc-hdr" style="margin-bottom:0">
+      <span class="scc-think-lbl">✦ AI COACH</span>
+      <span class="scc-tag" style="margin-left:auto">gpt-4o-mini</span>
+    </div>
+    <div class="scc-text" id="scc-tw-wrap" style="margin-top:8px"></div>`;
+  _typewriter(aiCard.querySelector('#scc-tw-wrap'), text);
 }
 
 // ── Shared profile helper — prompts once for missing values, reads everything else from memory ──
@@ -2319,15 +2347,16 @@ function _typewriter(containerEl, text, speed=18){
   }, speed);
 }
 
-async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex){
+async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=null){
   // Build context entirely from in-memory data — no DB queries, fires instantly
   const profile = await _getAIProfile();
-  if(!profile){ _clearSetCoachAIRow(); return; }
+  if(!profile) return;
   const { apiKey } = profile;
-  const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex, profile);
+  const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue, profile);
 
-  // 20-second hard timeout so the card never hangs past its own timer
+  // AbortController stored on _setCoach so dismiss/refresh can cancel in-flight requests
   const ctrl = new AbortController();
+  if(_setCoach) _setCoach.aiAbortCtrl = ctrl;
   const timeout = setTimeout(() => ctrl.abort(), 20000);
 
   try {
@@ -2366,7 +2395,7 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex){
   }
 }
 
-function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, profile={}){
+function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=null, profile={}){
   const dk = DAYS[cDay];
   const w  = W[cPhase]?.[dk];
   const ex = w?.ex?.[exIndex];
@@ -2401,7 +2430,7 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, profile={}
 
   return {
     athlete,
-    set_just_logged:       {set:setNum, weight_kg:weight, reps},
+    set_just_logged:       {set:setNum, weight_kg:weight, reps, rpe: rpeValue},
     exercise:              exName,
     sets_today:            todaySets,
     sets_left_in_exercise: setsLeft,
