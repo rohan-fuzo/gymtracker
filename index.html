@@ -1507,7 +1507,10 @@ window.addEventListener('online', flushOfflineQueue);
 
 // 2. User returns to tab/app
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && navigator.onLine) flushOfflineQueue();
+  if(document.visibilityState !== 'visible') return;
+  if(navigator.onLine) flushOfflineQueue();
+  // Re-sync rest timer display after backgrounding
+  _resumeRestTimerIfActive();
 });
 
 // 3. Periodic retry — every 30 seconds while app is open and online
@@ -1624,6 +1627,8 @@ async function init(){
       if(splash) splash.classList.add('hidden');
     });
   });
+  // Resume floating rest timer if it was running when app was backgrounded / refreshed
+  _resumeRestTimerIfActive();
 }
 
 async function loadSetsForDate(dateStr, silent=false){
@@ -2070,15 +2075,21 @@ function renderHydrationRow(){
 // ============================================================
 function haptic(pattern=[10]){
   try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+  // Warm up AudioContext on first gesture — iOS requires it before playback
+  _initAudioCtx();
+  if(_audioCtx && _audioCtx.state === 'suspended'){
+    _audioCtx.resume().catch(()=>{});
+  }
 }
 
 // ============================================================
 // REST TIMER
 // ============================================================
-let _restTimerInterval = null;
-let _restTimerDismiss = null;
-let _restTimerTotal = 0;
-let _restTimerLeft = 0;
+// ── Floating rest-timer state ──
+let _restTimerInterval = null;   // setInterval handle for 250ms display ticks
+let _restTimerDismiss  = null;   // setTimeout for "GO!" dismiss
+const RT_KEY = 'gymtracker_restTimer'; // localStorage key for persistence
+let _audioCtx = null;            // Web Audio context — initialised on first gesture
 
 function parseRestSecs(restStr){
   // '90s' -> 90, '75s' -> 75, '2min' -> 120
@@ -2088,40 +2099,133 @@ function parseRestSecs(restStr){
   return m[2].toLowerCase().startsWith('m') ? parseInt(m[1])*60 : parseInt(m[1]);
 }
 
-function startRestTimer(secs){
-  clearInterval(_restTimerInterval);
-  _restTimerTotal = secs;
-  _restTimerLeft = secs;
-  const el = document.getElementById('rest-timer');
-  const count = document.getElementById('rest-timer-count');
-  const bar = document.getElementById('rest-timer-bar');
-  if(!el) return;
-  el.classList.add('show');
-  count.textContent = secs + 's';
-  bar.style.transition = 'none';
-  bar.style.width = '100%';
-  // Trigger reflow then animate
-  bar.offsetHeight;
-  bar.style.transition = 'width ' + secs + 's linear';
-  bar.style.width = '0%';
-  _restTimerInterval = setInterval(() => {
-    _restTimerLeft--;
-    if(_restTimerLeft <= 0){
-      clearInterval(_restTimerInterval);
-      count.textContent = 'GO!';
-      count.style.color = 'var(--p3)';
-      haptic([30, 50, 30, 50, 80]);
-      _restTimerDismiss = setTimeout(() => {
-        el.classList.remove('show');
-        count.style.color = 'var(--text)';
-        _restTimerDismiss = null;
-      }, 1500);
-    } else {
-      count.textContent = _restTimerLeft + 's';
-      if(_restTimerLeft <= 10) count.style.color = 'var(--p1)';
-      else count.style.color = 'var(--text)';
+// ── Resume timer if it was active when app went to background ──
+function _resumeRestTimerIfActive(){
+  // First check in-memory set-coach card timer (inline inline card)
+  if(_setCoach && !_setCoach.dismissed){
+    const left = Math.ceil((_setCoach.endAt - Date.now()) / 1000);
+    const numEl = document.getElementById('scc-num');
+    if(numEl){
+      if(left <= 0){
+        // Expired while backgrounded
+        clearInterval(_setCoach.timerId);
+        _setCoach.timerId = null;
+        _playRestChime();
+        try { if(navigator.vibrate) navigator.vibrate([300, 100, 300]); } catch(_){}
+        _dismissSetCoachFade();
+      } else {
+        numEl.textContent = left + 's';
+        numEl.className = `scc-timer-num${left <= 10 ? ' scc-urgent' : ''}`;
+      }
     }
-  }, 1000);
+  }
+
+  // Then check floating HUD timer via localStorage
+  try {
+    const stored = localStorage.getItem(RT_KEY);
+    if(!stored) return;
+    const {endAt, total} = JSON.parse(stored);
+    if(!endAt) return;
+    // Still ticking or just expired — restart the display tick
+    _stopRestTimerTick();
+    if(_restTimerDismiss){ clearTimeout(_restTimerDismiss); _restTimerDismiss = null; }
+    _runRestTimerTick(endAt, total);
+  } catch(_){}
+}
+
+// ── Web Audio chime (no asset dependency, works offline) ──
+function _initAudioCtx(){
+  if(_audioCtx) return;
+  try {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch(_){ _audioCtx = null; }
+}
+function _playRestChime(){
+  _initAudioCtx();
+  if(!_audioCtx) return;
+  try {
+    // Two-tone pleasant chime: G5 then E5
+    [[784, 0], [659, 0.18]].forEach(([freq, delay]) => {
+      const osc  = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.connect(gain); gain.connect(_audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = _audioCtx.currentTime + delay;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+      osc.start(t); osc.stop(t + 0.65);
+    });
+  } catch(_){}
+}
+
+// ── Rest timer — timestamp-based so it survives backgrounding ──
+function startRestTimer(secs){
+  _stopRestTimerTick();
+  if(_restTimerDismiss){ clearTimeout(_restTimerDismiss); _restTimerDismiss = null; }
+
+  const endAt = Date.now() + secs * 1000;
+  // Persist so we can resume after background / screen-switch
+  try { localStorage.setItem(RT_KEY, JSON.stringify({endAt, total: secs})); } catch(_){}
+
+  _runRestTimerTick(endAt, secs);
+}
+
+function _runRestTimerTick(endAt, total){
+  const el    = document.getElementById('rest-timer');
+  const count = document.getElementById('rest-timer-count');
+  const bar   = document.getElementById('rest-timer-bar');
+  if(!el) return;
+
+  // Show with correct remaining time immediately
+  const secsLeft = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+  el.classList.add('show');
+  count.style.color = secsLeft <= 10 ? 'var(--p1)' : 'var(--text)';
+  count.textContent  = secsLeft + 's';
+
+  // Reset bar then animate the remaining portion
+  bar.style.transition = 'none';
+  bar.style.width = (secsLeft / total * 100) + '%';
+  bar.offsetHeight;
+  bar.style.transition = 'width ' + secsLeft + 's linear';
+  bar.style.width = '0%';
+
+  // Already expired (returned from background after timer ended)
+  if(secsLeft <= 0){ _onRestTimerEnd(); return; }
+
+  // Tick every 250ms — fast enough for smooth display, cheap on battery
+  _restTimerInterval = setInterval(() => {
+    const left = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+    if(count) {
+      count.textContent = left + 's';
+      count.style.color = left <= 10 ? 'var(--p1)' : 'var(--text)';
+    }
+    if(left <= 0){
+      _stopRestTimerTick();
+      _onRestTimerEnd();
+    }
+  }, 250);
+}
+
+function _stopRestTimerTick(){
+  if(_restTimerInterval){ clearInterval(_restTimerInterval); _restTimerInterval = null; }
+}
+
+function _onRestTimerEnd(){
+  // Clear persistence
+  try { localStorage.removeItem(RT_KEY); } catch(_){}
+  const el    = document.getElementById('rest-timer');
+  const count = document.getElementById('rest-timer-count');
+  if(count){ count.textContent = 'GO!'; count.style.color = 'var(--p3)'; }
+  // Sound + vibration
+  _playRestChime();
+  try { if(navigator.vibrate) navigator.vibrate([300, 100, 300]); } catch(_){}
+  _restTimerDismiss = setTimeout(() => {
+    if(el){ el.classList.remove('show'); }
+    if(count) count.style.color = 'var(--text)';
+    _restTimerDismiss = null;
+  }, 1800);
 }
 
 // ============================================================
@@ -2191,9 +2295,11 @@ function openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs){
   const rowEl = document.getElementById(ek);
   if(!rowEl) return;
 
+  const endAt = Date.now() + restSecs * 1000;
+
   // Store all params — AI card fires after RPE is resolved
   _setCoach = {
-    ek, timeLeft: restSecs, restSecs, timerId: null, dismissed: false,
+    ek, endAt, restSecs, timerId: null, dismissed: false,
     exName, setNum, weight, reps, exIndex, aiAbortCtrl: null,
   };
 
@@ -2214,22 +2320,23 @@ function openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs){
     bar.style.width = '0%';
   }
 
-  // Countdown — surgical number update only
+  // Tick every 250ms — timestamp-based so background time is accounted for
   _setCoach.timerId = setInterval(() => {
     if(!_setCoach || _setCoach.dismissed) return;
-    _setCoach.timeLeft--;
+    const left = Math.max(0, Math.ceil((_setCoach.endAt - Date.now()) / 1000));
     const numEl = document.getElementById('scc-num');
     if(numEl){
-      numEl.textContent = _setCoach.timeLeft + 's';
-      numEl.className = `scc-timer-num${_setCoach.timeLeft <= 10 ? ' scc-urgent' : ''}`;
+      numEl.textContent = left + 's';
+      numEl.className = `scc-timer-num${left <= 10 ? ' scc-urgent' : ''}`;
     }
-    if(_setCoach.timeLeft <= 0){
+    if(left <= 0){
       clearInterval(_setCoach.timerId);
       _setCoach.timerId = null;
-      haptic([30, 50, 30, 50, 80]);
+      _playRestChime();
+      try { if(navigator.vibrate) navigator.vibrate([300, 100, 300]); } catch(_){}
       _dismissSetCoachFade();
     }
-  }, 1000);
+  }, 250);
   // NOTE: AI call fires only after RPE sheet resolves — see _startSetCoachAI()
 }
 
@@ -2583,10 +2690,12 @@ function reinjectAICards(dk){
 }
 
 function skipRestTimer(){
-  clearInterval(_restTimerInterval);
+  _stopRestTimerTick();
   if(_restTimerDismiss){ clearTimeout(_restTimerDismiss); _restTimerDismiss = null; }
+  try { localStorage.removeItem(RT_KEY); } catch(_){}
   document.getElementById('rest-timer')?.classList.remove('show');
-  document.getElementById('rest-timer-count').style.color = 'var(--text)';
+  const count = document.getElementById('rest-timer-count');
+  if(count) count.style.color = 'var(--text)';
   haptic([8]);
 }
 
