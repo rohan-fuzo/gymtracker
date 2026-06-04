@@ -259,3 +259,9 @@ create index if not exists idx_body_measurements_date on body_measurements(date)
 alter table body_measurements enable row level security;
 create policy "Allow all for anon" on body_measurements
   for all using (true) with check (true);
+
+-- ============================================================
+-- RPE LOGGING — add nullable rpe column to exercise_logs
+-- Safe to run on an existing database (idempotent)
+-- ============================================================
+alter table exercise_logs add column if not exists rpe int check (rpe between 6 and 10);

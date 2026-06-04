@@ -225,6 +225,24 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .set-chip .sc-reps{font-size:10px;color:var(--dim);margin-top:1px}
 .set-chip.done .sc-reps{color:var(--p3);opacity:.7}
 .set-chip .sc-logged{font-size:9px;color:var(--p3);margin-top:2px;font-weight:600}
+.set-chip .sc-rpe{font-size:8px;color:var(--cyan);font-weight:700;letter-spacing:.3px;margin-top:1px;line-height:1;opacity:.9}
+/* ── RPE BOTTOM SHEET ── */
+.rpe-sheet{max-height:62vh}
+.rpe-options{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:14px 0 18px}
+.rpe-btn{padding:14px 4px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;transition:all .15s;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;align-items:center;gap:4px}
+.rpe-btn:active{transform:scale(.93);transition:transform .08s}
+.rpe-reps{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.5px;line-height:1}
+.rpe-label{font-size:9px;font-weight:700;letter-spacing:.5px;line-height:1}
+.rpe-btn[data-rpe="10"] .rpe-reps,.rpe-btn[data-rpe="10"] .rpe-label{color:var(--p1)}
+.rpe-btn[data-rpe="10"]{border-color:rgba(255,69,32,.3)}
+.rpe-btn[data-rpe="9"]  .rpe-reps,.rpe-btn[data-rpe="9"]  .rpe-label{color:var(--p2)}
+.rpe-btn[data-rpe="9"]{border-color:rgba(255,140,0,.25)}
+.rpe-btn[data-rpe="8"]  .rpe-reps,.rpe-btn[data-rpe="8"]  .rpe-label{color:var(--yellow)}
+.rpe-btn[data-rpe="8"]{border-color:rgba(251,191,36,.25)}
+.rpe-btn[data-rpe="7"]  .rpe-reps,.rpe-btn[data-rpe="7"]  .rpe-label{color:var(--p3)}
+.rpe-btn[data-rpe="7"]{border-color:rgba(34,197,94,.25)}
+.rpe-btn[data-rpe="6"]  .rpe-reps,.rpe-btn[data-rpe="6"]  .rpe-label{color:var(--cyan)}
+.rpe-btn[data-rpe="6"]{border-color:rgba(6,182,212,.25)}
 
 /* POWER DAY */
 .power-header{background:linear-gradient(135deg,rgba(255,69,32,.12),rgba(245,158,11,.08));border-bottom:1px solid rgba(255,69,32,.2);padding:14px 16px}
@@ -611,6 +629,38 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
     </div>
     <button class="modal-btn" onclick="saveSet()" aria-label="Save set">SAVE SET ✓</button>
     <button class="modal-btn skip" onclick="skipSet()">Skip (bodyweight / no weight)</button>
+  </div>
+</div>
+
+<!-- RPE SHEET — shown after every successful set log -->
+<div class="modal-overlay" id="rpe-modal" onclick="handleRPEClick(event)">
+  <div class="modal-sheet rpe-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">HOW HARD WAS THAT?</div>
+    <div class="modal-sub">Reps left in the tank</div>
+    <div class="rpe-options">
+      <button class="rpe-btn" data-rpe="10" onclick="selectRPE(10)">
+        <span class="rpe-reps">0</span>
+        <span class="rpe-label">RPE 10</span>
+      </button>
+      <button class="rpe-btn" data-rpe="9" onclick="selectRPE(9)">
+        <span class="rpe-reps">1–2</span>
+        <span class="rpe-label">RPE 9</span>
+      </button>
+      <button class="rpe-btn" data-rpe="8" onclick="selectRPE(8)">
+        <span class="rpe-reps">2–3</span>
+        <span class="rpe-label">RPE 8</span>
+      </button>
+      <button class="rpe-btn" data-rpe="7" onclick="selectRPE(7)">
+        <span class="rpe-reps">3–4</span>
+        <span class="rpe-label">RPE 7</span>
+      </button>
+      <button class="rpe-btn" data-rpe="6" onclick="selectRPE(6)">
+        <span class="rpe-reps">4+</span>
+        <span class="rpe-label">RPE 6</span>
+      </button>
+    </div>
+    <button class="modal-btn skip" onclick="skipRPE()">Skip</button>
   </div>
 </div>
 
@@ -1203,6 +1253,7 @@ const Schema = {
     weight_kg:      d.weight_kg != null ? Number(d.weight_kg) : null,
     reps:           d.reps != null ? Number(d.reps) : null,
     completed:      Boolean(d.completed),
+    rpe:            d.rpe != null ? Number(d.rpe) : null,
     updated_at:     new Date().toISOString(),
   }),
   warmup_log: (d) => ({
@@ -1538,7 +1589,7 @@ async function loadSetsForDate(dateStr, silent=false){
   loggedSets = {};
   if(data) data.forEach(row=>{
     const key = `${row.exercise_name}|${row.set_number}|${row.is_mm_set?1:0}`;
-    loggedSets[key] = {weight:row.weight_kg, reps:row.reps, completed:row.completed, id:row.id};
+    loggedSets[key] = {weight:row.weight_kg, reps:row.reps, completed:row.completed, rpe:row.rpe??null, id:row.id};
   });
   if(!silent) renderWorkout();
 }
@@ -1736,6 +1787,7 @@ let _bodyData = null;        // array of body_measurements rows
 let _inbodyForBody = null;   // array of inbody_logs rows (reused in body tab)
 let _measChart = null;
 let _exLogs = null;          // exercise_logs cache for strength chart (module-level, not window)
+let _pendingRPE = null;      // {date, exName, setNum, isMM, key, chipEl} — set before RPE sheet opens
 
 // Measurement due helpers
 function isMeasurementDue(){
@@ -2024,6 +2076,59 @@ function startRestTimer(secs){
   }, 1000);
 }
 
+// ============================================================
+// RPE SHEET
+// ============================================================
+function openRPESheet(){
+  document.getElementById('rpe-modal')?.classList.add('open');
+}
+function closeRPESheet(){
+  document.getElementById('rpe-modal')?.classList.remove('open');
+}
+function handleRPEClick(e){
+  if(e.target === document.getElementById('rpe-modal')) skipRPE();
+}
+function skipRPE(){
+  _pendingRPE = null;
+  closeRPESheet();
+}
+async function selectRPE(rpeValue){
+  closeRPESheet();
+  if(!_pendingRPE) return;
+  const {date, exName, setNum, isMM, key, chipEl} = _pendingRPE;
+  _pendingRPE = null;
+
+  // Optimistic local update
+  if(loggedSets[key]) {
+    const updated = {...loggedSets[key], rpe: rpeValue};
+    loggedSets = {...loggedSets, [key]: updated};
+  }
+  // Update badge on chip
+  setRPEBadge(chipEl, rpeValue);
+
+  // Persist — update the row that commitSet already wrote
+  try {
+    await withRetry(() =>
+      db.from('exercise_logs')
+        .update({rpe: rpeValue})
+        .eq('date', date)
+        .eq('exercise_name', exName)
+        .eq('set_number', setNum)
+        .eq('is_mm_set', isMM)
+        .then(r => { if(r.error) throw r.error; })
+    );
+  } catch(e) {
+    console.error('RPE save failed:', e?.message);
+    showToast('RPE not saved — will retry', 'error');
+  }
+}
+function setRPEBadge(chipEl, rpe){
+  if(!chipEl || rpe == null) return;
+  let badge = chipEl.querySelector('.sc-rpe');
+  if(!badge){ badge = document.createElement('div'); badge.className='sc-rpe'; chipEl.appendChild(badge); }
+  badge.textContent = `RPE ${rpe}`;
+}
+
 function skipRestTimer(){
   clearInterval(_restTimerInterval);
   if(_restTimerDismiss){ clearTimeout(_restTimerDismiss); _restTimerDismiss = null; }
@@ -2116,6 +2221,9 @@ async function commitSet(weight, reps, completed){
     const logged = chipEl.querySelector('.sc-logged');
     if(logged) logged.textContent = weight>0 ? `${weight}kg×${reps}` : 'done';
     chipEl.querySelector('.sc-num').style.color = isMM ? 'var(--gold)' : 'var(--p3)';
+    // Clear stale RPE badge (new value arrives via selectRPE after sheet interaction)
+    const rpeEl = chipEl.querySelector('.sc-rpe');
+    if(rpeEl) rpeEl.textContent = '';
   }
 
   // Update exercise done state immediately
@@ -2130,6 +2238,11 @@ async function commitSet(weight, reps, completed){
   closeModal();
   haptic([10, 50, 10]);
   showToast(weight>0 ? `${weight}kg × ${reps} saved ✓` : 'Set logged ✓');
+  // Queue RPE prompt — skip for MM sets (bodyweight form sets) and skipped sets
+  if(completed && !isMM) {
+    _pendingRPE = {date: selectedDateStr, exName, setNum, isMM, key, chipEl};
+    setTimeout(() => openRPESheet(), 350); // slight delay so toast appears first
+  }
   setSyncStatus('syncing');
 
   // ── PERSIST to DB in background with retry + dedup ──
@@ -2369,6 +2482,8 @@ function patchWorkoutSets(){
       chip.classList.toggle('done', !!done);
       const loggedEl = chip.querySelector('.sc-logged');
       if(loggedEl) loggedEl.textContent = done && logged.weight>0 ? `${logged.weight}kg×${logged.reps}` : done ? '✓' : '';
+      const rpeEl = chip.querySelector('.sc-rpe');
+      if(rpeEl) rpeEl.textContent = done && logged.rpe ? `RPE ${logged.rpe}` : '';
     });
     // MM chip
     if(isFirst){
@@ -2649,6 +2764,7 @@ function renderWorkout(){
         <div class="sc-num">S${setNum}</div>
         <div class="sc-reps">${s}</div>
         <div class="sc-logged">${done&&logged.weight>0?logged.weight+'kg×'+logged.reps:done?'✓':''}</div>
+        <div class="sc-rpe">${done&&logged.rpe?'RPE '+logged.rpe:''}</div>
       </div>`;
     }).join('');
     const exDone = isExerciseDone(ex.n, sp, isFirst);
