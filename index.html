@@ -2513,8 +2513,8 @@ Voice: Ragnar Lothbrok. Authoritative. Brutal. No wasted words.
 
 RPE auto-regulation (Tuchscherer RTS 2008 / Zourdos et al. 2016):
 - RPE 10 = nothing left. RPE 9 = 1 rep left. RPE 8 = 2 reps left.
-- is_final_set = false → advice is for the NEXT SET in this session. transition = null.
-- is_final_set = true → next_weight_kg is for NEXT TRAINING SESSION. If next_exercise exists in context, set transition = "<name>: <Xkg> × <reps>" — use previous_best from context to suggest a smart starting weight for that exercise.
+- is_final_set = false → advice is for the NEXT SET in this session. transition = null. Include cue.
+- is_final_set = true → next_weight_kg is for NEXT TRAINING SESSION. Set cue = null (exercise is done, no form cue needed). If next_exercise exists, set transition = "<name>: <Xkg> × <reps>" using previous_best.
 - session_history: last 3 sessions of this exercise — use to see trend (stalling, progressing, inconsistent).
 - progression_readiness.earned: pre-computed signal. true = athlete has earned a progression by Tuchscherer criteria. Use this to confirm or override your RPE assessment.
 - session_fatigue.high_fatigue: if true (avg RPE today ≥ 8.5), factor fatigue into recommendation — hold back even if progression is theoretically earned.
@@ -2685,47 +2685,52 @@ function getNearestValidWeight(weight, eq=[], currentWeight=null){
   return Math.round(snapped * 10) / 10;
 }
 
-// Parses structured GymBuddy response { next_weight_kg, next_reps, cue }
-// Snaps weight to equipment scale in code — never trust the model for this.
+// Parses structured GymBuddy response { next_weight_kg, next_reps, cue, transition }
+// Format differs by is_final_set:
+//   non-final: "Xkg. N reps. Cue."   (instruction for the next set right now)
+//   final:     "Xkg next session."    (forward-looking; no form cue for a done exercise)
 function _parseGymBuddyResponse(raw, ctx){
   try {
-    const j    = JSON.parse(raw);
-    const eq   = ctx?.equipment || [];
-    const curW = ctx?.set_just_logged?.weight_kg ?? null;
+    const j       = JSON.parse(raw);
+    const eq      = ctx?.equipment || [];
+    const curW    = ctx?.set_just_logged?.weight_kg ?? null;
+    const isFinal = ctx?.is_final_set ?? false;
+    const isTimed = ctx?.unit_type === 'seconds';
 
-    const wkg  = getNearestValidWeight(j.next_weight_kg, eq, curW);
-    const reps = j.next_reps;
-    const dur  = j.next_duration_s;
-    const cue  = (j.cue||'').trim();
+    const wkg   = getNearestValidWeight(j.next_weight_kg, eq, curW);
+    const dur   = j.next_duration_s;
+    const cue   = (j.cue||'').trim();
     const trans = (j.transition||'').trim();
 
-    const isTimed = ctx?.unit_type === 'seconds';
-    const parts = [];
-
-    if(isTimed){
-      if(dur) parts.push(dur + 's');
+    let mainNudge;
+    if(isFinal){
+      // Final set: just the next-session weight. No reps. No form cue.
+      if(isTimed) mainNudge = dur ? `${dur}s next session.` : null;
+      else        mainNudge = wkg != null ? `${wkg}kg next session.` : null;
     } else {
-      if(wkg != null) parts.push(wkg + 'kg');
+      // Non-final: full coaching instruction for the next set
+      const parts = [];
+      if(isTimed){ if(dur) parts.push(dur + 's'); }
+      else        { if(wkg != null) parts.push(wkg + 'kg'); }
+      if(j.next_reps) parts.push(j.next_reps + ' reps');
+      if(cue)         parts.push(cue);
+      mainNudge = parts.length ? parts.join('. ') + '.' : null;
     }
-    if(reps) parts.push(reps + ' reps');
-    if(cue)  parts.push(cue);
 
     // Snap transition weight to the next exercise's equipment scale
     let transLine = trans;
     if(trans && ctx?.next_exercise){
       const nEq = ctx.next_exercise.equipment || [];
-      // Extract weight number from transition string and snap it
       transLine = trans.replace(/(\d+(?:\.\d+)?)\s*kg/g, (_, w) => {
         const snapped = getNearestValidWeight(parseFloat(w), nEq, null);
         return snapped + 'kg';
       });
     }
 
-    const mainNudge = parts.length ? parts.join('. ') + '.' : null;
     if(mainNudge && transLine) return mainNudge + '\n' + transLine;
     return mainNudge || transLine || null;
   } catch(_){
-    return raw || null; // fallback: show raw text
+    return raw || null;
   }
 }
 
