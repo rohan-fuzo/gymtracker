@@ -2487,13 +2487,22 @@ function _updateSetCoachSuggestion(text){
   if(!_setCoach || _setCoach.dismissed) return;
   const aiCard = document.getElementById('set-coach-ai-card');
   if(!aiCard) return;
+
+  const [main, trans] = text.split('\n');
   aiCard.innerHTML = `
     <div class="scc-hdr" style="margin-bottom:0">
       <span class="scc-think-lbl">✦ AI COACH</span>
       <span class="scc-tag" style="margin-left:auto">gpt-4o-mini</span>
     </div>
-    <div class="scc-text" id="scc-tw-wrap" style="margin-top:8px"></div>`;
-  _typewriter(aiCard.querySelector('#scc-tw-wrap'), text);
+    <div class="scc-text" id="scc-tw-wrap" style="margin-top:8px"></div>
+    ${trans ? `<div id="scc-trans" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:13px;color:var(--muted);opacity:0;transition:opacity .5s .8s"></div>` : ''}`;
+
+  const wrap = aiCard.querySelector('#scc-tw-wrap');
+  _typewriter(wrap, main||text, 18, ()=>{
+    // After typing completes, fade in the transition line
+    const transEl = aiCard.querySelector('#scc-trans');
+    if(transEl && trans){ transEl.textContent = trans; transEl.style.opacity = '1'; }
+  });
 }
 
 // ── GymBuddy system prompt — single source of truth for both AI call sites ──
@@ -2504,8 +2513,8 @@ Voice: Ragnar Lothbrok. Authoritative. Brutal. No wasted words.
 
 RPE auto-regulation (Tuchscherer RTS 2008 / Zourdos et al. 2016):
 - RPE 10 = nothing left. RPE 9 = 1 rep left. RPE 8 = 2 reps left.
-- is_final_set = false → advice is for the NEXT SET in this session.
-- is_final_set = true → advice is for the NEXT TRAINING SESSION.
+- is_final_set = false → advice is for the NEXT SET in this session. transition = null.
+- is_final_set = true → next_weight_kg is for NEXT TRAINING SESSION. If next_exercise exists in context, set transition = "<name>: <Xkg> × <reps>" — use previous_best from context to suggest a smart starting weight for that exercise.
 - RPE ≤7, target reps hit: increase next_weight_kg to next valid increment on the equipment scale.
 - RPE 8, target reps hit: next_weight_kg = same or +smallest increment.
 - RPE 9: next_weight_kg = same as just used.
@@ -2525,7 +2534,12 @@ Voice rules for cue:
 - Never use: good, great, solid, amazing, well done, nice work, keep it up, excellent, strong.
 
 Return JSON only:
-{ "next_weight_kg": <number or null>, "next_reps": <number>, "cue": "<short command>" }
+{
+  "next_weight_kg": <number or null>,
+  "next_reps": <number>,
+  "cue": "<max 4 words>",
+  "transition": "<next exercise name>: <weight>kg × <reps> — only when is_final_set=true AND next_exercise exists, else null"
+}
 No preamble. No markdown. Nothing else.`;
 
 // ── Shared profile helper — prompts once for missing values, reads everything else from memory ──
@@ -2549,7 +2563,7 @@ async function _getAIProfile(){
 }
 
 // ── Typewriter renderer — "AI Coach: <text types out>" ──
-function _typewriter(containerEl, text, speed=18){
+function _typewriter(containerEl, text, speed=18, onComplete){
   containerEl.innerHTML =
     `<span class="ai-coach-prefix">AI Coach:</span><span id="_tw"></span><span class="ai-cursor">▌</span>`;
   const tw  = containerEl.querySelector('#_tw');
@@ -2557,7 +2571,7 @@ function _typewriter(containerEl, text, speed=18){
   let i = 0;
   const iv = setInterval(()=>{
     tw.textContent += text[i++];
-    if(i >= text.length){ clearInterval(iv); cur.remove(); }
+    if(i >= text.length){ clearInterval(iv); cur.remove(); if(onComplete) onComplete(); }
   }, speed);
 }
 
@@ -2580,7 +2594,7 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
       headers: {'Content-Type':'application/json', 'Authorization':`Bearer ${apiKey}`},
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        max_tokens: 60,
+        max_tokens: 100,
         temperature: 0.7,
         response_format: {type:'json_object'},
         messages: [
@@ -2680,6 +2694,7 @@ function _parseGymBuddyResponse(raw, ctx){
     const reps = j.next_reps;
     const dur  = j.next_duration_s;
     const cue  = (j.cue||'').trim();
+    const trans = (j.transition||'').trim();
 
     const isTimed = ctx?.unit_type === 'seconds';
     const parts = [];
@@ -2692,7 +2707,20 @@ function _parseGymBuddyResponse(raw, ctx){
     if(reps) parts.push(reps + ' reps');
     if(cue)  parts.push(cue);
 
-    return parts.length ? parts.join('. ') + '.' : null;
+    // Snap transition weight to the next exercise's equipment scale
+    let transLine = trans;
+    if(trans && ctx?.next_exercise){
+      const nEq = ctx.next_exercise.equipment || [];
+      // Extract weight number from transition string and snap it
+      transLine = trans.replace(/(\d+(?:\.\d+)?)\s*kg/g, (_, w) => {
+        const snapped = getNearestValidWeight(parseFloat(w), nEq, null);
+        return snapped + 'kg';
+      });
+    }
+
+    const mainNudge = parts.length ? parts.join('. ') + '.' : null;
+    if(mainNudge && transLine) return mainNudge + '\n' + transLine;
+    return mainNudge || transLine || null;
   } catch(_){
     return raw || null; // fallback: show raw text
   }
@@ -2727,9 +2755,24 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
   // Planned rep target for this set (e.g. "8" or "8-12") — AI must know vs actual reps done
   const plannedReps = setSeries[setNum - 1] || setSeries[0] || '';
   const plannedMin  = parseInt(plannedReps) || null; // lower bound (e.g. 8 from "8-12")
-  const hitTarget   = plannedMin ? reps >= plannedMin : null; // did they reach target?
+  const hitTarget   = plannedMin ? reps >= plannedMin : null;
   const exercisesLeft = (w?.ex||[]).slice(exIndex + 1).length;
   const prevBest    = _prevBestCache[`${exName}|1|0`] || null;
+
+  // On the final set, include the next exercise so AI can bridge to it
+  let nextExercise = null;
+  if(isFinalSet && w?.ex?.[exIndex + 1]){
+    const nex = w.ex[exIndex + 1];
+    const nPrev = _prevBestCache[`${nex.n}|1|0`] || null;
+    const nSets = parseSets(nex.s||'');
+    nextExercise = {
+      name:           nex.n,
+      plan:           nex.s,              // e.g. "3×10"
+      equipment:      nex.eq || [],
+      weight_scale:   _equipWeightScale(nex.eq),
+      previous_best:  nPrev               // {weight_kg, reps, date} or null
+    };
+  }
 
 
   // Personal profile
@@ -2755,6 +2798,7 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
     exercises_remaining_today: exercisesLeft,
     sets_today:        todaySets,
     personal_record:   prevBest,
+    next_exercise:     nextExercise,
     phase:             `Phase ${cPhase}`,
     week:              getProgrammeState(new Date()).week,
   };
