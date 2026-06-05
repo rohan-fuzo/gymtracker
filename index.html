@@ -2509,13 +2509,16 @@ Rules:
 - Never use: good, great, solid, amazing, well done, nice work, keep it up, you've got this, excellent, strong.
 - No reasoning. No science. No explanation. Just the next instruction.
 
-Apply Tuchscherer RPE auto-regulation science (RTS, 2008 / Zourdos et al. 2016):
-- RPE = Rate of Perceived Exertion. RPE 10 = nothing left. RPE 9 = 1 rep in reserve. RPE 8 = 2 reps in reserve.
-- is_final_set = false → always confirm same weight for the next set, state the rep target, add one form or tempo cue if relevant. Never suggest changing the weight. Pattern: "Same weight. [X] reps. [Form cue]."
-- is_final_set = true → this is the only moment to assess load for next session. Apply RPE rules: RPE ≤7 = increase. RPE 8 + clean reps = increase. RPE 9 = same weight, earn reps first. RPE 10 = deload. Missed reps = never progress.
-- Smallest increment always wins (progressive overload, Schoenfeld 2010).
+Apply Tuchscherer RPE auto-regulation (RTS 2008 / Zourdos et al. 2016) for every set:
+- RPE 10 = nothing left. RPE 9 = 1 rep in reserve. RPE 8 = 2 reps in reserve.
+- Always coach for the NEXT action: if sets remain → next set. If no sets remain → next session.
+- RPE ≤7: weight increase is warranted. State the new weight and rep target.
+- RPE 8, all reps hit: same weight or +2.5kg. State weight and rep target.
+- RPE 9: same weight. State it. Hit the reps cleanly first.
+- RPE 10: drop weight or same. State the corrected weight.
+- Missed reps at any RPE: never progress. Same or lower weight.
+- Smallest increment always wins (Schoenfeld 2010 progressive overload).
 - Equipment weight scales must be respected — only suggest weights that physically exist on that equipment. Never suggest a weight that does not exist on this scale.
-- Set position: early sets pace the session, final set is where you demand output.
 - Unit type: coach time-based exercises in seconds, rep-based in reps. Never confuse them.
 
 Return JSON only: { "nudge": "your command here" }
@@ -2594,11 +2597,6 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
     let nudge  = raw;
     try { nudge = JSON.parse(raw).nudge || raw; } catch(_){}
 
-    // ── Hard gate: if not the final set, block any load/weight suggestion ──
-    if(nudge && !ctx.is_final_set && _nudgeContainsLoad(nudge)){
-      console.warn('[SetCoach] Blocked load suggestion on non-final set:', nudge);
-      return; // Discard — model overstepped, show nothing rather than bad advice
-    }
     if(nudge) _updateSetCoachSuggestion(nudge);
   } catch(e){
     clearTimeout(timeout);
@@ -2612,11 +2610,6 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
 }
 
 // Detects if a nudge contains a weight/load suggestion (kg number, add/bump/increase/deload)
-// Detects a load CHANGE (increase/decrease) — NOT a same-weight confirmation.
-// "Same weight. 15 reps." → allowed.   "Add 2.5kg." / "Deload." → blocked.
-function _nudgeContainsLoad(text){
-  return /\badd\b|\bbump\b|\bincrease\b|\bdeload\b|\bnext\s+session\b|go\s+(up|to)\s+\d|move\s+to\s+\d/i.test(text);
-}
 
 function _equipWeightScale(eq=[]){
   if(eq.includes('db')) return '2.5kg dumbbell steps (2.5,5,7.5,10,12.5,15,17.5,20,22.5,25...)';
@@ -2644,13 +2637,6 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
   const exercisesLeft = (w?.ex||[]).slice(exIndex + 1).length;
   const prevBest    = _prevBestCache[`${exName}|1|0`] || null;
 
-  // ── Payload verification log — remove after confirming correct ──
-  console.log('[SetCoach payload]', {
-    is_final_set:       isFinalSet,
-    current_set_number: setNum,
-    total_sets:         totalSets,
-    sets_remaining:     setsLeft,
-  });
 
   // Personal profile
   const ib = profile.latestInBody;
