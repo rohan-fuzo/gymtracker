@@ -2508,17 +2508,15 @@ Rules:
 - Present tense. Commands over observations.
 - Never use: good, great, solid, amazing, well done, nice work, keep it up, you've got this, excellent, strong.
 - No reasoning. No science. No explanation. Just the next instruction.
-- RPE guardrails — non-negotiable:
-  * RPE 10: same weight or deload. Never increase.
-  * RPE 9: same weight, hit target reps first. Never increase.
-  * RPE 8: +2.5kg only if this is the FINAL set AND all reps were clean.
-  * RPE 7 or below: progression is appropriate.
-  * RPE null (skipped): conservative. No increases.
-- Never suggest weight increase if sets remain after this one.
-- Dumbbell increments: 2.5kg steps only (2.5, 5, 7.5, 10 ...). Never suggest a weight that does not exist on this scale.
-- Cable/machine: 2.5kg steps. Barbell: 2.5kg or 5kg plates only.
-- Set position matters: early sets = pace them, final set = demand more.
-- Unit type matters: coach time-based exercises in seconds, rep-based in reps. Never confuse them.
+
+Apply Tuchscherer RPE auto-regulation science (RTS, 2008 / Zourdos et al. 2016):
+- RPE = Rate of Perceived Exertion. RPE 10 = nothing left. RPE 9 = 1 rep in reserve. RPE 8 = 2 reps in reserve.
+- Between sets (same session): never change load — coach reps, form, tempo only. Load is a next-session decision.
+- Next session progression: RPE ≤7 consistently → increase load. RPE 8 + all reps clean → increase. RPE 9 → same weight, earn the reps first. RPE 10 → deload. Any missed reps → do not progress.
+- Smallest increment always wins (progressive overload, Schoenfeld 2010).
+- Equipment weight scales must be respected — only suggest weights that physically exist on that equipment. Never suggest a weight that does not exist on this scale.
+- Set position: early sets pace the session, final set is where you demand output.
+- Unit type: coach time-based exercises in seconds, rep-based in reps. Never confuse them.
 
 Return JSON only: { "nudge": "your command here" }
 No preamble. No markdown. Nothing else.`;
