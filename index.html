@@ -2502,24 +2502,28 @@ You do not encourage. You do not explain. You command.
 
 Voice: Ragnar Lothbrok. Authoritative. Brutal. No wasted words.
 
-Rules:
-- Maximum 10 words. Hard limit. No exceptions.
-- One sentence only.
-- Present tense. Commands over observations.
-- Never use: good, great, solid, amazing, well done, nice work, keep it up, you've got this, excellent, strong.
-- No reasoning. No science. No explanation. Just the next instruction.
+OUTPUT FORMAT — NON-NEGOTIABLE:
+First word must ALWAYS be a weight number followed by kg, or "Same." if keeping weight.
+Pattern: "[Xkg]. [Rep target]. [One form cue or nothing]."
+Examples: "15kg. 8 reps. Drive the floor." / "Same. Hit 8." / "17.5kg. 8 reps." / "12kg. Too heavy — drop it."
+NEVER start with a word that is not a weight or "Same."
 
-Apply Tuchscherer RPE auto-regulation (RTS 2008 / Zourdos et al. 2016) for every set:
-- RPE 10 = nothing left. RPE 9 = 1 rep in reserve. RPE 8 = 2 reps in reserve.
-- Always coach for the NEXT action: if sets remain → next set. If no sets remain → next session.
-- RPE ≤7: weight increase is warranted. State the new weight and rep target.
-- RPE 8, all reps hit: same weight or +2.5kg. State weight and rep target.
-- RPE 9: same weight. State it. Hit the reps cleanly first.
-- RPE 10: drop weight or same. State the corrected weight.
-- Missed reps at any RPE: never progress. Same or lower weight.
-- Smallest increment always wins (Schoenfeld 2010 progressive overload).
-- Equipment weight scales must be respected — only suggest weights that physically exist on that equipment. Never suggest a weight that does not exist on this scale.
-- Unit type: coach time-based exercises in seconds, rep-based in reps. Never confuse them.
+RPE auto-regulation (Tuchscherer RTS 2008 / Zourdos et al. 2016):
+- RPE 10 = nothing left. RPE 9 = 1 rep left. RPE 8 = 2 reps left.
+- Coach for the NEXT action: sets remain → next set weight. No sets remain → next session weight.
+- RPE ≤7, target reps hit: increase weight. State the new number.
+- RPE 8, target reps hit: same weight or +2.5kg. State the number.
+- RPE 9, any reps: same weight. State it.
+- RPE 10: drop weight. State the corrected number.
+- Missed target reps (hit_target = false): never increase. Same or lower.
+- Smallest increment always wins (Schoenfeld 2010).
+- Only suggest weights that exist on the equipment scale provided. Never invent a weight.
+- Time-based exercises: replace kg with seconds. Same format.
+
+Voice rules:
+- Maximum 10 words. Hard limit.
+- One sentence only.
+- Never use: good, great, solid, amazing, well done, nice work, keep it up, excellent, strong.
 
 Return JSON only: { "nudge": "your command here" }
 No preamble. No markdown. Nothing else.`;
@@ -2631,9 +2635,14 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
     .map(([k,v]) => ({set:parseInt(k.split('|')[1]), weight_kg:v.weight, reps:v.reps, rpe:v.rpe??null}))
     .sort((a,b) => a.set - b.set);
 
-  const totalSets   = parseSets(ex?.s||'').length || 1;
+  const setSeries   = parseSets(ex?.s||'');
+  const totalSets   = setSeries.length || 1;
   const setsLeft    = Math.max(0, totalSets - setNum);
   const isFinalSet  = setsLeft === 0;
+  // Planned rep target for this set (e.g. "8" or "8-12") — AI must know vs actual reps done
+  const plannedReps = setSeries[setNum - 1] || setSeries[0] || '';
+  const plannedMin  = parseInt(plannedReps) || null; // lower bound (e.g. 8 from "8-12")
+  const hitTarget   = plannedMin ? reps >= plannedMin : null; // did they reach target?
   const exercisesLeft = (w?.ex||[]).slice(exIndex + 1).length;
   const prevBest    = _prevBestCache[`${exName}|1|0`] || null;
 
@@ -2655,7 +2664,7 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
     unit_type:         unit, // 'reps' | 'seconds'
     equipment:         ex?.eq || [],
     weight_scale:      _equipWeightScale(ex?.eq),
-    set_just_logged:   {set:setNum, of_total:totalSets, label:`Set ${setNum} of ${totalSets}`, is_final_set:isFinalSet, weight_kg:weight, value:reps, unit, rpe:rpeValue},
+    set_just_logged:   {set:setNum, of_total:totalSets, label:`Set ${setNum} of ${totalSets}`, is_final_set:isFinalSet, weight_kg:weight, reps_done:reps, planned_reps:plannedReps, hit_target:hitTarget, unit, rpe:rpeValue},
     sets_remaining:    setsLeft,
     is_final_set:      isFinalSet,
     exercises_remaining_today: exercisesLeft,
