@@ -2511,7 +2511,12 @@ RPE auto-regulation (Tuchscherer RTS 2008 / Zourdos et al. 2016):
 - RPE 9: next_weight_kg = same as just used.
 - RPE 10: next_weight_kg = drop to lighter weight on the scale.
 - hit_target = false: never increase. next_weight_kg = same or lower.
-- Only use weights that exist on the equipment scale provided.
+- Equipment weight scales — these are laws. next_weight_kg must land on these exactly:
+  DB: 2.5kg increments — 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 27.5, 30...
+  KB: ONLY 8, 10, 12, 16, 20, 24, 28, 32. Nothing else. Never 14, 18, 22.
+  Cable: 2.5kg increments — 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25...
+  Machine: 2.5kg increments — 5, 7.5, 10, 12.5, 15, 17.5, 20...
+  Barbell: 2.5kg total increments from 20kg bar — 20, 22.5, 25, 27.5, 30...
 - cue: one short form or tempo instruction. Max 4 words. No encouragement words.
 - Time-based exercises: set next_weight_kg to null and next_duration_s to target seconds.
 
@@ -2610,24 +2615,57 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
 
 // Snap a weight to the valid increment for the equipment type.
 // Model suggestions like 16kg (invalid) become 17.5kg (next valid DB step).
-function _snapWeight(weight, currentWeight, eq=[]){
+// ── Equipment weight scales — exact valid values ──────────────────────────
+// These are the laws. AI suggestions are snapped to these before display.
+
+const EQ_SCALES = {
+  // Dumbbells: 2.5kg steps from 2.5kg
+  db:      {type:'step', step:2.5, min:2.5},
+  // Kettlebells: traditional Russian standard — discrete, non-linear
+  kb:      {type:'discrete', values:[8,10,12,16,20,24,28,32]},
+  // Cable (Precor with add-on pin): 2.5kg steps from 5kg
+  cable:   {type:'step', step:2.5, min:5},
+  // Machines: 2.5kg steps (weight stack with add-on pin)
+  mach:    {type:'step', step:2.5, min:5},
+  // Barbell: 2.5kg total increments from 20kg Olympic bar
+  barbell: {type:'step', step:2.5, min:20},
+  // Smith machine: 2.5kg total increments from 15kg bar
+  smith:   {type:'step', step:2.5, min:15},
+};
+
+function getNearestValidWeight(weight, eq=[], currentWeight=null){
   if(weight == null) return null;
-  // Pick the step for this equipment
-  let step = 2.5;                          // dumbbell / cable default
-  if(eq.includes('kb'))   step = 4;        // kettlebell
-  if(eq.includes('mach')) step = 5;        // machine plates
   if(!eq.length || (eq.length===1 && eq[0]==='bw')) return weight; // bodyweight
 
-  let snapped = Math.round(weight / step) * step;
+  // Find the primary equipment type in priority order
+  const key = ['kb','barbell','smith','cable','mach','db'].find(k => eq.includes(k)) || 'db';
+  const scale = EQ_SCALES[key];
+  if(!scale) return Math.round(weight * 10) / 10;
 
-  // If model suggested an increase but snapping collapsed back to current weight,
-  // force the next valid step up (e.g. 16kg DB → rounds to 15kg → push to 17.5kg)
-  if(currentWeight != null && weight > currentWeight && snapped <= currentWeight){
-    snapped = Math.ceil(currentWeight / step) * step;
-    if(snapped <= currentWeight) snapped += step; // currentWeight already on scale
+  if(scale.type === 'discrete'){
+    const vals = scale.values;
+    if(currentWeight != null && weight > currentWeight){
+      // Model wants an increase — find nearest valid value ABOVE current
+      const above = vals.filter(v => v > currentWeight);
+      if(!above.length) return vals[vals.length - 1]; // already at max
+      return above.reduce((a,b) => Math.abs(b-weight) < Math.abs(a-weight) ? b : a);
+    }
+    // Nearest value on the scale
+    return vals.reduce((a,b) => Math.abs(b-weight) < Math.abs(a-weight) ? b : a);
   }
 
-  return Math.round(snapped * 10) / 10; // clean floating point
+  // Step-based
+  const {step, min} = scale;
+  let snapped = Math.round(weight / step) * step;
+  snapped = Math.max(min, snapped);
+
+  // Model suggested increase but snapping collapsed to current → force next step up
+  if(currentWeight != null && weight > currentWeight && snapped <= currentWeight){
+    snapped = Math.ceil(currentWeight / step) * step;
+    if(snapped <= currentWeight) snapped += step;
+  }
+
+  return Math.round(snapped * 10) / 10;
 }
 
 // Parses structured GymBuddy response { next_weight_kg, next_reps, cue }
@@ -2638,7 +2676,7 @@ function _parseGymBuddyResponse(raw, ctx){
     const eq   = ctx?.equipment || [];
     const curW = ctx?.set_just_logged?.weight_kg ?? null;
 
-    const wkg  = _snapWeight(j.next_weight_kg, curW, eq);
+    const wkg  = getNearestValidWeight(j.next_weight_kg, eq, curW);
     const reps = j.next_reps;
     const dur  = j.next_duration_s;
     const cue  = (j.cue||'').trim();
@@ -2661,11 +2699,13 @@ function _parseGymBuddyResponse(raw, ctx){
 }
 
 function _equipWeightScale(eq=[]){
-  if(eq.includes('db')) return '2.5kg dumbbell steps (2.5,5,7.5,10,12.5,15,17.5,20,22.5,25...)';
-  if(eq.includes('kb')) return '4kg kettlebell steps (4,8,12,16,20,24,28,32...)';
-  if(eq.includes('cable')) return '2.5kg cable stack steps';
-  if(eq.includes('mach')) return '5kg machine plate steps';
-  return 'bodyweight — no external load';
+  if(eq.includes('kb'))      return 'KB: ONLY these weights exist: 8,10,12,16,20,24,28,32kg. No other values.';
+  if(eq.includes('barbell')) return 'Barbell: 20kg bar + 2.5kg total increments (20,22.5,25,27.5,30,35,40,42.5...).';
+  if(eq.includes('smith'))   return 'Smith machine: 15kg bar + 2.5kg total increments (15,17.5,20,22.5,25...).';
+  if(eq.includes('cable'))   return 'Cable (Precor + add-on pin): 2.5kg steps (5,7.5,10,12.5,15,17.5,20,22.5,25...).';
+  if(eq.includes('mach'))    return 'Machine stack (+ add-on pin): 2.5kg steps (5,7.5,10,12.5,15,17.5,20...).';
+  if(eq.includes('db'))      return 'DB: 2.5kg steps (2.5,5,7.5,10,12.5,15,17.5,20,22.5,25,27.5,30...).';
+  return 'Bodyweight — no external load.';
 }
 
 function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=null, profile={}){
