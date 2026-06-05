@@ -2502,35 +2502,25 @@ You do not encourage. You do not explain. You command.
 
 Voice: Ragnar Lothbrok. Authoritative. Brutal. No wasted words.
 
-OUTPUT FORMAT — NON-NEGOTIABLE:
-Always start with the exact weight in kg. Never write "Same" or "same weight" — always write the number.
-Pattern: "[Xkg]. [Rep target]. [One cue or nothing]."
-Examples:
-  "20kg. 8 reps. Full depth."     ← sets remain, increase warranted
-  "15kg. 8 reps. Drive harder."   ← sets remain, keep weight
-  "12kg. 8 reps. Too heavy."      ← sets remain, drop weight
-  "20kg next session."            ← final set, no more sets today
-NEVER write "Same", "same weight", "increase weight", or any phrase without an explicit kg number.
-
 RPE auto-regulation (Tuchscherer RTS 2008 / Zourdos et al. 2016):
 - RPE 10 = nothing left. RPE 9 = 1 rep left. RPE 8 = 2 reps left.
-- is_final_set = false → coach for the NEXT SET in this session. State the exact weight to pick up now.
-- is_final_set = true → coach for the NEXT TRAINING SESSION only. Athlete is done for today.
-- RPE ≤7, target reps hit: weight is too light. Increase for next set. State the new weight.
-- RPE 8, target reps hit: same weight or smallest valid increment. State the exact number.
-- RPE 9: same weight as just used. State the exact number.
-- RPE 10: drop to a lighter weight. State the exact corrected number.
-- hit_target = false (missed planned reps): never increase. Same or lower weight.
-- Smallest increment always wins (Schoenfeld 2010).
-- Only suggest weights that exist on the equipment scale provided. Never invent a weight.
-- Time-based exercises: state target seconds instead of kg.
+- is_final_set = false → advice is for the NEXT SET in this session.
+- is_final_set = true → advice is for the NEXT TRAINING SESSION.
+- RPE ≤7, target reps hit: increase next_weight_kg to next valid increment on the equipment scale.
+- RPE 8, target reps hit: next_weight_kg = same or +smallest increment.
+- RPE 9: next_weight_kg = same as just used.
+- RPE 10: next_weight_kg = drop to lighter weight on the scale.
+- hit_target = false: never increase. next_weight_kg = same or lower.
+- Only use weights that exist on the equipment scale provided.
+- cue: one short form or tempo instruction. Max 4 words. No encouragement words.
+- Time-based exercises: set next_weight_kg to null and next_duration_s to target seconds.
 
-Voice rules:
-- Maximum 10 words. Hard limit.
-- One sentence only.
+Voice rules for cue:
+- Maximum 6 words.
 - Never use: good, great, solid, amazing, well done, nice work, keep it up, excellent, strong.
 
-Return JSON only: { "nudge": "your command here" }
+Return JSON only:
+{ "next_weight_kg": <number or null>, "next_reps": <number>, "cue": "<short command>" }
 No preamble. No markdown. Nothing else.`;
 
 // ── Shared profile helper — prompts once for missing values, reads everything else from memory ──
@@ -2603,9 +2593,7 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
     }
     const data = await resp.json();
     const raw  = data.choices?.[0]?.message?.content?.trim() || '';
-    let nudge  = raw;
-    try { nudge = JSON.parse(raw).nudge || raw; } catch(_){}
-
+    const nudge = _parseGymBuddyResponse(raw, ctx);
     if(nudge) _updateSetCoachSuggestion(nudge);
   } catch(e){
     clearTimeout(timeout);
@@ -2619,6 +2607,35 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
 }
 
 // Detects if a nudge contains a weight/load suggestion (kg number, add/bump/increase/deload)
+
+// Parses structured GymBuddy response { next_weight_kg, next_reps, cue }
+// and assembles a display string — weight is always explicit from the data,
+// never left to the model's text formatting.
+function _parseGymBuddyResponse(raw, ctx){
+  try {
+    const j = JSON.parse(raw);
+    const wkg  = j.next_weight_kg;
+    const reps = j.next_reps;
+    const dur  = j.next_duration_s;
+    const cue  = (j.cue||'').trim();
+
+    const isTimed = ctx?.unit_type === 'seconds';
+    let parts = [];
+
+    if(isTimed){
+      if(dur) parts.push(dur + 's');
+    } else {
+      if(wkg != null) parts.push(wkg + 'kg');
+    }
+    if(reps) parts.push(reps + ' reps');
+    if(cue)  parts.push(cue);
+
+    return parts.length ? parts.join('. ') + '.' : null;
+  } catch(_){
+    // Fallback: model returned plain text — use as-is
+    return raw || null;
+  }
+}
 
 function _equipWeightScale(eq=[]){
   if(eq.includes('db')) return '2.5kg dumbbell steps (2.5,5,7.5,10,12.5,15,17.5,20,22.5,25...)';
@@ -2778,7 +2795,7 @@ async function callProgressionAI(exName, context, apiKey){
   }
   const data = await resp.json();
   const raw  = data.choices?.[0]?.message?.content?.trim() || '';
-  try { return JSON.parse(raw).nudge || raw; } catch(_){ return raw||null; }
+  return _parseGymBuddyResponse(raw, context);
 }
 
 // ── AI card DOM helpers ──
