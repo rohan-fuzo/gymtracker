@@ -2515,6 +2515,9 @@ RPE auto-regulation (Tuchscherer RTS 2008 / Zourdos et al. 2016):
 - RPE 10 = nothing left. RPE 9 = 1 rep left. RPE 8 = 2 reps left.
 - is_final_set = false → advice is for the NEXT SET in this session. transition = null.
 - is_final_set = true → next_weight_kg is for NEXT TRAINING SESSION. If next_exercise exists in context, set transition = "<name>: <Xkg> × <reps>" — use previous_best from context to suggest a smart starting weight for that exercise.
+- session_history: last 3 sessions of this exercise — use to see trend (stalling, progressing, inconsistent).
+- progression_readiness.earned: pre-computed signal. true = athlete has earned a progression by Tuchscherer criteria. Use this to confirm or override your RPE assessment.
+- session_fatigue.high_fatigue: if true (avg RPE today ≥ 8.5), factor fatigue into recommendation — hold back even if progression is theoretically earned.
 - RPE ≤7, target reps hit: increase next_weight_kg to next valid increment on the equipment scale.
 - RPE 8, target reps hit: next_weight_kg = same or +smallest increment.
 - RPE 9: next_weight_kg = same as just used.
@@ -2775,7 +2778,58 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
   }
 
 
-  // Personal profile
+  // ── Session history — last 3 sessions from prefetch cache ─────────────
+  const sessionHistory = (_prevHistoryCache[exName] || []).slice(0, 3);
+
+  // ── Progression readiness — pre-computed so AI gets the conclusion ─────
+  // Earned when: 2+ consecutive sessions where all planned reps were hit AND avg RPE ≤ 8.
+  // If RPE wasn't logged that session, reps-only criterion applies.
+  const progressionReadiness = (() => {
+    if(!sessionHistory.length) return {earned: false, consecutive: 0};
+    let consecutive = 0;
+    for(const session of sessionHistory){              // most recent first
+      const sets = session.sets || [];
+      if(!sets.length) break;
+      const allRepsHit  = sets.every(s => plannedMin ? s.reps >= plannedMin : true);
+      const rpeValues   = sets.map(s => s.rpe).filter(r => r != null);
+      const avgRpe      = rpeValues.length ? rpeValues.reduce((a,b)=>a+b,0)/rpeValues.length : null;
+      const rpeOk       = avgRpe == null || avgRpe <= 8;
+      if(allRepsHit && rpeOk) consecutive++;
+      else break;                                      // streak broken
+    }
+    return {
+      earned:      consecutive >= 2,
+      consecutive,
+      basis: consecutive >= 2
+        ? `${consecutive} consecutive sessions hitting target reps at RPE ≤8`
+        : consecutive === 1
+          ? '1 qualifying session — one more needed'
+          : 'No qualifying sessions yet',
+    };
+  })();
+
+  // ── Session fatigue — from loggedSets across all exercises today ────────
+  const sessionFatigue = (() => {
+    const allExercises  = w?.ex || [];
+    const total         = allExercises.length;
+    const done          = allExercises.filter((ex, ei) =>
+      isExerciseDone(ex.n, parseSets(ex.s||''), ei === 0)
+    ).length;
+    // Collect all non-null RPE values logged today
+    const rpeAll = Object.values(loggedSets)
+      .map(v => v.rpe).filter(r => r != null);
+    const avgRpe = rpeAll.length
+      ? Math.round((rpeAll.reduce((a,b)=>a+b,0) / rpeAll.length) * 10) / 10
+      : null;
+    return {
+      exercises_done:  done,
+      exercises_total: total,
+      avg_rpe_today:   avgRpe,
+      high_fatigue:    avgRpe != null && avgRpe >= 8.5,
+    };
+  })();
+
+  // ── Personal profile ────────────────────────────────────────────────────
   const ib = profile.latestInBody;
   const athlete = {
     age:            profile.age        || null,
@@ -2788,19 +2842,22 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
 
   return {
     athlete,
-    exercise:          exName,
-    unit_type:         unit, // 'reps' | 'seconds'
-    equipment:         ex?.eq || [],
-    weight_scale:      _equipWeightScale(ex?.eq),
-    set_just_logged:   {set:setNum, of_total:totalSets, label:`Set ${setNum} of ${totalSets}`, is_final_set:isFinalSet, weight_kg:weight, reps_done:reps, planned_reps:plannedReps, hit_target:hitTarget, unit, rpe:rpeValue},
-    sets_remaining:    setsLeft,
-    is_final_set:      isFinalSet,
+    exercise:             exName,
+    unit_type:            unit,
+    equipment:            ex?.eq || [],
+    weight_scale:         _equipWeightScale(ex?.eq),
+    set_just_logged:      {set:setNum, of_total:totalSets, label:`Set ${setNum} of ${totalSets}`, is_final_set:isFinalSet, weight_kg:weight, reps_done:reps, planned_reps:plannedReps, hit_target:hitTarget, unit, rpe:rpeValue},
+    sets_remaining:       setsLeft,
+    is_final_set:         isFinalSet,
+    session_history:      sessionHistory,
+    progression_readiness:progressionReadiness,
+    session_fatigue:      sessionFatigue,
     exercises_remaining_today: exercisesLeft,
-    sets_today:        todaySets,
-    personal_record:   prevBest,
-    next_exercise:     nextExercise,
-    phase:             `Phase ${cPhase}`,
-    week:              getProgrammeState(new Date()).week,
+    sets_today:           todaySets,
+    personal_record:      prevBest,
+    next_exercise:        nextExercise,
+    phase:                `Phase ${cPhase}`,
+    week:                 getProgrammeState(new Date()).week,
   };
 }
 
