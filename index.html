@@ -2511,8 +2511,8 @@ Rules:
 
 Apply Tuchscherer RPE auto-regulation science (RTS, 2008 / Zourdos et al. 2016):
 - RPE = Rate of Perceived Exertion. RPE 10 = nothing left. RPE 9 = 1 rep in reserve. RPE 8 = 2 reps in reserve.
-- Between sets (same session): never change load — coach reps, form, tempo only. Load is a next-session decision.
-- Next session progression: RPE ≤7 consistently → increase load. RPE 8 + all reps clean → increase. RPE 9 → same weight, earn the reps first. RPE 10 → deload. Any missed reps → do not progress.
+- is_final_set = false → form and tempo only. No weight numbers. No kg. No "add", "bump", "increase", "deload". No load of any kind. Not even implied.
+- is_final_set = true → this is the only moment to assess load for next session. Apply RPE rules: RPE ≤7 = increase. RPE 8 + clean reps = increase. RPE 9 = same weight, earn reps first. RPE 10 = deload. Missed reps = never progress.
 - Smallest increment always wins (progressive overload, Schoenfeld 2010).
 - Equipment weight scales must be respected — only suggest weights that physically exist on that equipment. Never suggest a weight that does not exist on this scale.
 - Set position: early sets pace the session, final set is where you demand output.
@@ -2593,6 +2593,12 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
     const raw  = data.choices?.[0]?.message?.content?.trim() || '';
     let nudge  = raw;
     try { nudge = JSON.parse(raw).nudge || raw; } catch(_){}
+
+    // ── Hard gate: if not the final set, block any load/weight suggestion ──
+    if(nudge && !ctx.is_final_set && _nudgeContainsLoad(nudge)){
+      console.warn('[SetCoach] Blocked load suggestion on non-final set:', nudge);
+      return; // Discard — model overstepped, show nothing rather than bad advice
+    }
     if(nudge) _updateSetCoachSuggestion(nudge);
   } catch(e){
     clearTimeout(timeout);
@@ -2603,6 +2609,11 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
     }
     // Fail silently — card stays visible showing just the timer
   }
+}
+
+// Detects if a nudge contains a weight/load suggestion (kg number, add/bump/increase/deload)
+function _nudgeContainsLoad(text){
+  return /\d[\d.]*\s*kg|\badd\b|\bbump\b|\bincrease\b|\bdeload\b|\bnext\s+session\b|\bnext\s+set\b.*\d/i.test(text);
 }
 
 function _equipWeightScale(eq=[]){
@@ -2627,8 +2638,17 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
 
   const totalSets   = parseSets(ex?.s||'').length || 1;
   const setsLeft    = Math.max(0, totalSets - setNum);
+  const isFinalSet  = setsLeft === 0;
   const exercisesLeft = (w?.ex||[]).slice(exIndex + 1).length;
   const prevBest    = _prevBestCache[`${exName}|1|0`] || null;
+
+  // ── Payload verification log — remove after confirming correct ──
+  console.log('[SetCoach payload]', {
+    is_final_set:       isFinalSet,
+    current_set_number: setNum,
+    total_sets:         totalSets,
+    sets_remaining:     setsLeft,
+  });
 
   // Personal profile
   const ib = profile.latestInBody;
@@ -2647,8 +2667,9 @@ function _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue=n
     unit_type:         unit, // 'reps' | 'seconds'
     equipment:         ex?.eq || [],
     weight_scale:      _equipWeightScale(ex?.eq),
-    set_just_logged:   {set:setNum, of_total:totalSets, label:`Set ${setNum} of ${totalSets}`, weight_kg:weight, value:reps, unit, rpe:rpeValue},
+    set_just_logged:   {set:setNum, of_total:totalSets, label:`Set ${setNum} of ${totalSets}`, is_final_set:isFinalSet, weight_kg:weight, value:reps, unit, rpe:rpeValue},
     sets_remaining:    setsLeft,
+    is_final_set:      isFinalSet,
     exercises_remaining_today: exercisesLeft,
     sets_today:        todaySets,
     personal_record:   prevBest,
