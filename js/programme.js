@@ -24,6 +24,9 @@ export const MONTH_NAMES= ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'
 export let viewingWeekOffset = 0;
 export function setViewingWeekOffset(v) { viewingWeekOffset = v; }
 
+// Expose DAYS on window so timer.js and other non-importers can read it
+Object.defineProperty(window, 'DAYS', { get(){ return DAYS; }, configurable: true });
+
 // ── Memoized week dates ──
 let _weekDatesMemo    = null;
 let _weekDatesMemoKey = null;

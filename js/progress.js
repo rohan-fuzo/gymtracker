@@ -908,51 +908,7 @@ async function saveWeighIn(){
   } catch(e){ setSyncStatus('error'); showToast('Save failed','error'); }
 }
 
-// ============================================================
-// DIET SCREEN
 
-function renderStrengthChartData(exName, exLogs){
-  const rows = exLogs.filter(r=>r.exercise_name===exName && r.weight_kg>0 && !r.is_mm_set);
-  if(!rows.length) return;
-  // Max weight per date
-  const byDate = {};
-  rows.forEach(r=>{ if(!byDate[r.date]||r.weight_kg>byDate[r.date]) byDate[r.date]=r.weight_kg; });
-  const dates = Object.keys(byDate).sort();
-  const ctx = document.getElementById('strength-chart')?.getContext('2d');
-  if(!ctx) return;
-  if(strengthChart) strengthChart.destroy();
-  strengthChart = new Chart(ctx,{
-    type:'line',
-    data:{
-      labels: dates.map(d=>d.slice(5)),
-      datasets:[{label:'Max weight (kg)',data:dates.map(d=>byDate[d]),borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,.1)',tension:.3,pointRadius:5,pointBackgroundColor:'#fbbf24'}]
-    },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#666',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'}}}}
-  });
-}
-
-function updateStrengthChart(exName){
-  if(_exLogs) renderStrengthChartData(exName, _exLogs);
-}
-
-// Weigh-in modal
-function openWeighModal(){ document.getElementById('weigh-modal').classList.add('open'); setTimeout(()=>document.getElementById('weigh-input').focus(),300); }
-function closeWeighModal(){ document.getElementById('weigh-modal').classList.remove('open'); }
-function handleWeighModalClick(e){ if(e.target===document.getElementById('weigh-modal')) closeWeighModal(); }
-
-async function saveWeighIn(){
-  const w = parseFloat(document.getElementById('weigh-input').value);
-  const notes = document.getElementById('weigh-notes').value;
-  if(!w||w<40||w>200){ showToast('Enter a valid weight','error'); return; }
-  setSyncStatus('syncing');
-  try {
-    await db.from('body_metrics').upsert({date:todayStr,weight_kg:w,phase:cPhase,notes:notes||null},{onConflict:'date'});
-    setSyncStatus('synced');
-    closeWeighModal();
-    showToast(`${w}kg logged ✓`);
-    _progressLastFetch = 0; // invalidate cache — force re-fetch next time Progress tab opens
-  } catch(e){ setSyncStatus('error'); showToast('Save failed','error'); }
-}
 
 // ============================================================
 // DIET SCREEN
@@ -1413,3 +1369,41 @@ async function saveInBody() {
 // NOTIFICATION SYSTEM
 // ============================================================
 
+// ── Exports ──
+export {
+  renderProgress,
+  switchProgressTab,
+  renderBodyTab,
+  renderDiet,
+  renderMobility,
+  renderSettings,
+  openResetModal,
+  closeResetModal,
+  confirmReset,
+  openInBodyModal,
+  closeInBodyModal,
+  handleInBodyModalClick,
+  handleInBodyPDF,
+  saveInBody,
+  openWeighModal,
+  closeWeighModal,
+  handleWeighModalClick,
+  saveWeighIn,
+  openMeasModal,
+  closeMeasModal,
+  handleMeasModalClick,
+  saveMeasurement,
+  toggleMeasAccordion,
+  setMeasUnit,
+  updateMeasChart,
+  updateComparison,
+  openHeightModal,
+  closeHeightModal,
+  handleHeightModalClick,
+  saveHeight,
+  skipHeight,
+  switchDietPhase,
+  toggleMob,
+  renderStrengthChartData,
+  updateStrengthChart,
+};

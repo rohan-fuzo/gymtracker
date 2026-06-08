@@ -4,8 +4,9 @@
 // ============================================================
 import { GYMBUDDY_PROMPT, EQ_SCALES, db } from './config.js';
 import { store } from './store.js';
-import { DAYS, prog } from './programme.js';
+import { DAYS, prog, getProgrammeState } from './programme.js';
 import { withRetry } from './sync.js';
+import { _playRestChime } from './timer.js';
 import { showToast } from './ui.js';
 import { SET_COACH_DEFAULT_REST } from './config.js';
 import { exData } from './data.js';
@@ -21,6 +22,9 @@ Object.defineProperty(window, '_setCoach', {
 });
 Object.defineProperty(window, '_dismissSetCoachFade', {
   get(){ return _dismissSetCoachFade; }, configurable: true,
+});
+Object.defineProperty(window, '_pendingRPE', {
+  get(){ return _pendingRPE; }, set(v){ _pendingRPE = v; }, configurable: true,
 });
 
 // ── inbodyForBody getter — injected by progress.js ──
@@ -246,7 +250,7 @@ async function _getAIProfile(){
     if(n > 10 && n < 100){ age = n; localStorage.setItem('userAge', String(n)); }
   }
   const heightCm   = parseFloat(localStorage.getItem('userHeightCm')||'0')||null;
-  const latestInBody = _inbodyForBody?.length ? _inbodyForBody[_inbodyForBody.length-1] : null;
+  const latestInBody = _getLatestInBody();
   return { apiKey, age, heightCm, latestInBody };
 }
 
@@ -589,7 +593,7 @@ function assembleProgressionContext(exName, phase, profile={}){
     ? {incline:lissRaw.incline, speed:lissRaw.speed, mins:lissRaw.mins}
     : null;
 
-  const ib = profile.latestInBody || (_inbodyForBody?.length ? _inbodyForBody[_inbodyForBody.length-1] : null);
+  const ib = profile.latestInBody || _getLatestInBody();
   const athlete = {
     age:            profile.age              || parseInt(localStorage.getItem('userAge')||'0')||null,
     height_cm:      profile.heightCm         || parseFloat(localStorage.getItem('userHeightCm')||'0')||null,
@@ -681,24 +685,9 @@ function reinjectAICards(dk){
   });
 }
 
-function skipRestTimer(){
-  _stopRestTimerTick();
-  if(_restTimerDismiss){ clearTimeout(_restTimerDismiss); _restTimerDismiss = null; }
-  try { localStorage.removeItem(RT_KEY); } catch(_){}
-  document.getElementById('rest-timer')?.classList.remove('show');
-  const count = document.getElementById('rest-timer-count');
-  if(count) count.style.color = 'var(--text)';
-  haptic([8]);
-}
-
-// ── Exercise unit helpers ──
-function getExUnit(ex){
-  // Returns 'seconds' for time-based sets (e.g. 3×45s), else 'reps'
-  return /×\d+(?:-\d+)?s/.test(ex?.s||'') ? 'seconds' : 'reps';
-}
-function parseExTargetSecs(ex){
-  const m = (ex?.s||'').match(/×(\d+)(?:-(\d+))?s/);
-  if(!m) return 0;
-  return parseInt(m[1]); // use lower bound as countdown start (e.g. 45-60s → 45s)
-}
-
+// ── Exports ──
+export {
+  openRPESheet, closeRPESheet, handleRPEClick, skipRPE, selectRPE,
+  openSetCoachCard, cancelSetCoachCard, dismissSetCoachCard,
+  fetchAIProgression, reinjectAICards,
+};

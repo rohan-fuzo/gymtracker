@@ -3,11 +3,14 @@
 // This is the core training screen module.
 // ============================================================
 import { db, TABLES, CONFLICTS, SET_COACH_DEFAULT_REST } from './config.js';
-import { store, Schema, validated } from './store.js';
-import { prog, DAYS, localDateStr, getTodayDateStr, parseLocalDate,
-         loadWeekActivity, getCalendarWeek, isMeasurementDue, daysSinceMeasurement } from './programme.js';
+import { store, Schema, validated, Perf } from './store.js';
+import { prog, DAYS, MONTH_NAMES, localDateStr, getTodayDateStr, parseLocalDate,
+         loadWeekActivity, getCalendarWeek, formatDate, getWeekDates, getDateForDay,
+         getTodayDowIndex, getProgrammeState, getThisWeekProgress, getLastWeekStatus,
+         isMeasurementDue, daysSinceMeasurement,
+         viewingWeekOffset, setViewingWeekOffset, invalidateWeekMemo } from './programme.js';
 import { queueOfflineSave, withRetry, dedupedUpsert, setSyncStatus, flushOfflineQueue } from './sync.js';
-import { exData, TRAVEL_WORKOUTS, getTravelMode, setTravelMode, getTravelDayType } from './data.js';
+import { exData, TRAVEL_WORKOUTS, getTravelMode, setTravelMode, getTravelDayType, getExerciseGif } from './data.js';
 import { showToast, haptic, renderSkeletonWorkout } from './ui.js';
 import { startRestTimer, parseRestSecs, _stopExTimer, parseExTargetSecs, getExUnit,
          _runRestTimerTick, RT_KEY } from './timer.js';
@@ -33,7 +36,6 @@ Object.defineProperty(window, '_stripCache', {
   configurable: true,
 });
 
-let exData.warmup = [];
 
 function renderUniversalWarmup(dk, isPowerDay){
   const wuDone = exData.warmup.filter(j=>checkCache[`wu_${dk}_${j.k}`]).length;
@@ -354,7 +356,7 @@ async function commitSet(weight, reps, completed){
 
   // Queue RPE prompt — skip for MM sets (bodyweight form sets) and skipped sets
   if(completed && !isMM) {
-    _pendingRPE = {date: selectedDateStr, exName, setNum, isMM, key, chipEl};
+    window._pendingRPE = {date: selectedDateStr, exName, setNum, isMM, key, chipEl};
     setTimeout(() => openRPESheet(), 350); // slight delay so toast appears first
   }
   setSyncStatus('syncing');
@@ -419,11 +421,7 @@ async function commitSet(weight, reps, completed){
   }
 }
 
-// Cache of previous bests: "exName|setNum|isMM" -> {weight,reps,date}
-const _prevBestCache = {};
-// Full session history per exercise: exName → [{date, sets:[{set,weight_kg,reps,rpe}]}]
-// Populated by the same single query that feeds _prevBestCache — zero extra DB calls.
-const _prevHistoryCache = {};
+
 
 async function prefetchPreviousBests(exercises){
   // One query fetches all historical rows for every exercise on today's plan.
@@ -501,9 +499,6 @@ function selectDay(d){
     loadHydration(selectedDateStr),
   ]).then(() => renderWorkout());
 }
-
-// Cache strip data to detect what actually changed
-let _stripCache = {};
 
 function renderWeekStrip(){
   const todayDow = getTodayDowIndex();
@@ -584,9 +579,6 @@ function renderWeekStrip(){
     }
   });
 }
-
-// Track what was last rendered to decide full vs patch
-let _workoutRenderKey = null;  // 'phase_day_date' — changes when day/phase switches
 
 function patchWorkoutSets(){
   // Surgical update: only re-paint set chips and exercise done state
@@ -1153,4 +1145,27 @@ function renderLiss(w,c,isTravelDay=false){
 // ============================================================
 // _progressLastFetch now in store
 
+// ── Week navigation ──
+export function navWeek(dir){
+  setViewingWeekOffset(viewingWeekOffset + dir);
+  invalidateWeekMemo();
+  const navToday = document.getElementById('week-nav-today');
+  if(navToday) navToday.classList.toggle('visible', viewingWeekOffset !== 0);
+  renderWeekStrip();
+}
 
+// ── Expose helpers used by coach.js, programme.js, and timer.js via global scope ──
+window.parseSets      = parseSets;
+window.isExerciseDone = isExerciseDone;
+window.isDayDone      = isDayDone;
+window.commitSet      = commitSet;  // used by timer.js logTimedSetNow
+
+// ── Exports — all functions imported by app.js ──
+export {
+  renderWeekStrip, renderWorkout, renderPhaseBanner,
+  openSetModal, handleModalClick, closeModal, saveSet, skipSet,
+  saveCardioLog, toggleWarmup, toggleCheck, toggleCreatine, toggleGlass,
+  toggleTravelMode, prefetchPreviousBests, selectPhase, selectDay,
+  patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx, toggleDemo,
+  parseSets, isExerciseDone, isDayDone,
+};

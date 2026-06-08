@@ -15,12 +15,14 @@ import { showToast, haptic, renderSkeletonWeekStrip, renderSkeletonWorkout,
          initNotifications } from './ui.js';
 import { _resumeRestTimerIfActive, skipRestTimer } from './timer.js';
 import { openRPESheet, closeRPESheet, handleRPEClick, skipRPE, selectRPE,
-         openSetCoachCard, cancelSetCoachCard, dismissSetCoachCard } from './coach.js';
-import { renderWeekStrip, renderWorkout, renderPhaseBanner, renderSkeletonWeekStrip as _,
+         openSetCoachCard, cancelSetCoachCard, dismissSetCoachCard,
+         fetchAIProgression, reinjectAICards } from './coach.js';
+import { renderWeekStrip, renderWorkout, renderPhaseBanner,
          openSetModal, handleModalClick, closeModal, saveSet, skipSet,
          saveCardioLog, toggleWarmup, toggleCheck, toggleCreatine, toggleGlass,
          toggleTravelMode, prefetchPreviousBests, selectPhase, selectDay, navWeek,
-         patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx, toggleDemo } from './workout.js';
+         patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx, toggleDemo,
+         parseSets, isExerciseDone, isDayDone } from './workout.js';
 import { renderProgress, switchProgressTab, renderBodyTab, renderDiet, renderMobility,
          renderSettings, openResetModal, closeResetModal, confirmReset,
          openInBodyModal, closeInBodyModal, handleInBodyModalClick, handleInBodyPDF,
@@ -505,6 +507,18 @@ window.selectRPE        = selectRPE;
 window.dismissSetCoachCard = dismissSetCoachCard;
 window.cancelSetCoachCard  = cancelSetCoachCard;
 window.skipRestTimer       = skipRestTimer;
+window.openSetCoachCard    = openSetCoachCard;
+window.fetchAIProgression  = fetchAIProgression;
+window.reinjectAICards     = reinjectAICards;
+// App-level functions used by workout.js
+window.ensureSession    = ensureSession;
+window.loadSetsForDate  = loadSetsForDate;
+window.loadCheckCache   = loadCheckCache;
+window.loadHydration    = loadHydration;
+// Helper functions used by coach.js and programme.js via global scope
+window.parseSets        = parseSets;
+window.isExerciseDone   = isExerciseDone;
+window.isDayDone        = isDayDone;
 // Workout helpers
 window.saveCardioLog    = saveCardioLog;
 window.toggleWarmup     = toggleWarmup;
