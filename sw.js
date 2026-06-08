@@ -1,5 +1,5 @@
 // Auto-bumped by GitHub Actions on every push — do not edit manually
-const SW_VERSION = '2026-06-05-1311';
+const SW_VERSION = '2026-06-08-split';
 const CACHE = 'gymtracker-' + SW_VERSION;
 
 // Assets to pre-cache (excludes index.html — it always goes network-first)
@@ -7,6 +7,21 @@ const PRECACHE = [
   'exercises.json',
   'icon-192.png',
   'icon-512.png',
+  // Styles
+  'css/app.css',
+  // JS modules — loaded as ES modules via app.js entry point
+  'js/config.js',
+  'js/store.js',
+  'js/programme.js',
+  'js/sync.js',
+  'js/data.js',
+  'js/ui.js',
+  'js/timer.js',
+  'js/workout.js',
+  'js/coach.js',
+  'js/progress.js',
+  'js/app.js',
+  // CDN
   'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap',
   'https://cdn.jsdelivr.net/npm/chart.js@4',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
