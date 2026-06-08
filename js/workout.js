@@ -10,7 +10,7 @@ import { prog, DAYS, MONTH_NAMES, localDateStr, getTodayDateStr, parseLocalDate,
          isMeasurementDue, daysSinceMeasurement,
          viewingWeekOffset, setViewingWeekOffset, invalidateWeekMemo } from './programme.js';
 import { queueOfflineSave, withRetry, dedupedUpsert, setSyncStatus, flushOfflineQueue } from './sync.js';
-import { exData, TRAVEL_WORKOUTS, getTravelMode, setTravelMode, getTravelDayType, getExerciseGif } from './data.js';
+import { exData, getTravelMode, setTravelMode, getTravelDayType, getExerciseGif } from './data.js';
 import { showToast, haptic, renderSkeletonWorkout } from './ui.js';
 import { startRestTimer, parseRestSecs, _stopExTimer, parseExTargetSecs, getExUnit,
          _runRestTimerTick, RT_KEY } from './timer.js';
@@ -589,7 +589,7 @@ function patchWorkoutSets(){
   // Use travel exercises if travel mode is active
   const isTravel = getTravelMode(selectedDateStr);
   const travelType = isTravel ? getTravelDayType(w) : null;
-  const travelW = (travelType && travelType !== 'liss') ? TRAVEL_WORKOUTS[travelType] : null;
+  const travelW = (travelType && travelType !== 'liss') ? exData.travelWorkouts[travelType] : null;
   const exList = (isTravel && travelW?.ex) ? travelW.ex : w.ex;
   if(!exList) return;
   exList.forEach((ex, ei) => {
@@ -842,7 +842,7 @@ function renderWorkout(){
   if(w.isLiss){ renderLiss(w, c, isTravelDay); return; }
 
   // Choose exercise list: travel bodyweight or regular programme
-  const travelW = (isTravelDay && travelType && TRAVEL_WORKOUTS[travelType]) ? TRAVEL_WORKOUTS[travelType] : null;
+  const travelW = (isTravelDay && travelType && exData.travelWorkouts[travelType]) ? exData.travelWorkouts[travelType] : null;
   const exList = travelW ? travelW.ex : w.ex;
 
   // Pre-fetch previous bests for displayed exercises (non-blocking)
@@ -969,7 +969,7 @@ function isDayDone(w, dk){
   const isTravel = getTravelMode(selectedDateStr);
   if(isTravel){
     const travelType = getTravelDayType(w);
-    const travelW = (travelType && travelType !== 'liss') ? TRAVEL_WORKOUTS[travelType] : null;
+    const travelW = (travelType && travelType !== 'liss') ? exData.travelWorkouts[travelType] : null;
     if(travelW?.ex) return travelW.ex.every(ex => isExerciseDone(ex.n, parseSets(ex.s), false));
   }
   // Regular workout day — all sets logged is enough
