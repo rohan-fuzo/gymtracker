@@ -8,7 +8,8 @@ import { prog, DAYS, getTodayDowIndex, getTodayDateStr, parseLocalDate,
          localDateStr, getCalendarWeek, loadWeekActivity,
          getProgrammeState, applyNewStartDate, loadProgrammeConfig } from './programme.js';
 import { setSyncStatus, flushOfflineQueue, updatePendingBadge } from './sync.js';
-import { exData, loadExerciseData } from './data.js';
+import { db } from './config.js';
+import { exData, loadExerciseData, getTravelMode } from './data.js';
 import { showToast, haptic, renderSkeletonWeekStrip, renderSkeletonWorkout,
          registerPWA, updateNotifBell, checkPendingNotifications, handleNotifBellTap,
          initNotifications } from './ui.js';
@@ -181,14 +182,6 @@ function showScreen(id,btn){
 }
 
 // ============================================================
-// INBODY MODAL
-// ============================================================
-// ============================================================
-// SETTINGS SCREEN
-// ============================================================
-function renderSettings() {
-
-// ============================================================
 // STORE SUBSCRIPTIONS — renders fire only on relevant state change
 // ============================================================
 
@@ -234,34 +227,6 @@ store.subscribe(['syncStatus'], ({syncStatus}) => {
   // Only read IDB when the operation settles — not on every 'syncing' transition
   if(syncStatus === 'synced' || syncStatus === 'error') updatePendingBadge();
 });
-
-async function manualSync(){
-  const items = await SyncDB.getAll().catch(() => []);
-  const lsItems = JSON.parse(localStorage.getItem('gymtracker_q') || '[]');
-  const total = items.length + lsItems.length;
-  if(total === 0){
-    showToast('All synced ✓');
-    return;
-  }
-  showToast(`Syncing ${total} item${total>1?'s':''}...`);
-  await flushOfflineQueue();
-}
-
-async function updatePendingBadge(){
-  try {
-    const items = await SyncDB.getAll();
-    const lsItems = JSON.parse(localStorage.getItem('gymtracker_q') || '[]');
-    const total = items.length + lsItems.length;
-    const lbl = document.getElementById('sync-label');
-    if(!lbl) return;
-    if(total > 0 && store.getState().syncStatus !== 'syncing'){
-      lbl.textContent = `${total} pending`;
-      lbl.style.color = 'var(--p2)';
-    } else {
-      lbl.style.color = '';
-    }
-  } catch(e){}
-}
 
 
 function runTests() {
