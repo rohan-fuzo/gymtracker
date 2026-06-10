@@ -294,27 +294,22 @@ function _typewriter(containerEl, text, speed=18, onComplete){
   }, speed);
 }
 
-function _setCoachAILog(lines, showReset=false){
+function _setCoachAIError(msg, showReset=false){
   const aiCard = document.getElementById('set-coach-ai-card');
   if(!aiCard) return;
-  const resetBtn = showReset ? `<button onclick="localStorage.removeItem('openai_api_key');this.closest('.set-coach-card').innerHTML='<div style=\\'padding:12px;font-size:12px;color:var(--dim)\\'>Key cleared — log a set to re-enter.</div>'" style="margin-top:10px;padding:8px 14px;border-radius:8px;background:#e03131;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;width:100%">🔑 Reset API Key</button>` : '';
+  const resetBtn = showReset ? `<button onclick="localStorage.removeItem('openai_api_key');this.closest('.set-coach-card').remove()" style="margin-top:10px;padding:8px 14px;border-radius:8px;background:#e03131;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;width:100%">🔑 Reset API Key</button>` : '';
   aiCard.innerHTML = `
-    <div class="scc-hdr" style="margin-bottom:6px">
+    <div class="scc-hdr" style="margin-bottom:0">
       <span class="scc-think-lbl">✦ AI COACH</span>
-      <span style="margin-left:auto;font-size:10px;color:var(--dim)">debug</span>
-    </div>
-    <div style="font-size:11px;color:var(--text);font-family:monospace;line-height:1.6;word-break:break-all">
-      ${lines.map(l=>`<div>${l}</div>`).join('')}
+      <span style="margin-left:auto;font-size:11px;color:var(--dim)">${msg}</span>
     </div>${resetBtn}`;
 }
 
 async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=null){
   const profile = await _getAIProfile();
-  if(!profile){ _setCoachAILog(['❌ no API key']); return; }
+  if(!profile){ _setCoachAIError('no API key'); return; }
   const { apiKey } = profile;
   const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue, profile);
-
-  _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `📤 calling gpt-4o-mini...`]);
 
   const ctrl = new AbortController();
   if(_setCoach) _setCoach.aiAbortCtrl = ctrl;
@@ -340,29 +335,24 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
 
     if(!resp.ok){
       const err = await resp.json().catch(()=>({}));
-      const msg = err.error?.message || `HTTP ${resp.status}`;
       const is401 = resp.status === 401;
       if(is401) localStorage.removeItem('openai_api_key');
-      _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `❌ ${resp.status}: ${msg}`], is401);
+      _setCoachAIError(is401 ? 'invalid API key' : `error ${resp.status}`, is401);
       return;
     }
     const data = await resp.json();
-    const raw  = data.choices?.[0]?.message?.content?.trim() || '';
+    const raw   = data.choices?.[0]?.message?.content?.trim() || '';
     const nudge = _parseGymBuddyResponse(raw, ctx);
-    if(nudge){
-      _updateSetCoachSuggestion(nudge);
-    } else {
-      _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `✅ 200 OK`, `📥 raw: ${raw.substring(0,120)}`, `❌ parse failed`]);
-    }
+    if(nudge) _updateSetCoachSuggestion(nudge);
+    else _setCoachAIError('unavailable');
   } catch(e){
     clearTimeout(timeout);
     if(e.name === 'AbortError'){
-      _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `⏱ timed out after 20s`]);
+      _setCoachAIError('timed out');
     } else {
-      // "Failed to fetch" on OpenAI usually means CORS block due to invalid key
       const likelyBadKey = e?.message?.toLowerCase().includes('fetch');
       if(likelyBadKey) localStorage.removeItem('openai_api_key');
-      _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `❌ ${e?.message}`], likelyBadKey);
+      _setCoachAIError('unavailable', likelyBadKey);
     }
   }
 }
