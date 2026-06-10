@@ -3,7 +3,7 @@
 //       swipe gestures, midnight refresh, window.* exports.
 // This is the entry point. Import everything; wire it up.
 // ============================================================
-import { store, Perf } from './store.js';
+import { store, Perf, Schema, validated } from './store.js';
 import { prog, DAYS, getTodayDowIndex, getTodayDateStr, parseLocalDate,
          localDateStr, getCalendarWeek, loadWeekActivity,
          getProgrammeState, applyNewStartDate, loadProgrammeConfig } from './programme.js';
@@ -32,7 +32,7 @@ import { renderProgress, switchProgressTab, renderBodyTab, renderDiet, renderMob
          openHeightModal, closeHeightModal, handleHeightModalClick, saveHeight, skipHeight,
          switchDietPhase, toggleMob } from './progress.js';
 import { startExTimer, logTimedSetNow } from './timer.js';
-import { manualSync } from './sync.js';
+import { manualSync, withRetry } from './sync.js';
 
 async function init(){
   setSyncStatus('syncing');
