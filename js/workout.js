@@ -410,7 +410,8 @@ async function commitSet(weight, reps, completed){
       });
     }, isPastDate ? 300 : 1500); // faster refresh for past date logging
   } catch(e){
-    console.error('commitSet failed:', e?.message, e?.code, e?.details, e);
+    const errMsg = e?.message || e?.code || String(e);
+    console.error('commitSet failed:', errMsg, e?.code, e?.details, e?.hint, e);
     // ── Queue offline — keep optimistic UI, coach card, and AI alive ──
     // The data will sync within 30s. Do NOT rollback or cancel AI just because
     // the immediate DB write failed (e.g. session not yet created, brief network hiccup).
@@ -421,7 +422,8 @@ async function commitSet(weight, reps, completed){
       data: {...payload, session_id: sessionId||null}
     });
     setSyncStatus('error');
-    showToast('Queued — will sync shortly', 'error');
+    // TEMP: show actual error so we can diagnose — remove once fixed
+    showToast('DB ERR: ' + errMsg, 'error');
   }
 }
 
