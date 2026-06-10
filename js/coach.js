@@ -233,19 +233,46 @@ function _updateSetCoachSuggestion(text){
   });
 }
 
+// ── Custom modal to replace browser prompt() — works in all contexts ──
+function _showInputModal(title, placeholder, inputType = 'text'){
+  return new Promise(resolve => {
+    document.getElementById('_gym-input-modal')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = '_gym-input-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:var(--card,#1c1c1e);border-radius:18px 18px 0 0;padding:24px 20px 32px;width:100%;max-width:480px;box-sizing:border-box">
+        <div style="font-size:14px;font-weight:700;color:var(--text,#fff);margin-bottom:14px;line-height:1.4">${title}</div>
+        <input id="_gym-input-val" type="${inputType}" placeholder="${placeholder}" autocomplete="off" spellcheck="false"
+          style="width:100%;box-sizing:border-box;background:var(--input,#2c2c2e);border:1px solid var(--border,#3a3a3c);border-radius:10px;padding:13px 14px;font-size:15px;color:var(--text,#fff);outline:none" />
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button id="_gym-input-cancel"
+            style="flex:1;padding:13px;border-radius:10px;background:var(--border,#3a3a3c);color:var(--text,#fff);border:none;font-size:15px;cursor:pointer">Skip</button>
+          <button id="_gym-input-save"
+            style="flex:2;padding:13px;border-radius:10px;background:#e03131;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer">Save</button>
+        </div>
+      </div>`;
+    const finish = val => { overlay.remove(); resolve(val || null); };
+    overlay.querySelector('#_gym-input-cancel').onclick = () => finish(null);
+    overlay.querySelector('#_gym-input-save').onclick   = () => finish(overlay.querySelector('#_gym-input-val').value?.trim());
+    overlay.querySelector('#_gym-input-val').addEventListener('keydown', e => { if(e.key==='Enter') finish(overlay.querySelector('#_gym-input-val').value?.trim()); });
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.querySelector('#_gym-input-val')?.focus());
+  });
+}
+
 // ── GymBuddy system prompt — single source of truth for both AI call sites ──
 
 async function _getAIProfile(){
   let apiKey = localStorage.getItem('openai_api_key');
   if(!apiKey){
-    apiKey = prompt('Enter your OpenAI API key to enable AI coaching (stored on this device only):');
+    apiKey = await _showInputModal('Enter your OpenAI API key to enable AI coaching (stored on this device only):', 'sk-...', 'password');
     if(!apiKey) return null;
-    apiKey = apiKey.trim();
     localStorage.setItem('openai_api_key', apiKey);
   }
   let age = parseInt(localStorage.getItem('userAge')||'0')||null;
   if(!age){
-    const raw = prompt('Your age — helps personalise AI coaching (stored locally, enter once):');
+    const raw = await _showInputModal('Your age — helps personalise AI coaching (stored locally, enter once):', 'e.g. 28', 'number');
     const n = parseInt(raw||'');
     if(n > 10 && n < 100){ age = n; localStorage.setItem('userAge', String(n)); }
   }
@@ -267,10 +294,20 @@ function _typewriter(containerEl, text, speed=18, onComplete){
   }, speed);
 }
 
+function _setCoachAIError(msg){
+  const aiCard = document.getElementById('set-coach-ai-card');
+  if(!aiCard) return;
+  aiCard.innerHTML = `
+    <div class="scc-hdr" style="margin-bottom:0">
+      <span class="scc-think-lbl">✦ AI COACH</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--dim)">${msg}</span>
+    </div>`;
+}
+
 async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=null){
   // Build context entirely from in-memory data — no DB queries, fires instantly
   const profile = await _getAIProfile();
-  if(!profile) return;
+  if(!profile){ _setCoachAIError('no API key'); return; }
   const { apiKey } = profile;
   const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue, profile);
 
@@ -310,10 +347,11 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
     clearTimeout(timeout);
     if(e.name === 'AbortError'){
       console.warn('[SetCoach] AI timed out after 20s');
+      _setCoachAIError('timed out');
     } else {
       console.error('[SetCoach AI]', e?.message);
+      _setCoachAIError('unavailable');
     }
-    // Fail silently — card stays visible showing just the timer
   }
 }
 
