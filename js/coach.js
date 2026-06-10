@@ -311,6 +311,8 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
   const { apiKey } = profile;
   const ctx = _buildSetCoachContext(exName, setNum, weight, reps, exIndex, rpeValue, profile);
 
+  console.log('[SetCoach] firing OpenAI call', {exName, setNum, weight, reps, rpeValue});
+
   // AbortController stored on _setCoach so dismiss/refresh can cancel in-flight requests
   const ctrl = new AbortController();
   if(_setCoach) _setCoach.aiAbortCtrl = ctrl;
@@ -334,23 +336,30 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
     });
     clearTimeout(timeout);
 
+    console.log('[SetCoach] response status:', resp.status, resp.ok);
+
     if(!resp.ok){
       const err = await resp.json().catch(()=>({}));
+      console.error('[SetCoach] API error body:', JSON.stringify(err));
       if(resp.status===401) localStorage.removeItem('openai_api_key');
       throw new Error(err.error?.message || `OpenAI ${resp.status}`);
     }
     const data = await resp.json();
+    console.log('[SetCoach] raw response:', JSON.stringify(data));
     const raw  = data.choices?.[0]?.message?.content?.trim() || '';
+    console.log('[SetCoach] raw content:', raw);
     const nudge = _parseGymBuddyResponse(raw, ctx);
+    console.log('[SetCoach] parsed nudge:', nudge);
     if(nudge) _updateSetCoachSuggestion(nudge);
+    else _setCoachAIError('bad response');
   } catch(e){
     clearTimeout(timeout);
     if(e.name === 'AbortError'){
       console.warn('[SetCoach] AI timed out after 20s');
       _setCoachAIError('timed out');
     } else {
-      console.error('[SetCoach AI]', e?.message);
-      _setCoachAIError('unavailable');
+      console.error('[SetCoach AI] error:', e?.message, e);
+      _setCoachAIError(e?.message?.substring(0,30) || 'error');
     }
   }
 }
