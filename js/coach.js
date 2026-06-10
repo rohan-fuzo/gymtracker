@@ -6,7 +6,7 @@ import { GYMBUDDY_PROMPT, EQ_SCALES, db } from './config.js';
 import { store } from './store.js';
 import { DAYS, prog, getProgrammeState } from './programme.js';
 import { withRetry } from './sync.js';
-import { _playRestChime } from './timer.js';
+import { _playRestChime, getExUnit } from './timer.js';
 import { showToast } from './ui.js';
 import { SET_COACH_DEFAULT_REST } from './config.js';
 import { exData } from './data.js';
