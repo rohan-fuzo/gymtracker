@@ -294,9 +294,10 @@ function _typewriter(containerEl, text, speed=18, onComplete){
   }, speed);
 }
 
-function _setCoachAILog(lines){
+function _setCoachAILog(lines, showReset=false){
   const aiCard = document.getElementById('set-coach-ai-card');
   if(!aiCard) return;
+  const resetBtn = showReset ? `<button onclick="localStorage.removeItem('openai_api_key');this.closest('.set-coach-card').innerHTML='<div style=\\'padding:12px;font-size:12px;color:var(--dim)\\'>Key cleared — log a set to re-enter.</div>'" style="margin-top:10px;padding:8px 14px;border-radius:8px;background:#e03131;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;width:100%">🔑 Reset API Key</button>` : '';
   aiCard.innerHTML = `
     <div class="scc-hdr" style="margin-bottom:6px">
       <span class="scc-think-lbl">✦ AI COACH</span>
@@ -304,7 +305,7 @@ function _setCoachAILog(lines){
     </div>
     <div style="font-size:11px;color:var(--text);font-family:monospace;line-height:1.6;word-break:break-all">
       ${lines.map(l=>`<div>${l}</div>`).join('')}
-    </div>`;
+    </div>${resetBtn}`;
 }
 
 async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=null){
@@ -340,8 +341,9 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
     if(!resp.ok){
       const err = await resp.json().catch(()=>({}));
       const msg = err.error?.message || `HTTP ${resp.status}`;
-      if(resp.status===401) localStorage.removeItem('openai_api_key');
-      _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `❌ ${resp.status}: ${msg}`]);
+      const is401 = resp.status === 401;
+      if(is401) localStorage.removeItem('openai_api_key');
+      _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `❌ ${resp.status}: ${msg}`], is401);
       return;
     }
     const data = await resp.json();
@@ -357,7 +359,10 @@ async function _fetchSetCoachAI(exName, setNum, weight, reps, exIndex, rpeValue=
     if(e.name === 'AbortError'){
       _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `⏱ timed out after 20s`]);
     } else {
-      _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `❌ ${e?.message}`]);
+      // "Failed to fetch" on OpenAI usually means CORS block due to invalid key
+      const likelyBadKey = e?.message?.toLowerCase().includes('fetch');
+      if(likelyBadKey) localStorage.removeItem('openai_api_key');
+      _setCoachAILog([`🔑 key: ...${apiKey.slice(-6)}`, `❌ ${e?.message}`], likelyBadKey);
     }
   }
 }
