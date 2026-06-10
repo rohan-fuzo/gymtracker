@@ -348,7 +348,7 @@ async function commitSet(weight, reps, completed){
 
   // ── BETWEEN-SET COACH CARD — show immediately, parallel with DB write ──
   if(completed && !isMM){
-    const _wNow = exData.W[cPhase][DAYS[cDay]];
+    const _wNow = exData.W?.[cPhase]?.[DAYS[cDay]];
     const _exNow = _wNow?.ex?.[exIndex];
     const restSecs = _exNow?.r ? parseRestSecs(_exNow.r) : SET_COACH_DEFAULT_REST;
     openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs);
@@ -373,7 +373,12 @@ async function commitSet(weight, reps, completed){
 
   try {
     await dedupedUpsert(conflictKey, async () => {
-      const sid = await ensureSession();
+      // ensureSession may return null if session creation fails — that's OK,
+      // the exercise_log row still saves; session_id is nullable.
+      const sid = await ensureSession().catch(err => {
+        console.warn('[commitSet] ensureSession failed, proceeding without session_id:', err?.message);
+        return null;
+      });
       await withRetry(() =>
         db.from('exercise_logs')
           .upsert({...payload, session_id: sid},
@@ -383,7 +388,8 @@ async function commitSet(weight, reps, completed){
     });
     setSyncStatus('synced');
     // Auto-start floating rest timer only if inline coach card is not already showing it
-    const _w = exData.W[cPhase][DAYS[cDay]];
+    // Use optional chaining — phase/day key mismatch must never throw here
+    const _w = exData.W?.[cPhase]?.[DAYS[cDay]];
     const _ex = _w?.ex?.[exIndex];
     if(_ex?.r && !isMM && !_setCoach){
       startRestTimer(parseRestSecs(_ex.r));
@@ -404,20 +410,18 @@ async function commitSet(weight, reps, completed){
       });
     }, isPastDate ? 300 : 1500); // faster refresh for past date logging
   } catch(e){
-    // ── ROLLBACK — restore previous state ──
-    store.setState({loggedSets: prevLoggedSets});
-    if(chipEl){ chipEl.classList.remove('done'); }
-    if(rowEl) rowEl.classList.remove('ex-done');
-    cancelSetCoachCard(); // remove card if DB write failed
-    setSyncStatus('error');
-    showToast('Saved offline — will sync when online', 'error');
-    console.error('commitSet failed:', e?.message);
+    console.error('commitSet failed:', e?.message, e?.code, e?.details, e);
+    // ── Queue offline — keep optimistic UI, coach card, and AI alive ──
+    // The data will sync within 30s. Do NOT rollback or cancel AI just because
+    // the immediate DB write failed (e.g. session not yet created, brief network hiccup).
     queueOfflineSave({
       table: 'exercise_logs',
       onConflict: 'date,exercise_name,set_number,is_mm_set',
       conflictKey: selectedDateStr+'|'+exName+'|'+setNum+'|'+(isMM?1:0),
       data: {...payload, session_id: sessionId||null}
     });
+    setSyncStatus('error');
+    showToast('Queued — will sync shortly', 'error');
   }
 }
 

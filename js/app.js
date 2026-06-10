@@ -133,9 +133,9 @@ async function ensureSession(){
   if(_sessionPromise) return _sessionPromise;
   _sessionPromise = (async () => {
     const dk = DAYS[cDay];
-    const w = exData.W[cPhase][dk];
+    const w = exData.W?.[cPhase]?.[dk];   // safe — phase/day may not be loaded yet
     const isTravel = getTravelMode(selectedDateStr);
-    const sessionTitle = isTravel ? 'TRAVEL · ' + (w.title || 'Travel Day') : w.title;
+    const sessionTitle = isTravel ? 'TRAVEL · ' + (w?.title || 'Travel Day') : (w?.title || 'Workout');
     // Try to get existing session first
     const {data:existing} = await db.from('workout_sessions')
       .select('id').eq('date', selectedDateStr).eq('day_of_week', dk).limit(1).single();
