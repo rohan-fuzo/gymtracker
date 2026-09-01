@@ -517,6 +517,21 @@ function selectDay(d){
   ]).then(() => renderWorkout());
 }
 
+function getSessionDots(i, d, dateStr, isPast, isLiveDay){
+  const dayData = exData.W[cPhase]?.[d] || {};
+  const hasMorn = dayData.morning && !dayData.morning.isRest;
+  const hasEven = dayData.evening && !dayData.evening.isRest;
+  const pastDone = !isPast && doneDatesCache.has(dateStr);
+  // Live check only for the selected day (loggedSets is loaded for it)
+  const mDone = isPast ? false : isLiveDay ? isSessionDone('morning', dayData, d) : (pastDone && hasMorn);
+  const eDone = isPast ? false : isLiveDay ? isSessionDone('evening', dayData, d) : (pastDone && hasEven);
+  const col = done => done ? 'var(--p3)' : 'var(--border)';
+  if(!hasMorn && !hasEven) return '';
+  if(hasMorn && hasEven)
+    return `<div class="dp-dots"><div class="dp-dot" style="background:${col(mDone)}"></div><div class="dp-dot" style="background:${col(eDone)}"></div></div>`;
+  return `<div class="dp-dots"><div class="dp-dot" style="background:${col(hasMorn ? mDone : eDone)}"></div></div>`;
+}
+
 function renderWeekStrip(){
   const todayDow = getTodayDowIndex();
   const weekDates = getWeekDates();
@@ -541,17 +556,17 @@ function renderWeekStrip(){
       const dateState = getProgrammeState(date);
       const isPast = dateState.beforeStart;
       const dateStr = localDateStr(date);
-      const isToday = (viewingWeekOffset === 0) && (i === todayDow);
       const isSelected = (i === cDay);
-      const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(exData.W[cPhase]?.[d],d)));
+      const isLiveDay = (viewingWeekOffset === 0) && (i === cDay);
+      const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (isLiveDay && isDayDone(exData.W[cPhase]?.[d],d)));
       const isTravelDay = !isPast && getTravelMode(dateStr);
-      const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
-      _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor, isTravelDay};
+      const dotsHTML = getSessionDots(i, d, dateStr, isPast, isLiveDay);
+      _stripCache[i] = {isSelected, isPast, dayIsDone, isTravelDay, dotsHTML};
       return `<div class="day-pill ${isSelected?'active':''} ${isPast?'pre-start':''} ${dayIsDone?'done-day':''}"
         onclick="selectDay(${i})" style="${isPast?'opacity:.35':''}">
         <div class="dp-day">${d}</div>
         <div class="dp-num" style="font-size:12px;font-family:'DM Sans',sans-serif;font-weight:600;line-height:1.2">${formatDate(date)}</div>
-        <div class="dp-dot" style="background:${dotColor}"></div>
+        ${dotsHTML}
         ${isTravelDay ? '<div class="dp-travel">✈️</div>' : ''}
       </div>`;
     }).join('');
@@ -565,31 +580,28 @@ function renderWeekStrip(){
     const dateState = getProgrammeState(date);
     const isPast = dateState.beforeStart;
     const dateStr = localDateStr(date);
-    const isToday = (viewingWeekOffset === 0) && (i === todayDow);
     const isSelected = (i === cDay);
-    const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(exData.W[cPhase]?.[d],d)));
+    const isLiveDay = (viewingWeekOffset === 0) && (i === cDay);
+    const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (isLiveDay && isDayDone(exData.W[cPhase]?.[d],d)));
     const isTravelDay = !isPast && getTravelMode(dateStr);
-    const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
+    const dotsHTML = getSessionDots(i, d, dateStr, isPast, isLiveDay);
 
     const prev = _stripCache[i] || {};
-    // Skip if nothing changed for this pill
-    if(prev.isSelected === isSelected && prev.dayIsDone === dayIsDone && prev.dotColor === dotColor && prev.isTravelDay === isTravelDay) return;
-    _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor, isTravelDay};
+    if(prev.isSelected === isSelected && prev.dayIsDone === dayIsDone && prev.dotsHTML === dotsHTML && prev.isTravelDay === isTravelDay) return;
+    _stripCache[i] = {isSelected, isPast, dayIsDone, isTravelDay, dotsHTML};
 
     const pill = pills[i];
     if(!pill) return;
-    // Patch classes
     pill.classList.toggle('active', isSelected);
     pill.classList.toggle('done-day', dayIsDone);
-    // Patch dot color
-    const dot = pill.querySelector('.dp-dot');
-    if(dot) dot.style.background = dotColor;
+    // Replace dots block
+    const existingDots = pill.querySelector('.dp-dots');
+    if(existingDots) existingDots.outerHTML = dotsHTML;
     // Patch travel indicator
     const existingTravel = pill.querySelector('.dp-travel');
     if(isTravelDay && !existingTravel){
       const te = document.createElement('div');
-      te.className = 'dp-travel';
-      te.textContent = '✈️';
+      te.className = 'dp-travel'; te.textContent = '✈️';
       pill.appendChild(te);
     } else if(!isTravelDay && existingTravel) {
       existingTravel.remove();
@@ -896,16 +908,20 @@ function isExerciseDone(exName, sp, isFirst){
   return sp.every((_,si) => loggedSets[exName+'|'+(si+1)+'|0']?.completed);
 }
 
-// Returns true if the morning session is done (morning is the anchor session)
-function isDayDone(dayData, dk){
-  const w = dayData?.morning;
+function isSessionDone(sess, dayData, dk){
+  const w = dayData?.[sess];
   if(!w || w.isRest) return false;
   if(w.isLiss){
-    const lissKey = `liss_${cPhase}_${dk}_morning`;
+    const lissKey = `liss_${cPhase}_${dk}_${sess}`;
     return !!(checkCache[lissKey]?.saved || (typeof checkCache[lissKey]==='boolean' && checkCache[lissKey]));
   }
   if(!w.ex) return false;
   return w.ex.every((ex, ei) => isExerciseDone(ex.n, parseSets(ex.s), ei===0));
+}
+
+// Returns true if the morning session is done (morning is the anchor session for doneDatesCache)
+function isDayDone(dayData, dk){
+  return isSessionDone('morning', dayData, dk);
 }
 
 function parseSets(s){ const m=s.match(/^(\d+)\s*[×x]\s*(.+?)(?:\s*[@(]|$)/); if(!m)return[s]; return Array(parseInt(m[1])).fill(m[2].trim()); }

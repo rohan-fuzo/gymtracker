@@ -163,9 +163,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .day-pill .dp-day{font-size:9px;color:var(--muted);font-weight:600}
 .day-pill .dp-num{font-family:'Bebas Neue',sans-serif;font-size:18px;line-height:1}
 .day-pill.active .dp-day{color:var(--p1)}
+.day-pill .dp-dots{display:flex;gap:3px;justify-content:center;align-items:center}
 .day-pill .dp-dot{width:5px;height:5px;border-radius:50%;background:var(--border)}
-.day-pill.active .dp-dot{background:var(--p1)}
-.day-pill.done-day .dp-dot{background:var(--p3)}
 .day-pill.done-day .dp-day{color:var(--p3)}
 .ex-row.ex-done .ex-name{text-decoration:line-through;opacity:.5}
 .ex-row.ex-done .ex-chevron{opacity:.4}
