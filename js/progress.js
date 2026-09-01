@@ -1157,6 +1157,15 @@ function renderSettings() {
       </button>
     </div>
 
+    <!-- Hard refresh -->
+    <div class="settings-card">
+      <div class="settings-card-title">Cache</div>
+      <div class="settings-hint">Clears the local exercise data cache (IndexedDB) and reloads fresh from the server.</div>
+      <button class="settings-apply-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="hardRefreshIDB()">
+        Hard Refresh Data
+      </button>
+    </div>
+
     <!-- Danger zone -->
     <div style="padding:4px 4px 0;font-size:11px;color:var(--muted);text-align:center;line-height:1.6">
       Programme config is saved to Supabase and persists across devices and sessions.
@@ -1369,6 +1378,17 @@ async function saveInBody() {
 // NOTIFICATION SYSTEM
 // ============================================================
 
+// ── Hard refresh: clear IDB exercise cache and reload ──
+async function hardRefreshIDB() {
+  try {
+    await indexedDB.deleteDatabase('gymtracker-exercises');
+    showToast('Cache cleared — reloading…', 'success');
+    setTimeout(() => window.location.reload(), 800);
+  } catch(e) {
+    showToast('Clear failed', 'error');
+  }
+}
+
 // ── Exports ──
 export {
   renderProgress,
@@ -1406,4 +1426,5 @@ export {
   toggleMob,
   renderStrengthChartData,
   updateStrengthChart,
+  hardRefreshIDB,
 };

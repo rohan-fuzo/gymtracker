@@ -31,7 +31,7 @@ import { renderProgress, switchProgressTab, renderBodyTab, renderDiet, renderMob
          openMeasModal, closeMeasModal, handleMeasModalClick, saveMeasurement,
          toggleMeasAccordion, setMeasUnit, updateMeasChart, updateComparison,
          openHeightModal, closeHeightModal, handleHeightModalClick, saveHeight, skipHeight,
-         switchDietPhase, toggleMob } from './progress.js';
+         switchDietPhase, toggleMob, hardRefreshIDB } from './progress.js';
 import { startExTimer, logTimedSetNow } from './timer.js';
 import { manualSync, withRetry } from './sync.js';
 
@@ -557,6 +557,7 @@ window.handleInBodyPDF    = handleInBodyPDF;
 window.saveInBody         = saveInBody;
 // Settings
 window.renderSettings     = renderSettings;
+window.hardRefreshIDB     = hardRefreshIDB;
 window.openResetModal     = openResetModal;
 window.closeResetModal    = closeResetModal;
 window.confirmReset       = confirmReset;
