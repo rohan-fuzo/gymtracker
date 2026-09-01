@@ -976,14 +976,16 @@ async function saveCardioLog(logKey, btnEl){
   btnEl.classList.add('saved');
   setSyncStatus('syncing');
   try {
-    const {error} = await db.from('checklist_logs').upsert({
-      date: selectedDateStr,
-      item_type: 'cardio',
-      item_key: logKey,
-      completed: true,
-      notes: JSON.stringify({incline, speed, mins})
-    }, {onConflict:'date,item_key'});
-    if(error) throw error;
+    await withRetry(() =>
+      db.from('checklist_logs').upsert({
+        date: selectedDateStr,
+        item_type: 'cardio',
+        item_key: logKey,
+        completed: true,
+        notes: JSON.stringify({incline, speed, mins})
+      }, {onConflict:'date,item_key'})
+        .then(r => { if(r.error) throw r.error; })
+    );
     setSyncStatus('synced');
     showToast(`${mins} min logged ✓`);
     loadWeekActivity().then(() => renderWeekStrip());
