@@ -649,34 +649,6 @@ function patchWorkoutSets(){
     }
   });
 
-  // Patch banner week progress message
-  const weekCountEl = document.querySelector('[data-week-count]');
-  if(weekCountEl){
-    const viewState = getProgrammeState(getDateForDay(cDay));
-    const weekProgress = getThisWeekProgress(viewState.week);
-    const satDate = weekProgress.days[5];
-    const satPast = satDate && !satDate.isFuture;
-    const daysLeft = prog.minActiveDays - weekProgress.logged;
-    if(weekProgress.weekLocked || (satPast && weekProgress.logged >= prog.minActiveDays)){
-      weekCountEl.innerHTML = '<span class="phase-banner-locked">✅ WEEK ' + viewState.week + ' QUALIFIED</span>';
-    } else if(weekProgress.logged >= prog.minActiveDays){
-      weekCountEl.innerHTML = '<strong>' + weekProgress.logged + '/4</strong> days done — week qualifies on Sunday';
-    } else {
-      weekCountEl.innerHTML = '<strong>' + weekProgress.logged + '/4</strong> days — need <strong>' + daysLeft + '</strong> more to qualify';
-    }
-    // Also update day dots
-    const dots = document.querySelectorAll('.phase-day-dot');
-    if(dots.length === 6){
-      weekProgress.days.forEach((d, i) => {
-        const dot = dots[i];
-        if(!dot) return;
-        const isTodayDot = (i === getTodayDowIndex());
-        dot.className = 'phase-day-dot' + (d.isDone?' done':d.isFuture?' future':' missed') + (isTodayDot?' today':'');
-        const check = dot.querySelector('.pd-check');
-        if(check) check.textContent = d.isDone ? '✓' : d.isFuture ? '' : '–';
-      });
-    }
-  }
 }
 
 function patchCheckCache(){
@@ -734,82 +706,8 @@ function patchCheckCache(){
 }
 
 function renderPhaseBanner() {
-  const viewDate = getDateForDay(cDay);
-  const viewState = getProgrammeState(viewDate);
-  if(viewState.beforeStart) return;
-
-  const isViewingToday = (localDateStr(viewDate) === todayStr);
-  const curWeek = viewState.week;
-  const qualifying = viewState.qualifyingInPhase || 0;
-  const remaining = viewState.remaining || (prog.phaseWeeks[cPhase] - qualifying);
-  const phColors = ['','var(--p1)','var(--p2)','var(--p3)','var(--p4)','var(--p5)'];
-  const col = phColors[cPhase];
-  const phasePct = Math.min(100, Math.round(qualifying / (prog.phaseWeeks[cPhase]||4) * 100));
-
-  const weekProgress = getThisWeekProgress(curWeek);
-  const todayDowIndex = getTodayDowIndex();
-
-  const dayDotsHTML = weekProgress.days.map((d, i) => {
-    const isTodayDot = (i === todayDowIndex);
-    let cls = 'phase-day-dot';
-    let icon = '';
-    if(d.isDone){
-      cls += ' done' + (isTodayDot?' today':'');
-      icon = '<div class="pd-check">✓</div>';
-    } else if(d.isFuture){
-      cls += ' future' + (isTodayDot?' today':'');
-    } else {
-      cls += ' missed' + (isTodayDot?' today':'');
-      icon = '<div class="pd-check">–</div>';
-    }
-    return `<div class="${cls}"><div>${d.label}</div>${icon}</div>`;
-  }).join('');
-
-  const daysLeft = prog.minActiveDays - weekProgress.logged;
-  const satDate = weekProgress.days[5];
-  const satPast = satDate && !satDate.isFuture;
-  let weekMsg = '';
-  if(weekProgress.weekLocked || (satPast && weekProgress.logged >= prog.minActiveDays)){
-    weekMsg = `<span class="phase-banner-locked">✅ WEEK ${curWeek} QUALIFIED</span>`;
-  } else if(weekProgress.logged >= prog.minActiveDays){
-    weekMsg = `<strong>${weekProgress.logged}/4</strong> days done — week qualifies on Sunday`;
-  } else if(daysLeft > 0){
-    weekMsg = `<strong>${weekProgress.logged}/4</strong> days — need <strong>${daysLeft}</strong> more to qualify`;
-  }
-
-  let recapHTML = '';
-  const isMonday = new Date().getDay() === 1;
-  const lastStatus = getLastWeekStatus();
-  if(isMonday && isViewingToday && lastStatus){
-    if(lastStatus.qualified){
-      recapHTML = `<div style="margin:0 16px 8px;padding:10px 14px;border-radius:10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);font-size:12px">
-        <span style="font-weight:700;color:var(--p3)">✅ Week ${lastStatus.week} complete</span>
-        <span style="color:var(--muted)"> — ${lastStatus.days} days logged. Phase ${lastStatus.phase} on track.</span>
-      </div>`;
-    } else {
-      recapHTML = `<div style="margin:0 16px 8px;padding:10px 14px;border-radius:10px;background:rgba(255,69,32,.08);border:1px solid rgba(255,69,32,.2);font-size:12px">
-        <span style="font-weight:700;color:var(--p1)">⚠️ Week ${lastStatus.week} missed</span>
-        <span style="color:var(--muted)"> — only ${lastStatus.days} days. Phase ${lastStatus.phase} extended 1 week.</span>
-      </div>`;
-    }
-  }
-
   const bannerWrap = document.getElementById('phase-banner-wrap');
-  if(bannerWrap){
-    bannerWrap.innerHTML = recapHTML + `<div class="phase-banner">
-      <div class="phase-banner-top">
-        <div class="phase-banner-title" style="color:${col}">PHASE ${cPhase}</div>
-        <div class="phase-banner-meta">${qualifying}/${prog.phaseWeeks[cPhase]} weeks · ${remaining} to go</div>
-      </div>
-      <div class="phase-banner-bar-wrap">
-        <div class="phase-banner-bar" style="width:${phasePct}%;background:${col}"></div>
-      </div>
-      <div class="phase-banner-days">${dayDotsHTML}</div>
-      <div class="phase-banner-footer">
-        <div class="phase-banner-week-msg" data-week-count>${weekMsg}</div>
-      </div>
-    </div>`;
-  }
+  if(bannerWrap) bannerWrap.innerHTML = '';
 }
 
 function renderWorkout(){
