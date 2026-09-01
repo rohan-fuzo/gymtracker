@@ -95,6 +95,7 @@ export function getProgrammeState(date, overrideStart) {
   const d = (typeof date === 'string') ? parseLocalDate(date) : new Date(date);
   d.setHours(0,0,0,0);
   const startSrc = overrideStart || prog.start;
+  if(!startSrc) return { phase:1, week:1, dowIndex:0, dayNum:0, beforeStart:true, daysUntil:0 };
   const start = new Date(startSrc.getTime()); start.setHours(0,0,0,0);
   const dayNum  = Math.floor((d - start) / 86400000);
   const js      = d.getDay();
@@ -243,7 +244,7 @@ export async function applyNewStartDate(dateStr) {
   const confirmBtn = document.getElementById('reset-modal-confirm');
   if(confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Applying…'; }
   try {
-    await saveProgrammeConfig(dateStr);
+    // Apply local state first — UI updates regardless of Supabase result
     prog.start          = parseLocalDate(dateStr);
     _weekDatesMemo      = null;
     _weekDatesMemoKey   = null;
@@ -272,10 +273,17 @@ export async function applyNewStartDate(dateStr) {
     window.renderWeekStrip?.();
     window.renderWorkout?.();
     window.renderSettings?.();
-    window.showToast?.(`Programme starts ${formatDate(prog.start)} ✓`);
+
+    // Persist to Supabase — non-blocking, warn if it fails
+    saveProgrammeConfig(dateStr)
+      .then(() => window.showToast?.(`Programme starts ${formatDate(prog.start)} ✓`))
+      .catch(e => {
+        console.error('applyNewStartDate save:', e);
+        window.showToast?.(`Applied locally — sync failed`, 'error');
+      });
   } catch(e) {
     console.error('applyNewStartDate:', e);
-    window.showToast?.('Failed to save — check connection', 'error');
+    window.showToast?.('Failed to apply — try again', 'error');
   } finally {
     if(confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Yes, Apply'; }
   }
