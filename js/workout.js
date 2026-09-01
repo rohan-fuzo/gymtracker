@@ -758,7 +758,7 @@ function renderWorkout(){
   const hasEvening = eveningSess && !eveningSess.isRest;
   let sessionToggleH = '';
   if(hasMorning || hasEvening){
-    sessionToggleH = `<div class="session-toggle" style="display:flex;gap:8px;margin-bottom:12px">
+    sessionToggleH = `<div class="session-toggle" style="display:flex;gap:8px;margin-bottom:12px;padding:0 16px">
       ${hasMorning ? `<button class="sess-btn${cSession==='morning'?' active':''}" onclick="setSession('morning')" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${cSession==='morning'?'var(--p1)':'var(--border)'};background:${cSession==='morning'?'rgba(99,102,241,.15)':'transparent'};color:${cSession==='morning'?'var(--p1)':'var(--dim)'};font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.5px">🌅 MORNING${morningSess?.location==='home'?' · HOME':''}</button>` : ''}
       ${hasEvening ? `<button class="sess-btn${cSession==='evening'?' active':''}" onclick="setSession('evening')" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${cSession==='evening'?'var(--p1)':'var(--border)'};background:${cSession==='evening'?'rgba(99,102,241,.15)':'transparent'};color:${cSession==='evening'?'var(--p1)':'var(--dim)'};font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.5px">🌆 EVENING${eveningSess?.location==='gym'?' · GYM':''}</button>` : ''}
     </div>`;
