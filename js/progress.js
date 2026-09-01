@@ -5,7 +5,7 @@
 import { db, TABLES, MEASURE_SITES, MEAS_GROUPS, MEASURE_SITES_MAP } from './config.js';
 import { store } from './store.js';
 import { prog, DAYS, localDateStr, parseLocalDate, formatDate,
-         isMeasurementDue, daysSinceMeasurement } from './programme.js';
+         isMeasurementDue, daysSinceMeasurement, getProgrammeState } from './programme.js';
 import { setSyncStatus, withRetry } from './sync.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
 
