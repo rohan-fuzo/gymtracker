@@ -447,8 +447,6 @@ async function commitSet(weight, reps, completed){
       data: {...payload, session_id: sessionId||null}
     });
     setSyncStatus('error');
-    // TEMP: show actual error so we can diagnose — remove once fixed
-    showToast('DB ERR: ' + errMsg, 'error');
   }
 }
 
@@ -466,7 +464,8 @@ async function prefetchPreviousBests(exercises){
     .eq('completed', true)
     .neq('date', selectedDateStr)
     .eq('is_mm_set', false)
-    .order('date', {ascending:false});
+    .order('date', {ascending:false})
+    .limit(300);
   if(!data) return;
 
   // _prevBestCache — most-recent result per exercise+set (used in set modal)
@@ -868,7 +867,6 @@ function renderWorkout(){
     const exDone = isExerciseDone(ex.n, sp, isFirst);
     h+=`<div class="ex-row${exDone?' ex-done':''}" id="${ek}">
       <div class="ex-main" onclick="tEx('${ek}')">
-        <div class="ex-icon">${ex.ic}</div>
         <div class="ex-info">
           <div class="ex-name">${ex.n}${travelW?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(6,182,212,.12);color:var(--cyan);font-weight:700;letter-spacing:.3px">BW</span>':''}</div>
           <div class="ex-sets">${isFirst?'<span style="color:var(--gold);font-size:10px">MM → </span>':''}${ex.s} · ${ex.r} rest</div>

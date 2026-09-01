@@ -146,11 +146,12 @@ export function getThisWeekProgress(calWeek) {
 
 export async function loadWeekActivity() {
   try {
+    const since = prog.start ? localDateStr(prog.start) : '2020-01-01';
     const [exRes, cardioRes] = await Promise.all([
       db.from('exercise_logs').select('date, exercise_name, set_number')
-        .eq('completed', true).neq('is_mm_set', true),
+        .eq('completed', true).neq('is_mm_set', true).gte('date', since),
       db.from('checklist_logs').select('date, item_key, item_type')
-        .eq('completed', true).eq('item_type', 'cardio'),
+        .eq('completed', true).eq('item_type', 'cardio').gte('date', since),
     ]);
 
     const byDate = {};
