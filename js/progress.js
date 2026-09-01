@@ -1110,8 +1110,6 @@ function renderSettings() {
   const startStr = localDateStr(prog.start);
   const curWeek  = state.beforeStart ? '—' : state.week;
   const curPhase = state.beforeStart ? '—' : state.phase;
-  const qualWks  = state.qualifyingInPhase || 0;
-  const needed   = prog.phaseWeeks[cPhase] || 4;
   const dayName  = state.beforeStart ? '—' : DAYS[state.dowIndex];
 
   el.innerHTML = `
@@ -1129,10 +1127,6 @@ function renderSettings() {
       <div class="settings-row">
         <div class="settings-row-label">Phase</div>
         <div class="settings-row-val">Phase ${curPhase} of 5</div>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-label">Phase Progress</div>
-        <div class="settings-row-val">${qualWks} / ${needed} qualifying weeks</div>
       </div>
     </div>
 
