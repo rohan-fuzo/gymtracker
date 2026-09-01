@@ -40,6 +40,7 @@ export function setTravelMode(dateStr, active) {
   } catch(e) {}
 }
 export function getTravelDayType(w) {
+  // w is now a session object (morning or evening), not a day object
   if(!w || w.isRest) return null;
   if(w.isLiss) return 'liss';
   const tags = w.tags || [];
@@ -101,13 +102,16 @@ export function applyExerciseData(data) {
   for(const k of Object.keys(data.EQ_NAMES)) {
     exData.EQ[k] = '<span class="eq-tag eq-' + k + '">' + data.EQ_NAMES[k] + '</span>';
   }
-  // Resolve eq key arrays → HTML in W
+  // Resolve eq key arrays → HTML in W (each day has morning/evening sessions)
   exData.W = data.W;
   for(const phase of Object.values(exData.W)) {
     for(const day of Object.values(phase)) {
-      if(!day.ex) continue;
-      for(const ex of day.ex) {
-        if(ex.eq) ex.eq = ex.eq.map(k => exData.EQ[k]);
+      for(const session of ['morning', 'evening']) {
+        const s = day[session];
+        if(!s?.ex) continue;
+        for(const ex of s.ex) {
+          if(ex.eq) ex.eq = ex.eq.map(k => exData.EQ[k]);
+        }
       }
     }
   }
@@ -131,8 +135,8 @@ export async function loadExerciseData() {
 
   if(cached) {
     applyExerciseData(cached);
-    // Background refresh — no render blocking
-    fetch('exercises.json')
+    // Background refresh — no render blocking; no-cache so HTTP cache never serves stale JSON
+    fetch('exercises.json', {cache:'no-cache'})
       .then(r => r.ok ? r.json() : null)
       .then(d => { if(d) ExCache.put(KEY, d).catch(() => {}); })
       .catch(() => {});
@@ -140,7 +144,7 @@ export async function loadExerciseData() {
   }
 
   try {
-    const r    = await fetch('exercises.json');
+    const r    = await fetch('exercises.json', {cache:'no-cache'});
     if(!r.ok) throw new Error('exercises.json ' + r.status);
     const data = await r.json();
     applyExerciseData(data);

@@ -1,7 +1,7 @@
 /* ── SPLASH SCREEN — painted instantly, no JS or font needed ── */
 #splash{
   position:fixed;inset:0;z-index:9999;
-  background:#0a0a0a;
+  background:#111314;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
   transition:opacity .4s ease, visibility .4s ease;
 }
@@ -9,24 +9,47 @@
 #splash-logo{
   font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;
   font-size:36px;font-weight:900;letter-spacing:6px;
-  color:#f0ede8;text-transform:uppercase;margin-bottom:6px;
+  color:#f5f5f3;text-transform:uppercase;margin-bottom:6px;
 }
-#splash-logo span{color:#ff4520}
+#splash-logo span{color:#b8845e}
 #splash-sub{
   font-family:system-ui,-apple-system,sans-serif;
   font-size:11px;font-weight:500;letter-spacing:3px;
-  color:#444;text-transform:uppercase;margin-bottom:48px;
+  color:#5a6570;text-transform:uppercase;margin-bottom:48px;
 }
 #splash-ring{
   width:36px;height:36px;
-  border:2.5px solid #1c1c1c;
-  border-top-color:#ff4520;
+  border:2.5px solid #242c30;
+  border-top-color:#b8845e;
   border-radius:50%;
   animation:splash-spin .7s linear infinite;
 }
 @keyframes splash-spin{to{transform:rotate(360deg)}}
 
-:root{--bg:#0a0a0a;--surface:#141414;--surface2:#1c1c1c;--surface3:#242424;--border:#2a2a2a;--text:#f0ede8;--muted:#666;--dim:#666;--p1:#ff4520;--p2:#ff8c00;--p3:#22c55e;--p4:#3b82f6;--p5:#a855f7;--yellow:#fbbf24;--cyan:#06b6d4;--gold:#f59e0b}
+:root{
+  --bg:#111314;
+  --surface:#171a1c;
+  --surface2:#1d2226;
+  --surface3:#242c30;
+  --border:#2e3840;
+  --text:#f5f5f3;
+  --muted:#5a6570;
+  --dim:#5a6570;
+  --p1:#b8845e;
+  --p2:#bca36e;
+  --p3:#5e8e73;
+  --p4:#7e97a8;
+  --p5:#8d879d;
+  --yellow:#bca36e;
+  --cyan:#7fa5a6;
+  --gold:#bca36e;
+  --fjord:#92a7b5;
+  --lavender:#8d879d;
+  --brass:#bca36e;
+  --copper:#b8845e;
+  --teal:#7fa5a6;
+  --moss:#5e8e73;
+}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;position:fixed;width:100%;height:100%}
@@ -115,7 +138,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .modal-btn.skip{background:var(--surface3);color:var(--muted);margin-top:8px;font-size:14px;letter-spacing:1px}
 
 /* TODAY */
-.today-header{padding:20px 16px 14px;background:linear-gradient(180deg,#1a1a1a,var(--bg))}
+.today-header{padding:20px 16px 14px;background:linear-gradient(180deg,var(--surface2),var(--bg))}
 .today-date{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px}
 .today-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;line-height:1;margin-bottom:2px}
 .today-sub{font-size:13px;color:var(--muted)}

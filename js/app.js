@@ -22,7 +22,8 @@ import { renderWeekStrip, renderWorkout, renderPhaseBanner,
          saveCardioLog, toggleWarmup, toggleCheck, toggleCreatine, toggleGlass,
          toggleTravelMode, prefetchPreviousBests, selectPhase, selectDay, navWeek,
          patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx, toggleDemo,
-         parseSets, isExerciseDone, isDayDone } from './workout.js';
+         parseSets, isExerciseDone, isDayDone,
+         cSession } from './workout.js';
 import { renderProgress, switchProgressTab, renderBodyTab, renderDiet, renderMobility,
          renderSettings, openResetModal, closeResetModal, confirmReset,
          openInBodyModal, closeInBodyModal, handleInBodyModalClick, handleInBodyPDF,
@@ -133,7 +134,7 @@ async function ensureSession(){
   if(_sessionPromise) return _sessionPromise;
   _sessionPromise = (async () => {
     const dk = DAYS[cDay];
-    const w = exData.W?.[cPhase]?.[dk];   // safe — phase/day may not be loaded yet
+    const w = exData.W?.[cPhase]?.[dk]?.[cSession];   // safe — phase/day may not be loaded yet
     const isTravel = getTravelMode(selectedDateStr);
     const sessionTitle = isTravel ? 'TRAVEL · ' + (w?.title || 'Travel Day') : (w?.title || 'Workout');
     // Try to get existing session first

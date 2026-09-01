@@ -21,6 +21,7 @@ export const _prevHistoryCache = {};
 export let _workoutRenderKey   = null;
 export let _sessionPromise     = null;
 let _stripCache = {};
+export let cSession = 'morning'; // 'morning' | 'evening'
 
 // Expose on window for cross-module access (coach.js reads _prevHistoryCache)
 Object.defineProperty(window, '_prevBestCache',    { get(){ return _prevBestCache;    }, configurable: true });
@@ -35,6 +36,15 @@ Object.defineProperty(window, '_stripCache', {
   set(v){ _stripCache = v; },
   configurable: true,
 });
+
+// ── Session toggle ──
+export function setSession(s) {
+  cSession = s;
+  _workoutRenderKey = null;
+  _stripCache = {};
+  renderWorkout();
+}
+window.setSession = setSession;
 
 
 function renderUniversalWarmup(dk, isPowerDay){
@@ -180,7 +190,8 @@ function renderHydrationRow(){
 
 function toggleTravelMode() {
   const dk = DAYS[cDay];
-  const w = exData.W[cPhase][dk];
+  const dayData = exData.W[cPhase]?.[dk] || {};
+  const w = dayData[cSession];
   if(!w || w.isRest) return;
   const newVal = !getTravelMode(selectedDateStr);
   setTravelMode(selectedDateStr, newVal);
@@ -216,7 +227,7 @@ function openSetModal(exName, setNum, isMM, chipEl, exIndex){
   document.getElementById('modal-title').textContent = exName.toUpperCase();
   // Determine unit type for this exercise
   const dk = DAYS[cDay];
-  const ex = exData.W[cPhase]?.[dk]?.ex?.[exIndex];
+  const ex = exData.W[cPhase]?.[dk]?.[cSession]?.ex?.[exIndex];
   const unit = isMM ? 'reps' : getExUnit(ex);
   const isTimed = unit === 'seconds';
 
@@ -274,7 +285,7 @@ async function saveSet(){
   if(!pendingSet) return;
   // Timed exercises save via logTimedSetNow — never via the normal save button
   const dk = DAYS[cDay];
-  const exForUnit = exData.W[cPhase]?.[dk]?.ex?.[pendingSet.exIndex];
+  const exForUnit = exData.W[cPhase]?.[dk]?.[cSession]?.ex?.[pendingSet.exIndex];
   if(getExUnit(exForUnit) === 'seconds'){ logTimedSetNow(); return; }
   const weight = parseFloat(document.getElementById('modal-weight').value)||0;
   const reps = parseInt(document.getElementById('modal-reps').value)||0;
@@ -334,10 +345,10 @@ async function commitSet(weight, reps, completed){
   }
 
   // Update exercise done state immediately
-  const ek = `ex_${cPhase}_${DAYS[cDay]}_${exIndex}`;
+  const ek = `ex_${cPhase}_${DAYS[cDay]}_${cSession}_${exIndex}`;
   const rowEl = document.getElementById(ek);
   if(rowEl){
-    const w = exData.W[cPhase][DAYS[cDay]];
+    const w = exData.W[cPhase]?.[DAYS[cDay]]?.[cSession];
     const ex = w?.ex?.[exIndex];
     if(ex) rowEl.classList.toggle('ex-done', isExerciseDone(ex.n, parseSets(ex.s), exIndex===0));
   }
@@ -348,7 +359,7 @@ async function commitSet(weight, reps, completed){
 
   // ── BETWEEN-SET COACH CARD — show immediately, parallel with DB write ──
   if(completed && !isMM){
-    const _wNow = exData.W?.[cPhase]?.[DAYS[cDay]];
+    const _wNow = exData.W?.[cPhase]?.[DAYS[cDay]]?.[cSession];
     const _exNow = _wNow?.ex?.[exIndex];
     const restSecs = _exNow?.r ? parseRestSecs(_exNow.r) : SET_COACH_DEFAULT_REST;
     openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs);
@@ -389,7 +400,7 @@ async function commitSet(weight, reps, completed){
     setSyncStatus('synced');
     // Auto-start floating rest timer only if inline coach card is not already showing it
     // Use optional chaining — phase/day key mismatch must never throw here
-    const _w = exData.W?.[cPhase]?.[DAYS[cDay]];
+    const _w = exData.W?.[cPhase]?.[DAYS[cDay]]?.[cSession];
     const _ex = _w?.ex?.[exIndex];
     if(_ex?.r && !isMM && !_setCoach){
       startRestTimer(parseRestSecs(_ex.r));
@@ -532,7 +543,7 @@ function renderWeekStrip(){
       const dateStr = localDateStr(date);
       const isToday = (viewingWeekOffset === 0) && (i === todayDow);
       const isSelected = (i === cDay);
-      const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(exData.W[cPhase][d],d)));
+      const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(exData.W[cPhase]?.[d],d)));
       const isTravelDay = !isPast && getTravelMode(dateStr);
       const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
       _stripCache[i] = {isSelected, isPast, dayIsDone, dotColor, isTravelDay};
@@ -556,7 +567,7 @@ function renderWeekStrip(){
     const dateStr = localDateStr(date);
     const isToday = (viewingWeekOffset === 0) && (i === todayDow);
     const isSelected = (i === cDay);
-    const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(exData.W[cPhase][d],d)));
+    const dayIsDone = !isPast && (doneDatesCache.has(dateStr) || (i===cDay && isDayDone(exData.W[cPhase]?.[d],d)));
     const isTravelDay = !isPast && getTravelMode(dateStr);
     const dotColor = isToday ? 'var(--p1)' : dayIsDone ? 'var(--p3)' : 'var(--border)';
 
@@ -590,7 +601,7 @@ function patchWorkoutSets(){
   // Surgical update: only re-paint set chips and exercise done state
   // Called when loggedSets changes but day/phase hasn't changed
   const dk = DAYS[cDay];
-  const w = exData.W[cPhase][dk];
+  const w = exData.W[cPhase]?.[dk]?.[cSession];
   if(!w) return;
   // Use travel exercises if travel mode is active
   const isTravel = getTravelMode(selectedDateStr);
@@ -603,7 +614,7 @@ function patchWorkoutSets(){
     // Travel exercises never have MM sets
     const isFirst = isTravel ? false : (ei === 0);
     const exDone = isExerciseDone(ex.n, sp, isFirst);
-    const ek = `ex_${cPhase}_${dk}_${ei}`;
+    const ek = `ex_${cPhase}_${dk}_${cSession}_${ei}`;
     const rowEl = document.getElementById(ek);
     if(!rowEl) return;
     // Update ex-done class
@@ -682,9 +693,9 @@ function patchCheckCache(){
     if(cb) cb.textContent = done ? '✓' : '';
   });
   // Cooldown items
-  const w = exData.W[cPhase][dk];
+  const w = exData.W[cPhase]?.[dk]?.[cSession];
   if(w?.cd) w.cd.forEach((_, i) => {
-    const key = `cd_${cPhase}_${dk}_${i}`;
+    const key = `cd_${cPhase}_${dk}_${cSession}_${i}`;
     const li = document.querySelector(`li[data-cd="${key}"]`);
     if(!li) return;
     const done = !!checkCache[key];
@@ -803,9 +814,11 @@ function renderPhaseBanner() {
 
 function renderWorkout(){
   Perf.start('renderWorkout');
-  const dk=DAYS[cDay]; const w=exData.W[cPhase][dk];
+  const dk=DAYS[cDay];
+  const dayData = exData.W[cPhase]?.[dk] || {};
+  const w = dayData[cSession];
   const viewDate = getDateForDay(cDay);
-  const newRenderKey = `${cPhase}_${cDay}_${selectedDateStr}`;
+  const newRenderKey = `${cPhase}_${cDay}_${selectedDateStr}_${cSession}`;
 
   // If same day/phase — patch in-place instead of full rebuild
   if(_workoutRenderKey === newRenderKey && document.getElementById('workout-content').children.length > 0){
@@ -823,8 +836,8 @@ function renderWorkout(){
   const calWeekNum = isBeforeStart ? 1 : getCalendarWeek(viewDate);
   const weekLabel = isBeforeStart ? 'Before start' : `Week ${calWeekNum}`;
   document.getElementById('today-date-label').textContent=`${formatDate(viewDate).toUpperCase()} · ${weekLabel.toUpperCase()} · PHASE ${cPhase}`;
-  document.getElementById('today-workout-title').textContent = isBeforeStart ? 'NOT STARTED' : w.title;
-  document.getElementById('today-workout-sub').textContent = isBeforeStart ? 'Programme starts ' + formatDate(prog.start) : w.sub;
+  document.getElementById('today-workout-title').textContent = isBeforeStart ? 'NOT STARTED' : (w?.title || '');
+  document.getElementById('today-workout-sub').textContent = isBeforeStart ? 'Programme starts ' + formatDate(prog.start) : (w?.sub || w?.note || '');
   const c=document.getElementById('workout-content');
 
   // ── PHASE PROGRESS BANNER — rendered via renderPhaseBanner() ──
@@ -839,7 +852,25 @@ function renderWorkout(){
     </div>`;
     return;
   }
-  if(w.isRest){ c.innerHTML=`<div class="rest-card"><div class="rest-icon">😴</div><h2>REST DAY</h2><p>Recovery is training. Sleep by 10:30pm. Prep meals. Muscles grow while you rest — especially at 35.</p></div>${renderSleepCardHTML()}`; return; }
+
+  // Session toggle — show when at least one session has exercises
+  const morningSess = dayData.morning;
+  const eveningSess = dayData.evening;
+  const hasMorning = morningSess && !morningSess.isRest;
+  const hasEvening = eveningSess && !eveningSess.isRest;
+  let sessionToggleH = '';
+  if(hasMorning || hasEvening){
+    sessionToggleH = `<div class="session-toggle" style="display:flex;gap:8px;margin-bottom:12px">
+      ${hasMorning ? `<button class="sess-btn${cSession==='morning'?' active':''}" onclick="setSession('morning')" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${cSession==='morning'?'var(--p1)':'var(--border)'};background:${cSession==='morning'?'rgba(99,102,241,.15)':'transparent'};color:${cSession==='morning'?'var(--p1)':'var(--dim)'};font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.5px">🌅 MORNING${morningSess?.location==='home'?' · HOME':''}</button>` : ''}
+      ${hasEvening ? `<button class="sess-btn${cSession==='evening'?' active':''}" onclick="setSession('evening')" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${cSession==='evening'?'var(--p1)':'var(--border)'};background:${cSession==='evening'?'rgba(99,102,241,.15)':'transparent'};color:${cSession==='evening'?'var(--p1)':'var(--dim)'};font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.5px">🌆 EVENING${eveningSess?.location==='gym'?' · GYM':''}</button>` : ''}
+    </div>`;
+  }
+
+  if(!w || w.isRest){
+    const restLabel = cSession === 'morning' ? 'REST MORNING' : cSession === 'evening' ? 'REST EVENING' : 'REST';
+    c.innerHTML=sessionToggleH+`<div class="rest-card"><div class="rest-icon">😴</div><h2>${restLabel}</h2><p>${w?.note||'Recovery is training. Sleep by 10:30pm. Prep meals. Muscles grow while you rest.'}</p></div>${renderSleepCardHTML()}`;
+    return;
+  }
 
   // ── TRAVEL MODE ── detect before LISS check so LISS can carry the travel flag too
   const isTravelDay = getTravelMode(selectedDateStr);
@@ -863,10 +894,8 @@ function renderWorkout(){
   const tagH = displayTags.map(t=>`<span class="tag tag-${t}">${t.toUpperCase()}</span>`).join('');
   const isPowerDay = travelW ? false : !!w.isPower; // travel days never render as power
 
-  let h = '';
+  let h = sessionToggleH;
 
-  // Travel toggle — shown on all workout days (not rest, not before-start)
-  h += renderTravelToggle(isTravelDay, travelType || 'fullbody');
 
   h+=`<div class="workout-card">`;
   if(isPowerDay){
@@ -878,13 +907,18 @@ function renderWorkout(){
     h+=`<div class="wc-header"><div><div class="wc-day">${displayTitle}</div><div style="margin-top:4px">${tagH}</div></div>
     <div class="wc-meta"><div class="wc-duration">${displayDur}'</div><div class="wc-kcal">${displayKcal} kcal</div></div></div>`;
   }
-  h+=`<div class="sec-label" style="border-top:none;padding-top:8px">WARMUP</div>`;
-  h+=renderUniversalWarmup(dk, isPowerDay);
+  if(w.wu){
+    h+=`<div class="sec-label" style="border-top:none;padding-top:8px">WARMUP</div>`;
+    h+=renderUniversalWarmup(dk, isPowerDay);
+  } else if(w.wuNote){
+    h+=`<div class="sec-label" style="border-top:none;padding-top:8px">WARMUP</div>`;
+    h+=`<div style="margin:0 16px 12px;padding:10px 14px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.7">${w.wuNote}</div>`;
+  }
   h+=`</div>`;
   h+=`<div class="workout-card" style="border-radius:0 0 16px 16px;margin-top:0">`;
   h+=`<div class="sec-label" style="border-top:none;padding-top:8px">EXERCISES${travelW?'<span style="margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:4px;background:rgba(6,182,212,.15);color:var(--cyan);vertical-align:middle">BODYWEIGHT</span>':''}</div>`;
   exList.forEach((ex,ei)=>{
-    const ek=`ex_${cPhase}_${dk}_${ei}`;
+    const ek=`ex_${cPhase}_${dk}_${cSession}_${ei}`;
     const sp=parseSets(ex.s);
     // Travel exercises: no MM set. Regular: first exercise gets MM set.
     const isFirst = travelW ? false : (ei===0);
@@ -935,16 +969,17 @@ function renderWorkout(){
   });
   h+=`</div>`;
   // Finisher: skip on travel days (no equipment)
-  if(w.fin && !travelW) h+=renderFinHTML(w.fin,cPhase,dk);
-  h+=`<div class="cd-block"><div class="block-title">COOLDOWN</div><ul class="checklist">`;
-  w.cd.forEach((it,i)=>{
-    const k=`cd_${cPhase}_${dk}_${i}`;
-    const done=checkCache[k]?'done':'';
-    h+=`<li class="${done}" data-cd="${k}" onclick="toggleCheck('${k}','cooldown',this)"><div class="cb">${checkCache[k]?'✓':''}</div><span>${it}</span></li>`;
-  });
-  h+=`</ul></div>`;
+  if(w.fin && !travelW) h+=renderFinHTML(w.fin,cPhase,dk,cSession);
+  if(w.cd?.length){
+    h+=`<div class="cd-block"><div class="block-title">COOLDOWN</div><ul class="checklist">`;
+    w.cd.forEach((it,i)=>{
+      const k=`cd_${cPhase}_${dk}_${cSession}_${i}`;
+      const done=checkCache[k]?'done':'';
+      h+=`<li class="${done}" data-cd="${k}" onclick="toggleCheck('${k}','cooldown',this)"><div class="cb">${checkCache[k]?'✓':''}</div><span>${it}</span></li>`;
+    });
+    h+=`</ul></div>`;
+  }
   h+=renderCreatineBannerHTML();
-  h+=renderSleepCardHTML();
   h+=renderHydrationHTML();
   c.innerHTML=h;
   // Re-inject any cached AI suggestion cards that survived from this session
@@ -963,22 +998,14 @@ function isExerciseDone(exName, sp, isFirst){
   return sp.every((_,si) => loggedSets[exName+'|'+(si+1)+'|0']?.completed);
 }
 
-// Returns true if all exercises done AND all warmup items ticked
-function isDayDone(w, dk){
+// Returns true if the morning session is done (morning is the anchor session)
+function isDayDone(dayData, dk){
+  const w = dayData?.morning;
   if(!w || w.isRest) return false;
-  // LISS day — any cardio logged = done (travel or not, LISS is LISS)
   if(w.isLiss){
-    const lissKey = 'liss_'+cPhase+'_'+dk;
+    const lissKey = `liss_${cPhase}_${dk}_morning`;
     return !!(checkCache[lissKey]?.saved || (typeof checkCache[lissKey]==='boolean' && checkCache[lissKey]));
   }
-  // Travel mode — check travel exercises instead
-  const isTravel = getTravelMode(selectedDateStr);
-  if(isTravel){
-    const travelType = getTravelDayType(w);
-    const travelW = (travelType && travelType !== 'liss') ? exData.travelWorkouts[travelType] : null;
-    if(travelW?.ex) return travelW.ex.every(ex => isExerciseDone(ex.n, parseSets(ex.s), false));
-  }
-  // Regular workout day — all sets logged is enough
   if(!w.ex) return false;
   return w.ex.every((ex, ei) => isExerciseDone(ex.n, parseSets(ex.s), ei===0));
 }
@@ -1072,11 +1099,11 @@ function renderCardioLogHTML(logKey, title, targetMins){
   </div>`;
 }
 
-function renderFinHTML(f,ph,dk){
+function renderFinHTML(f,ph,dk,sess='morning'){
   // Cardio finisher — log incline/speed/duration
   if(f.type==='cardio'){
     const targetMins = parseInt(f.dur)||20;
-    const logKey = `fin_cardio_${ph}_${dk}`;
+    const logKey = `fin_cardio_${ph}_${dk}_${sess}`;
     return `<div class="hiit-block"><div class="hiit-title">🔥 ${f.title}</div>
       <div class="hiit-desc" style="margin-bottom:8px">${f.desc} · ${f.kcal}</div>
       ${renderCardioLogHTML(logKey, 'Treadmill', targetMins)}
@@ -1085,7 +1112,7 @@ function renderFinHTML(f,ph,dk){
   // HIIT / Ropes / Tyre — round checkboxes
   const ic=f.type==='ropes'?'💥':f.type==='tyre'?'🔥':'⚡';
   const rH=f.rounds.map((r,i)=>{
-    const k=`fin_${ph}_${dk}_${i}`;
+    const k=`fin_${ph}_${dk}_${sess}_${i}`;
     const done=checkCache[k]?'done':'';
     return `<div class="hiit-round ${done}" onclick="toggleCheck('${k}','finisher',this)">${r}</div>`;
   }).join('');
@@ -1120,7 +1147,7 @@ function renderHydrationHTML(){
 
 function renderLiss(w,c,isTravelDay=false){
   const dk=DAYS[cDay];
-  const lissKey = `liss_${cPhase}_${dk}`;
+  const lissKey = `liss_${cPhase}_${dk}_${cSession}`;
   const targetMins = parseInt(w.dur)||45;
   // Travel LISS note
   const travelNote = isTravelDay
