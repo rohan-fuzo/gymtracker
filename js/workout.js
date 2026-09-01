@@ -112,8 +112,11 @@ async function toggleWarmup(itemKey, label, el){
     renderWeekStrip();
   } catch(e){
     setSyncStatus('error');
-    console.error('warmup save failed:', e?.message, e);
-    showToast('Warmup save failed', 'error');
+    queueOfflineSave({
+      table: 'warmup_logs', onConflict: 'date,item_key',
+      conflictKey: `${selectedDateStr}|${itemKey}`,
+      data: { date: selectedDateStr, phase: cPhase||1, item_key: itemKey, item_label: label, completed: newVal },
+    });
   }
 }
 
@@ -140,7 +143,11 @@ async function toggleCheck(itemKey, itemType, el){
     setSyncStatus('synced');
   } catch(e){
     setSyncStatus('error');
-    console.error('checklist save failed:', e?.message, e);
+    queueOfflineSave({
+      table: 'checklist_logs', onConflict: 'date,item_key',
+      conflictKey: `${selectedDateStr}|${itemKey}`,
+      data: { date: selectedDateStr, item_type: itemType, item_key: itemKey, completed: newVal },
+    });
   }
 }
 
@@ -166,7 +173,14 @@ async function toggleGlass(num){
         .then(r => { if(r.error) throw r.error; })
     );
     setSyncStatus('synced');
-  } catch(e){ setSyncStatus('error'); }
+  } catch(e){
+    setSyncStatus('error');
+    queueOfflineSave({
+      table: 'hydration_logs', onConflict: 'date',
+      conflictKey: `${selectedDateStr}|hydration`,
+      data: { date: selectedDateStr, glasses: newVal },
+    });
+  }
 }
 
 function renderHydrationRow(){
@@ -991,8 +1005,11 @@ async function saveCardioLog(logKey, btnEl){
     loadWeekActivity().then(() => renderWeekStrip());
   } catch(e){
     setSyncStatus('error');
-    console.error('cardio save failed:', e?.message);
-    showToast('Save failed','error');
+    queueOfflineSave({
+      table: 'checklist_logs', onConflict: 'date,item_key',
+      conflictKey: `${selectedDateStr}|${logKey}`,
+      data: { date: selectedDateStr, item_type: 'cardio', item_key: logKey, completed: true, notes: JSON.stringify({incline, speed, mins}) },
+    });
   }
 }
 
