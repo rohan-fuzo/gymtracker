@@ -7,13 +7,13 @@
 }
 #splash.hidden{opacity:0;visibility:hidden;pointer-events:none}
 #splash-logo{
-  font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;
-  font-size:36px;font-weight:900;letter-spacing:6px;
+  font-family:'Bebas Neue',system-ui,sans-serif;
+  font-size:40px;letter-spacing:6px;
   color:#f5f5f3;text-transform:uppercase;margin-bottom:6px;
 }
 #splash-logo span{color:#b8845e}
 #splash-sub{
-  font-family:system-ui,-apple-system,sans-serif;
+  font-family:'DM Sans',system-ui,sans-serif;
   font-size:11px;font-weight:500;letter-spacing:3px;
   color:#5a6570;text-transform:uppercase;margin-bottom:48px;
 }
