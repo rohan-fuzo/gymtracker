@@ -208,8 +208,7 @@ export async function registerPWA() {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if(refreshing) return;
       refreshing = true;
-      showUpdateOverlay();
-      setTimeout(() => window.location.reload(), 800);
+      window.location.reload();
     });
 
     reg.addEventListener('updatefound', () => {
@@ -226,8 +225,4 @@ export async function registerPWA() {
   } catch(e) { console.log('SW reg failed:', e.message); }
 }
 
-export function showUpdateOverlay() {
-  const sub = document.getElementById('splash-sub');
-  if(sub) sub.textContent = 'Updating to latest version';
-  document.getElementById('splash')?.classList.remove('hidden');
-}
+
