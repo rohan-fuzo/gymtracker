@@ -10,7 +10,7 @@ import { prog, DAYS, MONTH_NAMES, localDateStr, getTodayDateStr, parseLocalDate,
          isMeasurementDue, daysSinceMeasurement,
          viewingWeekOffset, setViewingWeekOffset, invalidateWeekMemo } from './programme.js';
 import { queueOfflineSave, withRetry, dedupedUpsert, setSyncStatus, flushOfflineQueue } from './sync.js';
-import { exData, getTravelMode, setTravelMode, getTravelDayType, getExerciseGif } from './data.js';
+import { exData, getTravelMode, setTravelMode, getTravelDayType } from './data.js';
 import { showToast, haptic, renderSkeletonWorkout } from './ui.js';
 import { startRestTimer, parseRestSecs, _stopExTimer, parseExTargetSecs, getExUnit,
          _runRestTimerTick, RT_KEY } from './timer.js';
@@ -840,13 +840,6 @@ function renderWorkout(){
         <div class="ex-detail"><div class="ex-detail-inner">
           ${isFirst?`<div class="ex-new" style="border-color:var(--gold);color:var(--gold)">🧠 MM SET FIRST — No weight. Full ROM. Feel the muscle. Then load up.</div>`:''}
           ${ex.warn?`<div class="ex-warn">${ex.warn}</div>`:''}
-          ${exData.gifs[ex.n]?`<button class="demo-btn" id="demo-btn-${ei}" onclick="toggleDemo(${ei},'${esc(ex.n)}')">▶ View Demo</button>
-          <div class="demo-gif" id="demo-gif-${ei}" style="display:none">
-            <div class="demo-loading" id="demo-loading-${ei}">Loading...</div>
-            <img id="demo-img-${ei}" alt="${ex.n} form" class="demo-img"
-              onload="this.style.opacity=1;document.getElementById('demo-loading-${ei}').style.display='none'"
-              onerror="document.getElementById('demo-gif-${ei}').style.display='none'">
-          </div>`:''}
           <div class="ex-note">${ex.note}</div>
           <div class="sets-grid">${setsH}</div>
         </div></div>
@@ -936,36 +929,6 @@ function tEx(id){
   r.classList.toggle('open');
 }
 
-function toggleDemo(idx, exName){
-  const gifEl  = document.getElementById('demo-gif-' + idx);
-  const btnEl  = document.getElementById('demo-btn-' + idx);
-  if(!gifEl || !btnEl) return;
-  const opening = gifEl.style.display === 'none';
-  // Close all other open demos
-  document.querySelectorAll('.demo-gif').forEach(function(el){
-    if(el !== gifEl && el.style.display !== 'none'){
-      el.style.display = 'none';
-      const b = document.getElementById(el.id.replace('demo-gif-','demo-btn-'));
-      if(b) b.textContent = '▶ View Demo';
-    }
-  });
-  if(opening){
-    gifEl.style.display = 'block';
-    btnEl.textContent = '✕ Hide Demo';
-    // Lazy load — fetch URL only on first tap
-    const imgEl = document.getElementById('demo-img-' + idx);
-    if(imgEl && !imgEl.dataset.loaded){
-      imgEl.dataset.loaded = '1';
-      getExerciseGif(exName).then(function(url){
-        if(url){ imgEl.src = url; }
-        else { gifEl.style.display = 'none'; }
-      });
-    }
-  } else {
-    gifEl.style.display = 'none';
-    btnEl.textContent = '▶ View Demo';
-  }
-}
 
 // ============================================================
 // CARDIO LOG (LISS day + cardio finishers)
@@ -1123,6 +1086,6 @@ export {
   openSetModal, handleModalClick, closeModal, saveSet, skipSet,
   saveCardioLog, toggleWarmup, toggleCheck, toggleCreatine, toggleGlass,
   toggleTravelMode, prefetchPreviousBests, selectPhase, selectDay,
-  patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx, toggleDemo,
+  patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx,
   parseSets, isExerciseDone, isDayDone,
 };

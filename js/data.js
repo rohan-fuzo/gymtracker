@@ -22,11 +22,6 @@ Object.defineProperty(window, 'EQ',           { get(){ return exData.EQ;    }, s
 Object.defineProperty(window, 'EXERCISE_GIFS',{ get(){ return exData.gifs;  }, set(v){ exData.gifs = v;  }, configurable: true });
 Object.defineProperty(window, 'WARMUP_ITEMS', { get(){ return exData.warmup;}, set(v){ exData.warmup = v;}, configurable: true });
 
-// ── Exercise GIF lookup ──
-export function getExerciseGif(exName) {
-  return Promise.resolve(exData.gifs[exName] || null);
-}
-
 // ── Travel mode helpers ──
 export function getTravelMode(dateStr) {
   try { const d = JSON.parse(localStorage.getItem('travelDays') || '{}'); return !!d[dateStr]; }

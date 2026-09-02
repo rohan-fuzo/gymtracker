@@ -18,7 +18,7 @@ import { renderWeekStrip, renderWorkout, renderPhaseBanner,
          openSetModal, handleModalClick, closeModal, saveSet, skipSet,
          saveCardioLog, toggleWarmup, toggleCheck, toggleCreatine, toggleGlass,
          toggleTravelMode, prefetchPreviousBests, selectPhase, selectDay, navWeek,
-         patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx, toggleDemo,
+         patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx,
          parseSets, isExerciseDone, isDayDone,
          cSession } from './workout.js';
 import { renderProgress, switchProgressTab, renderBodyTab, renderDiet, renderMobility,
@@ -560,7 +560,6 @@ window.toggleCreatine   = toggleCreatine;
 window.toggleGlass      = toggleGlass;
 window.toggleTravelMode = toggleTravelMode;
 window.tEx              = tEx;
-window.toggleDemo       = toggleDemo;
 // Progress / measurements
 window.switchProgressTab  = switchProgressTab;
 window.updateMeasChart    = updateMeasChart;
