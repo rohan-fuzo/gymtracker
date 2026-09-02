@@ -135,10 +135,15 @@ export async function loadExerciseData() {
 
   if(cached) {
     applyExerciseData(cached);
-    // Background refresh — no render blocking; no-cache so HTTP cache never serves stale JSON
+    // Background refresh — apply fresh data and re-render so programme changes show immediately
     fetch('exercises.json', {cache:'no-cache'})
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if(d) ExCache.put(KEY, d).catch(() => {}); })
+      .then(d => {
+        if(!d) return;
+        ExCache.put(KEY, d).catch(() => {});
+        applyExerciseData(d);
+        window.renderWorkout?.();
+      })
       .catch(() => {});
     return;
   }
