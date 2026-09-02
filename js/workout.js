@@ -790,8 +790,8 @@ function renderWorkout(){
   exList.forEach((ex,ei)=>{
     const ek=`ex_${cPhase}_${dk}_${cSession}_${ei}`;
     const sp=parseSets(ex.s);
-    // Travel exercises: no MM set. Regular: first exercise gets MM set.
-    const isFirst = travelW ? false : (ei===0);
+    // MM set only on first weighted non-circuit exercise.
+    const isFirst = !travelW && ei===0 && !ex.circuit && ex.eq?.some(e=>['db','mach','cable','bb','kb'].includes(e));
     const mmKey=`${ex.n}|0|1`;
     const mmDone=loggedSets[mmKey]?.completed;
     const mmChip = isFirst ? `<div class="set-chip mm-chip ${mmDone?'done':''}" onclick="openSetModal('${esc(ex.n)}',0,true,this,${ei})">
@@ -805,17 +805,22 @@ function renderWorkout(){
       const logged=loggedSets[logKey];
       const done=logged?.completed;
       return `<div class="set-chip ${done?'done':''}" onclick="openSetModal('${esc(ex.n)}',${setNum},false,this,${ei})">
-        <div class="sc-num">S${setNum}</div>
+        <div class="sc-num">${ex.circuit?'R':'S'}${setNum}</div>
         <div class="sc-reps">${s}</div>
         <div class="sc-logged">${done&&logged.weight>0?logged.weight+'kg×'+logged.reps:done?'✓':''}</div>
       </div>`;
     }).join('');
+    if(ex.circuitGroup && ex.circuitGroup !== exList[ei-1]?.circuitGroup) {
+      const rounds = parseSets(ex.s).length;
+      const grpLabel = ex.circuitGroup === 'CORE' ? `CORE — ${rounds} ROUNDS` : `CIRCUIT ${ex.circuitGroup} — ${rounds} ROUNDS`;
+      h += `<div class="circuit-group-hdr">${grpLabel}</div>`;
+    }
     const exDone = isExerciseDone(ex.n, sp, isFirst);
     h+=`<div class="ex-row${exDone?' ex-done':''}" id="${ek}">
-      <div class="ex-main" onclick="tEx('${ek}')">
+      <div class="ex-main" onclick="tEx('${ek}')">`
         <div class="ex-info">
           <div class="ex-name">${ex.n}${travelW?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(6,182,212,.12);color:var(--cyan);font-weight:700;letter-spacing:.3px">BW</span>':''}</div>
-          <div class="ex-sets">${isFirst?'<span style="color:var(--gold);font-size:10px">MM → </span>':''}${ex.s} · ${ex.r} rest</div>
+          <div class="ex-sets">${isFirst?'<span style="color:var(--gold);font-size:10px">MM → </span>':''}${ex.s}${ex.r ? ' · '+ex.r+' rest' : ex.circuit ? ' · ↗ next' : ''}</div>
           <div class="ex-equip">${ex.eq.join('')}</div>
         </div>
         <div class="ex-chevron">▾</div>

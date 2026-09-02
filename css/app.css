@@ -188,6 +188,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .sec-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:10px 16px 6px;border-top:1px solid var(--border)}
 
 /* EXERCISE */
+.circuit-group-hdr{margin:10px 16px 4px;padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--accent);text-transform:uppercase}
 .ex-row{border-top:1px solid var(--border)}
 .ex-main{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer}
 .ex-main:active{background:var(--surface2)}
