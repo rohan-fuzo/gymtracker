@@ -368,6 +368,10 @@ async function commitSet(weight, reps, completed){
 
   setSyncStatus('syncing');
 
+  // Start rest timer immediately (don't wait for DB write)
+  const _timerEx = exData.W?.[cPhase]?.[DAYS[cDay]]?.[cSession]?.ex?.[exIndex];
+  if(_timerEx?.r && !isMM) startRestTimer(parseRestSecs(_timerEx.r));
+
   // ── PERSIST to DB in background with retry + dedup ──
   const conflictKey = `${selectedDateStr}|${exName}|${setNum}|${isMM?1:0}`;
   const payload = validated(Schema.exercise_log, {
@@ -394,9 +398,6 @@ async function commitSet(weight, reps, completed){
       );
     });
     setSyncStatus('synced');
-    const _w = exData.W?.[cPhase]?.[DAYS[cDay]]?.[cSession];
-    const _ex = _w?.ex?.[exIndex];
-    if(_ex?.r && !isMM) startRestTimer(parseRestSecs(_ex.r));
     // Refresh week activity — debounced for today, immediate for past dates
     clearTimeout(window._weekRefreshTimer);
     const isPastDate = selectedDateStr !== todayStr;
