@@ -227,15 +227,7 @@ export async function registerPWA() {
 }
 
 export function showUpdateOverlay() {
-  let el = document.getElementById('update-overlay');
-  if(!el) {
-    el = Object.assign(document.createElement('div'), { id: 'update-overlay' });
-    el.style.cssText = `position:fixed;inset:0;z-index:99999;background:#0a0a0a;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;`;
-    el.innerHTML = `
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:#f0ede8">GYM<span style="color:#ff4520">X</span></div>
-      <div style="font-size:11px;letter-spacing:2px;color:#444;text-transform:uppercase">Updating…</div>
-      <div style="width:32px;height:32px;border:2.5px solid #1c1c1c;border-top-color:#ff4520;border-radius:50%;animation:splash-spin .7s linear infinite"></div>`;
-    document.body.appendChild(el);
-  }
+  const sub = document.getElementById('splash-sub');
+  if(sub) sub.textContent = 'Updating to latest version';
+  document.getElementById('splash')?.classList.remove('hidden');
 }
