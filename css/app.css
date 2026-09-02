@@ -188,7 +188,19 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .sec-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:10px 16px 6px;border-top:1px solid var(--border)}
 
 /* EXERCISE */
-.circuit-group-hdr{margin:10px 16px 4px;padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--accent);text-transform:uppercase}
+.circuit-block{margin:10px 16px 4px;border-radius:10px;border:1px solid rgba(99,102,241,.25);overflow:hidden}
+.circuit-block-hdr{padding:8px 12px;background:rgba(99,102,241,.12);display:flex;align-items:center;gap:8px}
+.cb-name{font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--accent);text-transform:uppercase}
+.cb-meta{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.3px}
+.circuit-round{border-top:1px solid rgba(99,102,241,.12);padding:8px 10px}
+.circuit-round-lbl{font-size:9px;font-weight:700;letter-spacing:.8px;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+.circuit-round-exes{display:flex;flex-wrap:wrap;gap:6px}
+.circuit-ex-chip{flex:1 1 28%;min-width:90px;padding:8px 10px;border-radius:8px;background:var(--card2);border:1.5px solid var(--border);cursor:pointer;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
+.circuit-ex-chip.done{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.4)}
+.circuit-ex-chip:active{opacity:.75}
+.cec-name{font-size:11px;font-weight:600;color:var(--text1);line-height:1.3;margin-bottom:2px}
+.cec-spec{font-size:10px;color:var(--text3)}
+.cec-logged{font-size:10px;font-weight:700;color:var(--p3);min-height:14px;margin-top:2px}
 .ex-row{border-top:1px solid var(--border)}
 .ex-main{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer}
 .ex-main:active{background:var(--surface2)}

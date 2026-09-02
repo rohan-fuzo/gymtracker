@@ -347,9 +347,10 @@ async function commitSet(weight, reps, completed){
   // Update chip directly (faster than waiting for full re-render)
   if(chipEl){
     chipEl.classList.add('done');
-    const logged = chipEl.querySelector('.sc-logged');
-    if(logged) logged.textContent = weight>0 ? `${weight}kg×${reps}` : 'done';
-    chipEl.querySelector('.sc-num').style.color = isMM ? 'var(--gold)' : 'var(--p3)';
+    const loggedEl = chipEl.querySelector('.sc-logged') || chipEl.querySelector('.cec-logged');
+    if(loggedEl) loggedEl.textContent = weight>0 ? `${weight}kg×${reps}` : '✓';
+    const numEl = chipEl.querySelector('.sc-num');
+    if(numEl) numEl.style.color = isMM ? 'var(--gold)' : 'var(--p3)';
   }
 
   // Update exercise done state immediately
@@ -621,6 +622,18 @@ function patchWorkoutSets(){
     }
   });
 
+  // Patch circuit chips (not covered by ex-row loop above)
+  document.querySelectorAll('.circuit-ex-chip[data-ex]').forEach(chip => {
+    const exName = chip.dataset.ex;
+    const rnd = parseInt(chip.dataset.round, 10);
+    const logKey = `${exName}|${rnd}|0`;
+    const logged = loggedSets[logKey];
+    const done = logged?.completed;
+    chip.classList.toggle('done', !!done);
+    const loggedEl = chip.querySelector('.cec-logged');
+    if(loggedEl) loggedEl.textContent = done && logged.weight>0 ? `${logged.weight}kg×${logged.reps}` : done ? '✓' : '';
+  });
+
 }
 
 function patchCheckCache(){
@@ -787,59 +800,89 @@ function renderWorkout(){
   h+=`</div>`;
   h+=`<div class="workout-card" style="border-radius:0 0 16px 16px;margin-top:0">`;
   h+=`<div class="sec-label" style="border-top:none;padding-top:8px">EXERCISES${travelW?'<span style="margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:4px;background:rgba(6,182,212,.15);color:var(--cyan);vertical-align:middle">BODYWEIGHT</span>':''}</div>`;
-  exList.forEach((ex,ei)=>{
-    const ek=`ex_${cPhase}_${dk}_${cSession}_${ei}`;
-    const sp=parseSets(ex.s);
-    // MM set only on first weighted non-circuit exercise.
-    const isFirst = !travelW && ei===0 && !ex.circuit && ex.eq?.some(e=>['db','mach','cable','bb','kb'].includes(e));
-    const mmKey=`${ex.n}|0|1`;
-    const mmDone=loggedSets[mmKey]?.completed;
-    const mmChip = isFirst ? `<div class="set-chip mm-chip ${mmDone?'done':''}" onclick="openSetModal('${esc(ex.n)}',0,true,this,${ei})">
-      <div class="sc-num" style="color:var(--gold)">MM</div>
-      <div class="sc-reps" style="color:var(--gold);opacity:.8">no wt</div>
-      <div class="sc-logged">${mmDone?'done':''}</div>
-    </div>` : '';
-    const setsH = mmChip + sp.map((s,si)=>{
-      const setNum=si+1;
-      const logKey=`${ex.n}|${setNum}|0`;
-      const logged=loggedSets[logKey];
-      const done=logged?.completed;
-      return `<div class="set-chip ${done?'done':''}" onclick="openSetModal('${esc(ex.n)}',${setNum},false,this,${ei})">
-        <div class="sc-num">${ex.circuit?'R':'S'}${setNum}</div>
-        <div class="sc-reps">${s}</div>
-        <div class="sc-logged">${done&&logged.weight>0?logged.weight+'kg×'+logged.reps:done?'✓':''}</div>
-      </div>`;
-    }).join('');
-    if(ex.circuitGroup && ex.circuitGroup !== exList[ei-1]?.circuitGroup) {
-      const rounds = parseSets(ex.s).length;
-      const grpLabel = ex.circuitGroup === 'CORE' ? `CORE — ${rounds} ROUNDS` : `CIRCUIT ${ex.circuitGroup} — ${rounds} ROUNDS`;
-      h += `<div class="circuit-group-hdr">${grpLabel}</div>`;
-    }
-    const exDone = isExerciseDone(ex.n, sp, isFirst);
-    h+=`<div class="ex-row${exDone?' ex-done':''}" id="${ek}">
-      <div class="ex-main" onclick="tEx('${ek}')">
-        <div class="ex-info">
-          <div class="ex-name">${ex.n}${travelW?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(6,182,212,.12);color:var(--cyan);font-weight:700;letter-spacing:.3px">BW</span>':''}</div>
-          <div class="ex-sets">${isFirst?'<span style="color:var(--gold);font-size:10px">MM → </span>':''}${ex.s}${ex.r ? ' · '+ex.r+' rest' : ex.circuit ? ' · ↗ next' : ''}</div>
-          <div class="ex-equip">${ex.eq.join('')}</div>
+  let ei = 0;
+  while(ei < exList.length) {
+    const ex = exList[ei];
+    if(!ex.circuit) {
+      // ── Regular exercise ──
+      const ek = `ex_${cPhase}_${dk}_${cSession}_${ei}`;
+      const sp = parseSets(ex.s);
+      const isFirst = !travelW && ei===0 && ex.eq?.some(e=>['db','mach','cable','bb','kb'].includes(e));
+      const mmKey = `${ex.n}|0|1`;
+      const mmDone = loggedSets[mmKey]?.completed;
+      const mmChip = isFirst ? `<div class="set-chip mm-chip ${mmDone?'done':''}" onclick="openSetModal('${esc(ex.n)}',0,true,this,${ei})">
+        <div class="sc-num" style="color:var(--gold)">MM</div>
+        <div class="sc-reps" style="color:var(--gold);opacity:.8">no wt</div>
+        <div class="sc-logged">${mmDone?'done':''}</div>
+      </div>` : '';
+      const setsH = mmChip + sp.map((s,si)=>{
+        const setNum = si+1;
+        const logKey = `${ex.n}|${setNum}|0`;
+        const logged = loggedSets[logKey];
+        const done = logged?.completed;
+        return `<div class="set-chip ${done?'done':''}" onclick="openSetModal('${esc(ex.n)}',${setNum},false,this,${ei})">
+          <div class="sc-num">S${setNum}</div>
+          <div class="sc-reps">${s}</div>
+          <div class="sc-logged">${done&&logged.weight>0?logged.weight+'kg×'+logged.reps:done?'✓':''}</div>
+        </div>`;
+      }).join('');
+      const exDone = isExerciseDone(ex.n, sp, isFirst);
+      h += `<div class="ex-row${exDone?' ex-done':''}" id="${ek}">
+        <div class="ex-main" onclick="tEx('${ek}')">
+          <div class="ex-info">
+            <div class="ex-name">${ex.n}${travelW?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(6,182,212,.12);color:var(--cyan);font-weight:700;letter-spacing:.3px">BW</span>':''}</div>
+            <div class="ex-sets">${isFirst?'<span style="color:var(--gold);font-size:10px">MM → </span>':''}${ex.s}${ex.r ? ' · '+ex.r+' rest' : ''}</div>
+            <div class="ex-equip">${ex.eq.join('')}</div>
+          </div>
+          <div class="ex-chevron">▾</div>
         </div>
-        <div class="ex-chevron">▾</div>
-      </div>
-      <div class="ex-detail"><div class="ex-detail-inner">
-        ${isFirst?`<div class="ex-new" style="border-color:var(--gold);color:var(--gold)">🧠 MM SET FIRST — No weight. Full ROM. Feel the muscle. Then load up.</div>`:''}
-        ${ex.warn?`<div class="ex-warn">${ex.warn}</div>`:''}
-        ${exData.gifs[ex.n]?`<button class="demo-btn" id="demo-btn-${ei}" onclick="toggleDemo(${ei},'${esc(ex.n)}')">▶ View Demo</button>
-        <div class="demo-gif" id="demo-gif-${ei}" style="display:none">
-          <div class="demo-loading" id="demo-loading-${ei}">Loading...</div>
-          <img id="demo-img-${ei}" alt="${ex.n} form" class="demo-img"
-            onload="this.style.opacity=1;document.getElementById('demo-loading-${ei}').style.display='none'"
-            onerror="document.getElementById('demo-gif-${ei}').style.display='none'">
-        </div>`:''}
-        <div class="ex-note">${ex.note}</div>
-        <div class="sets-grid">${setsH}</div>
-      </div></div>
-    </div>`;
-  });
+        <div class="ex-detail"><div class="ex-detail-inner">
+          ${isFirst?`<div class="ex-new" style="border-color:var(--gold);color:var(--gold)">🧠 MM SET FIRST — No weight. Full ROM. Feel the muscle. Then load up.</div>`:''}
+          ${ex.warn?`<div class="ex-warn">${ex.warn}</div>`:''}
+          ${exData.gifs[ex.n]?`<button class="demo-btn" id="demo-btn-${ei}" onclick="toggleDemo(${ei},'${esc(ex.n)}')">▶ View Demo</button>
+          <div class="demo-gif" id="demo-gif-${ei}" style="display:none">
+            <div class="demo-loading" id="demo-loading-${ei}">Loading...</div>
+            <img id="demo-img-${ei}" alt="${ex.n} form" class="demo-img"
+              onload="this.style.opacity=1;document.getElementById('demo-loading-${ei}').style.display='none'"
+              onerror="document.getElementById('demo-gif-${ei}').style.display='none'">
+          </div>`:''}
+          <div class="ex-note">${ex.note}</div>
+          <div class="sets-grid">${setsH}</div>
+        </div></div>
+      </div>`;
+      ei++;
+    } else {
+      // ── Circuit block — collect all consecutive exercises in this group ──
+      const grp = ex.circuitGroup;
+      const grpExes = [];
+      while(ei < exList.length && exList[ei].circuit && exList[ei].circuitGroup === grp) {
+        grpExes.push({ex: exList[ei], ei});
+        ei++;
+      }
+      const rounds = parseSets(grpExes[0].ex.s).length;
+      const restEx = grpExes[grpExes.length-1].ex;
+      const restLabel = restEx.r ? ` · ${restEx.r} after round` : '';
+      const grpName = grp === 'CORE' ? 'CORE' : `CIRCUIT ${grp}`;
+      h += `<div class="circuit-block">`;
+      h += `<div class="circuit-block-hdr"><span class="cb-name">${grpName}</span><span class="cb-meta">${rounds} ROUNDS${restLabel}</span></div>`;
+      for(let rnd = 1; rnd <= rounds; rnd++) {
+        h += `<div class="circuit-round"><div class="circuit-round-lbl">ROUND ${rnd}</div><div class="circuit-round-exes">`;
+        grpExes.forEach(({ex: cEx, ei: cEi}) => {
+          const sp = parseSets(cEx.s);
+          const logKey = `${cEx.n}|${rnd}|0`;
+          const logged = loggedSets[logKey];
+          const done = logged?.completed;
+          h += `<div class="circuit-ex-chip${done?' done':''}" data-ex="${esc(cEx.n)}" data-round="${rnd}" onclick="openSetModal('${esc(cEx.n)}',${rnd},false,this,${cEi})">
+            <div class="cec-name">${cEx.n}</div>
+            <div class="cec-spec">${sp[rnd-1]}</div>
+            <div class="cec-logged">${done&&logged.weight>0?logged.weight+'kg×'+logged.reps:done?'✓':''}</div>
+          </div>`;
+        });
+        h += `</div></div>`;
+      }
+      h += `</div>`;
+    }
+  }
   h+=`</div>`;
   // Finisher: skip on travel days (no equipment)
   if(w.fin && !travelW) h+=renderFinHTML(w.fin,cPhase,dk,cSession);
@@ -877,7 +920,7 @@ function isSessionDone(sess, dayData, dk){
     return !!(checkCache[lissKey]?.saved || (typeof checkCache[lissKey]==='boolean' && checkCache[lissKey]));
   }
   if(!w.ex) return false;
-  return w.ex.every((ex, ei) => isExerciseDone(ex.n, parseSets(ex.s), ei===0));
+  return w.ex.every((ex, ei) => isExerciseDone(ex.n, parseSets(ex.s), ei===0 && !ex.circuit));
 }
 
 // Returns true if the morning session is done (morning is the anchor session for doneDatesCache)
