@@ -17,7 +17,6 @@ let _inbodyForBody  = null;
 let _measChart      = null;
 let _exLogs         = null;
 
-// Expose latest InBody for coach.js _getAIProfile
 Object.defineProperty(window, '_latestInBody', {
   get(){ return _inbodyForBody?.length ? _inbodyForBody[_inbodyForBody.length-1] : null; },
   configurable: true,

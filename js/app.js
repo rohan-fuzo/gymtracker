@@ -5,7 +5,7 @@
 // ============================================================
 import { store, Perf, Schema, validated } from './store.js';
 import { prog, DAYS, getTodayDowIndex, getTodayDateStr, parseLocalDate,
-         localDateStr, getCalendarWeek, loadWeekActivity,
+         localDateStr, getCalendarWeek, loadWeekActivity, restoreWeekCacheSync,
          getProgrammeState, applyNewStartDate, loadProgrammeConfig } from './programme.js';
 import { setSyncStatus, flushOfflineQueue, updatePendingBadge } from './sync.js';
 import { db } from './config.js';
@@ -14,9 +14,6 @@ import { showToast, haptic, renderSkeletonWeekStrip, renderSkeletonWorkout,
          registerPWA, updateNotifBell, checkPendingNotifications, handleNotifBellTap,
          initNotifications } from './ui.js';
 import { _resumeRestTimerIfActive, skipRestTimer } from './timer.js';
-import { openRPESheet, closeRPESheet, handleRPEClick, skipRPE, selectRPE,
-         openSetCoachCard, cancelSetCoachCard, dismissSetCoachCard,
-         fetchAIProgression, reinjectAICards } from './coach.js';
 import { renderWeekStrip, renderWorkout, renderPhaseBanner,
          openSetModal, handleModalClick, closeModal, saveSet, skipSet,
          saveCardioLog, toggleWarmup, toggleCheck, toggleCreatine, toggleGlass,
@@ -37,50 +34,91 @@ import { manualSync, withRetry } from './sync.js';
 
 async function init(){
   setSyncStatus('syncing');
-  // Show skeletons immediately — before any DB calls
-  renderSkeletonWeekStrip();
-  renderSkeletonWorkout();
-  try {
-    // Load programme config FIRST — may override PROGRAMME_START from CFG
-    // Must run before any date/week/phase calculations
-    await loadProgrammeConfig();
-    todayStr = getTodayDateStr();
-    selectedDateStr = todayStr;
-    cDay = getTodayDowIndex();
-    // Load week activity — phase is derived from this
-    await loadWeekActivity();
-    const todayState = getProgrammeState(new Date());
-    cPhase = todayState.phase;
-    // Update phase strip UI
+
+  // ── Sync: restore all caches before first await ──
+  // loadProgrammeConfig runs its localStorage restore synchronously (before its DB await),
+  // so prog.start is set immediately if we have a cached value.
+  const configPromise = loadProgrammeConfig();
+  todayStr = getTodayDateStr();
+  selectedDateStr = todayStr;
+  cDay = getTodayDowIndex();
+  restoreWeekCacheSync();  // weekActivityCache from localStorage
+
+  // ── If we have cached data, render immediately and dismiss splash ──
+  const hadCache = !!prog.start;
+  if(hadCache) {
+    cPhase = getProgrammeState(new Date()).phase;
     document.querySelectorAll('#phase-strip .ph-btn').forEach(b=>{
       b.classList.toggle('active', parseInt(b.dataset.ph)===cPhase);
     });
+    // Restore today's data from localStorage
+    try {
+      const cs = localStorage.getItem(`gm_sets_${todayStr}_${cPhase}`);
+      if(cs) loggedSets = JSON.parse(cs);
+    } catch(_) {}
+    try {
+      const cc = localStorage.getItem(`gm_check_${todayStr}`);
+      if(cc) checkCache = JSON.parse(cc);
+    } catch(_) {}
+    try {
+      const ch = localStorage.getItem(`gm_hyd_${todayStr}`);
+      if(ch != null) hydrationGlasses = +ch || 0;
+    } catch(_) {}
+    renderWeekStrip();
+    renderWorkout();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById('splash')?.classList.add('hidden');
+    }));
+  } else {
+    renderSkeletonWeekStrip();
+    renderSkeletonWorkout();
+  }
+
+  try {
+    // ── Parallel: all DB calls at once (config already in-flight) ──
     const dk = DAYS[cDay];
-    // Fire all 4 queries in parallel
     const [sessionRes] = await Promise.all([
       db.from('workout_sessions').select('*').eq('date',todayStr).eq('day_of_week',dk).limit(1),
       loadSetsForDate(todayStr, /*silent=*/true),
       loadCheckCache(todayStr),
       loadHydration(todayStr),
+      configPromise,
+      loadWeekActivity(),
     ]);
-    if(sessionRes.data && sessionRes.data.length>0) sessionId = sessionRes.data[0].id;
+
+    // Recompute phase from fresh DB data; if it changed, reload sets for correct phase
+    const freshPhase = getProgrammeState(new Date()).phase;
+    if(freshPhase !== cPhase) {
+      cPhase = freshPhase;
+      await loadSetsForDate(todayStr, /*silent=*/true);
+    }
+    document.querySelectorAll('#phase-strip .ph-btn').forEach(b=>{
+      b.classList.toggle('active', parseInt(b.dataset.ph)===cPhase);
+    });
+    if(sessionRes?.data?.length) sessionId = sessionRes.data[0].id;
+
+    // Persist fresh data for next visit
+    try {
+      localStorage.setItem(`gm_sets_${todayStr}_${cPhase}`, JSON.stringify(loggedSets));
+      localStorage.setItem(`gm_check_${todayStr}`, JSON.stringify(checkCache));
+      localStorage.setItem(`gm_hyd_${todayStr}`, String(hydrationGlasses));
+    } catch(_) {}
+
     setSyncStatus('synced');
-    // Flush any queued offline saves
     flushOfflineQueue();
   } catch(e){
     console.error(e);
     setSyncStatus('error');
   }
-  renderWeekStrip();
-  renderWorkout();
-  // Dismiss splash — fade out after content is painted
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const splash = document.getElementById('splash');
-      if(splash) splash.classList.add('hidden');
-    });
-  });
-  // Resume floating rest timer if it was running when app was backgrounded / refreshed
+
+  // Cold-load path: render after DB (same latency as before, skeletons shown)
+  if(!hadCache) {
+    renderWeekStrip();
+    renderWorkout();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById('splash')?.classList.add('hidden');
+    }));
+  }
   _resumeRestTimerIfActive();
 }
 
@@ -269,6 +307,10 @@ function runTests() {
   });
 
   // ── getCalendarWeek ──
+  // These tests need a fixed prog.start; save/restore so live state is unaffected.
+  const _savedStart = prog.start;
+  prog.start = new Date(2026, 2, 13); // March 13 2026 (Friday) — test fixture
+
   test('getCalendarWeek: programme start = week 1', () => {
     assertEqual(getCalendarWeek(new Date('2026-03-13')), 1);
   });
@@ -286,6 +328,8 @@ function runTests() {
   test('getCalendarWeek: before start returns 0', () => {
     assertEqual(getCalendarWeek(new Date('2026-03-01')), 0);
   });
+
+  prog.start = _savedStart; // restore live state
 
   // ── parseSets ──
   test('parseSets: 4×10 returns 4 items', () => {
@@ -498,25 +542,13 @@ window.saveSet          = saveSet;
 window.skipSet          = skipSet;
 window.startExTimer     = startExTimer;
 window.logTimedSetNow   = logTimedSetNow;
-// RPE
-window.openRPESheet     = openRPESheet;
-window.closeRPESheet    = closeRPESheet;
-window.handleRPEClick   = handleRPEClick;
-window.skipRPE          = skipRPE;
-window.selectRPE        = selectRPE;
-// Coach card
-window.dismissSetCoachCard = dismissSetCoachCard;
-window.cancelSetCoachCard  = cancelSetCoachCard;
 window.skipRestTimer       = skipRestTimer;
-window.openSetCoachCard    = openSetCoachCard;
-window.fetchAIProgression  = fetchAIProgression;
-window.reinjectAICards     = reinjectAICards;
 // App-level functions used by workout.js
 window.ensureSession    = ensureSession;
 window.loadSetsForDate  = loadSetsForDate;
 window.loadCheckCache   = loadCheckCache;
 window.loadHydration    = loadHydration;
-// Helper functions used by coach.js and programme.js via global scope
+// Helper functions used by programme.js via global scope
 window.parseSets        = parseSets;
 window.isExerciseDone   = isExerciseDone;
 window.isDayDone        = isDayDone;

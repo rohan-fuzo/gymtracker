@@ -204,7 +204,8 @@ window.addEventListener('beforeunload', () => {
   SyncDB.getAll().then(items => {
     items.forEach(item => {
       try {
-        fetch(`${SUPABASE_URL}/rest/v1/${item.table}`, {
+        const qs = item.onConflict ? `?on_conflict=${encodeURIComponent(item.onConflict)}` : '';
+        fetch(`${SUPABASE_URL}/rest/v1/${item.table}${qs}`, {
           method: 'POST', keepalive: true,
           headers: {
             'Content-Type': 'application/json',

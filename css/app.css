@@ -231,24 +231,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .set-chip .sc-reps{font-size:10px;color:var(--dim);margin-top:1px}
 .set-chip.done .sc-reps{color:var(--p3);opacity:.7}
 .set-chip .sc-logged{font-size:9px;color:var(--p3);margin-top:2px;font-weight:600}
-.set-chip .sc-rpe{font-size:8px;color:var(--cyan);font-weight:700;letter-spacing:.3px;margin-top:1px;line-height:1;opacity:.9}
-/* ── RPE BOTTOM SHEET ── */
-.rpe-sheet{max-height:62vh}
-.rpe-options{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:14px 0 18px}
-.rpe-btn{padding:14px 4px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;text-align:center;transition:all .15s;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;align-items:center;gap:4px}
-.rpe-btn:active{transform:scale(.93);transition:transform .08s}
-.rpe-reps{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.5px;line-height:1}
-.rpe-label{font-size:9px;font-weight:700;letter-spacing:.5px;line-height:1}
-.rpe-btn[data-rpe="10"] .rpe-reps,.rpe-btn[data-rpe="10"] .rpe-label{color:var(--p1)}
-.rpe-btn[data-rpe="10"]{border-color:rgba(255,69,32,.3)}
-.rpe-btn[data-rpe="9"]  .rpe-reps,.rpe-btn[data-rpe="9"]  .rpe-label{color:var(--p2)}
-.rpe-btn[data-rpe="9"]{border-color:rgba(255,140,0,.25)}
-.rpe-btn[data-rpe="8"]  .rpe-reps,.rpe-btn[data-rpe="8"]  .rpe-label{color:var(--yellow)}
-.rpe-btn[data-rpe="8"]{border-color:rgba(251,191,36,.25)}
-.rpe-btn[data-rpe="7"]  .rpe-reps,.rpe-btn[data-rpe="7"]  .rpe-label{color:var(--p3)}
-.rpe-btn[data-rpe="7"]{border-color:rgba(34,197,94,.25)}
-.rpe-btn[data-rpe="6"]  .rpe-reps,.rpe-btn[data-rpe="6"]  .rpe-label{color:var(--cyan)}
-.rpe-btn[data-rpe="6"]{border-color:rgba(6,182,212,.25)}
 
 /* POWER DAY */
 .power-header{background:linear-gradient(135deg,rgba(255,69,32,.12),rgba(245,158,11,.08));border-bottom:1px solid rgba(255,69,32,.2);padding:14px 16px}
@@ -370,19 +352,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .parsing-overlay{display:none;text-align:center;padding:16px 0}
 .parsing-overlay.show{display:block}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* ── AI PROGRESSION CARD ── */
-.ai-suggestion-card{margin:0 16px 10px;border-radius:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(168,85,247,.07),rgba(59,130,246,.06));border:1px solid rgba(168,85,247,.22);transition:opacity .3s}
-.ai-suggestion-card.ai-loading{opacity:.55}
-.ai-card-hdr{display:flex;align-items:center;gap:6px;margin-bottom:7px}
-.ai-sparkle{font-size:12px;line-height:1}
-.ai-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#a78bfa}
-.ai-model-tag{font-size:9px;color:var(--dim);margin-left:auto;letter-spacing:.3px}
-.ai-body{font-size:13px;color:var(--text);line-height:1.65}
-.ai-dots{display:flex;gap:4px;align-items:center;height:16px}
-.ai-dot{width:5px;height:5px;border-radius:50%;background:#a78bfa;animation:ai-bounce .9s infinite ease-in-out}
-.ai-dot:nth-child(2){animation-delay:.15s}
-.ai-dot:nth-child(3){animation-delay:.30s}
-@keyframes ai-bounce{0%,80%,100%{transform:scale(.6);opacity:.35}40%{transform:scale(1);opacity:1}}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;z-index:200;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.success{border-color:var(--p3);color:var(--p3)}
@@ -399,35 +368,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .tex-bar-wrap{height:6px;background:var(--border);border-radius:3px;margin:6px 0 14px;overflow:hidden}
 .tex-bar{height:100%;background:var(--p4);border-radius:3px}
 .tex-state{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:4px}
-/* ── BETWEEN-SET COACH CARD ── */
-.set-coach-card{margin:0 16px 10px;border-radius:14px;padding:14px 14px 12px;background:linear-gradient(135deg,rgba(59,130,246,.09),rgba(168,85,247,.06));border:1px solid rgba(59,130,246,.22);position:relative;transition:opacity .45s ease}
-.set-coach-card.scc-fading{opacity:0}
-.scc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.scc-hdr-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#93c5fd}
-.scc-x{background:none;border:none;color:var(--dim);font-size:15px;cursor:pointer;padding:2px 6px;line-height:1;border-radius:5px;-webkit-tap-highlight-color:transparent}
-.scc-x:active{opacity:.6}
-.scc-timer-num{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:3px;text-align:center;line-height:1;color:var(--text);transition:color .3s}
-.scc-timer-num.scc-urgent{color:var(--p1)}
-.scc-bar-wrap{height:3px;background:var(--border);border-radius:3px;margin:4px 0 12px;overflow:hidden}
-.scc-bar{height:100%;background:var(--p4);border-radius:3px}
-.scc-ai-row{min-height:32px}
-/* Thinking wave (Phase 1) */
-.scc-thinking{display:flex;align-items:center;gap:8px}
-.scc-think-lbl{font-size:11px;font-weight:600;color:#93c5fd;letter-spacing:.3px}
-.scc-wave{display:flex;gap:3px;align-items:flex-end;height:18px}
-.scc-wb{width:3px;border-radius:2px;background:#93c5fd;animation:scc-wv .85s ease-in-out infinite}
-.scc-wb:nth-child(1){animation-delay:0s}
-.scc-wb:nth-child(2){animation-delay:.12s}
-.scc-wb:nth-child(3){animation-delay:.24s}
-.scc-wb:nth-child(4){animation-delay:.12s}
-.scc-wb:nth-child(5){animation-delay:0s}
-@keyframes scc-wv{0%,100%{height:4px;opacity:.4}50%{height:16px;opacity:1}}
-/* Suggestion text (Phase 2) */
-.scc-text{font-size:14px;color:var(--text);line-height:1.65}
-.scc-tag{font-size:9px;color:var(--dim);margin-top:5px;letter-spacing:.3px}
-.ai-coach-prefix{color:#93c5fd;font-weight:700;margin-right:4px}
-.ai-cursor{color:#93c5fd;font-weight:300;animation:ai-caret .75s step-end infinite}
-@keyframes ai-caret{0%,100%{opacity:1}50%{opacity:0}}
 
 /* ── PHASE PROGRESS BANNER ── */
 .phase-banner{margin:0 16px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--border);overflow:hidden}

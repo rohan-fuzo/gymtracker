@@ -190,6 +190,7 @@ export async function loadWeekActivity() {
     Object.entries(weekDays).forEach(([wk, dates]) => {
       weekActivityCache[parseInt(wk)] = dates.size;
     });
+    try { localStorage.setItem('gm_wactivity', JSON.stringify(weekActivityCache)); } catch(_) {}
   } catch(e) { console.error('loadWeekActivity', e); }
 }
 
@@ -217,14 +218,35 @@ export function daysSinceMeasurement() {
   return Math.floor((new Date() - parseLocalDate(last)) / (1000*60*60*24));
 }
 
+// ── Sync cache helpers ──
+export function restoreWeekCacheSync() {
+  try {
+    const raw = localStorage.getItem('gm_wactivity');
+    if(raw) weekActivityCache = JSON.parse(raw);
+  } catch(_) {}
+}
+
 // ── Programme config DB ops ──
 export async function loadProgrammeConfig() {
+  // Sync restore from localStorage — runs before first await so caller can parallelise
+  try {
+    const raw = localStorage.getItem('gm_progcfg');
+    if(raw) {
+      const { start_date, id } = JSON.parse(raw);
+      if(start_date && !prog.start) {
+        prog.start = parseLocalDate(start_date);
+        _programmeConfigId = id ?? null;
+      }
+    }
+  } catch(_) {}
+  // DB refresh
   try {
     const { data, error } = await db.from('programme_config').select('*').limit(1).maybeSingle();
     if(error) { console.warn('loadProgrammeConfig:', error.message); return; }
     if(data?.start_date) {
       _programmeConfigId = data.id;
       prog.start = parseLocalDate(data.start_date);
+      try { localStorage.setItem('gm_progcfg', JSON.stringify({ start_date: data.start_date, id: data.id })); } catch(_) {}
     }
   } catch(e) { console.warn('loadProgrammeConfig exception:', e); }
 }
@@ -244,6 +266,10 @@ export async function saveProgrammeConfig(dateStr) {
 export async function applyNewStartDate(dateStr) {
   const confirmBtn = document.getElementById('reset-modal-confirm');
   if(confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Applying…'; }
+  // Reuse splash overlay — same design, different text
+  const _splashSub = document.getElementById('splash-sub');
+  if(_splashSub) _splashSub.textContent = 'Updating your programme';
+  document.getElementById('splash')?.classList.remove('hidden');
   try {
     // Apply local state first — UI updates regardless of Supabase result
     prog.start          = parseLocalDate(dateStr);
@@ -253,6 +279,7 @@ export async function applyNewStartDate(dateStr) {
     window._workoutRenderKey  = null;
     weekActivityCache   = {};
     doneDatesCache      = new Set();
+    try { localStorage.removeItem('gm_wactivity'); } catch(_) {}
     viewingWeekOffset   = 0;
     todayStr            = getTodayDateStr();
     selectedDateStr     = todayStr;
@@ -287,5 +314,8 @@ export async function applyNewStartDate(dateStr) {
     window.showToast?.('Failed to apply — try again', 'error');
   } finally {
     if(confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Yes, Apply'; }
+    // Restore splash text and hide overlay
+    if(_splashSub) _splashSub.textContent = 'Loading your programme';
+    document.getElementById('splash')?.classList.add('hidden');
   }
 }

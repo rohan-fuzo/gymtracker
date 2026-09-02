@@ -122,24 +122,6 @@ export function skipRestTimer() {
 
 // ── Resume timer after backgrounding or page visibility change ──
 export function _resumeRestTimerIfActive() {
-  // In-card set-coach timer (coach.js manages _setCoach)
-  const sc = window._setCoach;
-  if(sc && !sc.dismissed) {
-    const left = Math.ceil((sc.endAt - Date.now()) / 1000);
-    const numEl = document.getElementById('scc-num');
-    if(numEl) {
-      if(left <= 0) {
-        clearInterval(sc.timerId); sc.timerId = null;
-        _playRestChime();
-        try { if(navigator.vibrate) navigator.vibrate([300, 100, 300]); } catch(_) {}
-        window._dismissSetCoachFade?.();
-      } else {
-        numEl.textContent = left + 's';
-        numEl.className = `scc-timer-num${left <= 10 ? ' scc-urgent' : ''}`;
-      }
-    }
-  }
-
   // Floating HUD timer via localStorage
   try {
     const stored = localStorage.getItem(RT_KEY);

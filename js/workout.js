@@ -17,15 +17,12 @@ import { startRestTimer, parseRestSecs, _stopExTimer, parseExTargetSecs, getExUn
 
 // ── Module-level state ──
 export const _prevBestCache    = {};
-export const _prevHistoryCache = {};
 export let _workoutRenderKey   = null;
 export let _sessionPromise     = null;
 let _stripCache = {};
 export let cSession = 'morning'; // 'morning' | 'evening'
 
-// Expose on window for cross-module access (coach.js reads _prevHistoryCache)
 Object.defineProperty(window, '_prevBestCache',    { get(){ return _prevBestCache;    }, configurable: true });
-Object.defineProperty(window, '_prevHistoryCache', { get(){ return _prevHistoryCache; }, configurable: true });
 Object.defineProperty(window, '_workoutRenderKey', {
   get(){ return _workoutRenderKey; },
   set(v){ _workoutRenderKey = v; },
@@ -353,9 +350,6 @@ async function commitSet(weight, reps, completed){
     const logged = chipEl.querySelector('.sc-logged');
     if(logged) logged.textContent = weight>0 ? `${weight}kg×${reps}` : 'done';
     chipEl.querySelector('.sc-num').style.color = isMM ? 'var(--gold)' : 'var(--p3)';
-    // Clear stale RPE badge (new value arrives via selectRPE after sheet interaction)
-    const rpeEl = chipEl.querySelector('.sc-rpe');
-    if(rpeEl) rpeEl.textContent = '';
   }
 
   // Update exercise done state immediately
@@ -371,19 +365,6 @@ async function commitSet(weight, reps, completed){
   haptic([10, 50, 10]);
   showToast(weight>0 ? `${weight}kg × ${reps} saved ✓` : 'Set logged ✓');
 
-  // ── BETWEEN-SET COACH CARD — show immediately, parallel with DB write ──
-  if(completed && !isMM){
-    const _wNow = exData.W?.[cPhase]?.[DAYS[cDay]]?.[cSession];
-    const _exNow = _wNow?.ex?.[exIndex];
-    const restSecs = _exNow?.r ? parseRestSecs(_exNow.r) : SET_COACH_DEFAULT_REST;
-    openSetCoachCard(exName, setNum, weight, reps, exIndex, restSecs);
-  }
-
-  // Queue RPE prompt — skip for MM sets (bodyweight form sets) and skipped sets
-  if(completed && !isMM) {
-    window._pendingRPE = {date: selectedDateStr, exName, setNum, isMM, key, chipEl};
-    setTimeout(() => openRPESheet(), 350); // slight delay so toast appears first
-  }
   setSyncStatus('syncing');
 
   // ── PERSIST to DB in background with retry + dedup ──
@@ -412,19 +393,9 @@ async function commitSet(weight, reps, completed){
       );
     });
     setSyncStatus('synced');
-    // Auto-start floating rest timer only if inline coach card is not already showing it
-    // Use optional chaining — phase/day key mismatch must never throw here
     const _w = exData.W?.[cPhase]?.[DAYS[cDay]]?.[cSession];
     const _ex = _w?.ex?.[exIndex];
-    if(_ex?.r && !isMM && !_setCoach){
-      startRestTimer(parseRestSecs(_ex.r));
-    }
-    // AI progression suggestion — only fires when no set-coach card is active.
-    // When the set-coach card IS active (normal live logging), it handles AI coaching
-    // via _startSetCoachAI after RPE resolves, so this would create a duplicate card.
-    if(_ex && !isMM && completed && !_setCoach && isExerciseDone(exName, parseSets(_ex.s), exIndex===0)){
-      fetchAIProgression(exName, exIndex, cPhase, DAYS[cDay]);
-    }
+    if(_ex?.r && !isMM) startRestTimer(parseRestSecs(_ex.r));
     // Refresh week activity — debounced for today, immediate for past dates
     clearTimeout(window._weekRefreshTimer);
     const isPastDate = selectedDateStr !== todayStr;
@@ -437,9 +408,7 @@ async function commitSet(weight, reps, completed){
   } catch(e){
     const errMsg = e?.message || e?.code || String(e);
     console.error('commitSet failed:', errMsg, e?.code, e?.details, e?.hint, e);
-    // ── Queue offline — keep optimistic UI, coach card, and AI alive ──
-    // The data will sync within 30s. Do NOT rollback or cancel AI just because
-    // the immediate DB write failed (e.g. session not yet created, brief network hiccup).
+    // ── Queue offline — keep optimistic UI; data will sync within 30s ──
     queueOfflineSave({
       table: 'exercise_logs',
       onConflict: 'date,exercise_name,set_number,is_mm_set',
@@ -447,19 +416,18 @@ async function commitSet(weight, reps, completed){
       data: {...payload, session_id: sessionId||null}
     });
     setSyncStatus('error');
+    if(e?.code === 'PGRST119' || errMsg?.includes('unique or exclusion constraint'))
+      showToast('DB missing unique index — run supabase-setup.sql', 'error');
   }
 }
 
 
 
 async function prefetchPreviousBests(exercises){
-  // One query fetches all historical rows for every exercise on today's plan.
-  // Both _prevBestCache (for the set modal "previous best" label) and
-  // _prevHistoryCache (for AI context) are built from this single result set.
   const names = exercises.map(ex=>ex.n);
   if(!names.length) return;
   const {data} = await db.from('exercise_logs')
-    .select('exercise_name,set_number,is_mm_set,weight_kg,reps,rpe,date')
+    .select('exercise_name,set_number,weight_kg,reps,date')
     .in('exercise_name', names)
     .eq('completed', true)
     .neq('date', selectedDateStr)
@@ -467,27 +435,9 @@ async function prefetchPreviousBests(exercises){
     .order('date', {ascending:false})
     .limit(300);
   if(!data) return;
-
-  // _prevBestCache — most-recent result per exercise+set (used in set modal)
   data.forEach(row=>{
     const key=`${row.exercise_name}|${row.set_number}|0`;
     if(!_prevBestCache[key]) _prevBestCache[key]={weight:row.weight_kg,reps:row.reps,date:row.date};
-  });
-
-  // _prevHistoryCache — full sessions grouped by exercise (used by AI context)
-  const byEx = {};
-  data.forEach(row=>{
-    if(!byEx[row.exercise_name]) byEx[row.exercise_name]={};
-    if(!byEx[row.exercise_name][row.date]) byEx[row.exercise_name][row.date]=[];
-    byEx[row.exercise_name][row.date].push(row);
-  });
-  Object.entries(byEx).forEach(([exName, byDate])=>{
-    // Keep last 6 distinct dates, sets sorted ascending
-    _prevHistoryCache[exName] = Object.keys(byDate).sort().reverse().slice(0,6).map(date=>({
-      date,
-      sets: byDate[date].sort((a,b)=>a.set_number-b.set_number)
-            .map(r=>({set:r.set_number, weight_kg:r.weight_kg, reps:r.reps, rpe:r.rpe??null}))
-    }));
   });
 }
 
@@ -515,7 +465,6 @@ function selectDay(d){
   _sessionPromise=null;
   // Clear prev best cache — stale for new day
   Object.keys(_prevBestCache).forEach(k => delete _prevBestCache[k]);
-  Object.keys(_prevHistoryCache).forEach(k => delete _prevHistoryCache[k]);
   const date = getDateForDay(d);
   selectedDateStr = localDateStr(date);
   // Reset render key so next renderWorkout does full rebuild
@@ -658,8 +607,6 @@ function patchWorkoutSets(){
       chip.classList.toggle('done', !!done);
       const loggedEl = chip.querySelector('.sc-logged');
       if(loggedEl) loggedEl.textContent = done && logged.weight>0 ? `${logged.weight}kg×${logged.reps}` : done ? '✓' : '';
-      const rpeEl = chip.querySelector('.sc-rpe');
-      if(rpeEl) rpeEl.textContent = done && logged.rpe ? `RPE ${logged.rpe}` : '';
     });
     // MM chip
     if(isFirst){
@@ -861,7 +808,6 @@ function renderWorkout(){
         <div class="sc-num">S${setNum}</div>
         <div class="sc-reps">${s}</div>
         <div class="sc-logged">${done&&logged.weight>0?logged.weight+'kg×'+logged.reps:done?'✓':''}</div>
-        <div class="sc-rpe">${done&&logged.rpe?'RPE '+logged.rpe:''}</div>
       </div>`;
     }).join('');
     const exDone = isExerciseDone(ex.n, sp, isFirst);
@@ -904,8 +850,6 @@ function renderWorkout(){
   h+=renderCreatineBannerHTML();
   h+=renderHydrationHTML();
   c.innerHTML=h;
-  // Re-inject any cached AI suggestion cards that survived from this session
-  reinjectAICards(dk);
   Perf.end('renderWorkout');
 }
 
@@ -1118,7 +1062,7 @@ export function navWeek(dir){
   renderWeekStrip();
 }
 
-// ── Expose helpers used by coach.js, programme.js, and timer.js via global scope ──
+// ── Expose helpers used by programme.js and timer.js via global scope ──
 window.parseSets      = parseSets;
 window.isExerciseDone = isExerciseDone;
 window.isDayDone      = isDayDone;

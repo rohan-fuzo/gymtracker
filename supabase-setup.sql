@@ -84,6 +84,11 @@ create index if not exists idx_body_metrics_date on body_metrics(date);
 create index if not exists idx_warmup_logs_date on warmup_logs(date);
 create index if not exists idx_checklist_logs_date on checklist_logs(date);
 
+-- REQUIRED for upsert — onConflict('date,exercise_name,set_number,is_mm_set')
+-- Without this unique index every exercise_log write fails with a PostgREST error.
+create unique index if not exists idx_exercise_logs_uq
+  on exercise_logs(date, exercise_name, set_number, is_mm_set);
+
 -- ============================================
 -- ROW LEVEL SECURITY
 -- ============================================

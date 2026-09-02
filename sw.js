@@ -1,6 +1,6 @@
 // Auto-bumped by GitHub Actions on every push — do not edit manually
 
-const SW_VERSION = '2026-09-01-0939';
+const SW_VERSION = '2026-09-02-0002';
 const CACHE = 'gymtracker-' + SW_VERSION;
 
 // Assets to pre-cache (excludes index.html — it always goes network-first)
@@ -19,7 +19,6 @@ const PRECACHE = [
   'js/ui.js',
   'js/timer.js',
   'js/workout.js',
-  'js/coach.js',
   'js/progress.js',
   'js/app.js',
   // CDN
@@ -59,19 +58,19 @@ self.addEventListener('fetch', e => {
   // Never intercept non-GET
   if (e.request.method !== 'GET') return;
 
-  // ── HTML navigation: network-first, cache as offline fallback ──
-  // This guarantees the user always gets the latest index.html when online.
+  // ── HTML navigation: stale-while-revalidate ──
+  // Serve cached index.html instantly; fetch fresh in background for next visit.
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request)
-        .then(res => {
-          if (res && res.status === 200) {
-            const clone = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-          }
-          return res;
+      caches.open(CACHE).then(cache =>
+        cache.match(e.request).then(cached => {
+          const fetchPromise = fetch(e.request).then(res => {
+            if(res && res.status === 200) cache.put(e.request, res.clone());
+            return res;
+          }).catch(() => {});
+          return cached || fetchPromise;
         })
-        .catch(() => caches.match(e.request).then(c => c || caches.match('index.html')))
+      )
     );
     return;
   }
