@@ -23,6 +23,14 @@
   <div id="splash-sub">Loading your programme</div>
   <div id="splash-ring"></div>
 </div>
+<script>
+  try {
+    if(sessionStorage.getItem('sw-updating')){
+      sessionStorage.removeItem('sw-updating');
+      document.getElementById('splash-sub').textContent = 'Updating to latest version';
+    }
+  } catch(e) {}
+</script>
 
 <div class="app">
 <div class="topnav">

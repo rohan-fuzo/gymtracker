@@ -208,16 +208,10 @@ export async function registerPWA() {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if(refreshing) return;
       refreshing = true;
+      try { sessionStorage.setItem('sw-updating', '1'); } catch(e) {}
       window.location.reload();
     });
 
-    reg.addEventListener('updatefound', () => {
-      const newSW = reg.installing;
-      newSW.addEventListener('statechange', () => {
-        if(newSW.state === 'installed' && navigator.serviceWorker.controller)
-          showToast('Updating to latest version…', 'info');
-      });
-    });
 
     const prefs = JSON.parse(localStorage.getItem('notifPrefs') || '[]');
     if(prefs.length) checkPendingNotifications();
