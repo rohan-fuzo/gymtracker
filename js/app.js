@@ -125,11 +125,15 @@ async function init(){
 async function loadSetsForDate(dateStr, silent=false){
   const {data} = await db.from('exercise_logs')
     .select('*').eq('date',dateStr).eq('phase',cPhase);
-  loggedSets = {};
+  // ponytail: build full object before single assignment — same pattern as loadCheckCache.
+  // loggedSets={} fires the store immediately (clearing all chips via patchWorkoutSets),
+  // then per-key mutations bypass the store setter, so chips never get restored.
+  const newSets = {};
   if(data) data.forEach(row=>{
     const key = `${row.exercise_name}|${row.set_number}|${row.is_mm_set?1:0}`;
-    loggedSets[key] = {weight:row.weight_kg, reps:row.reps, completed:row.completed, rpe:row.rpe??null, id:row.id};
+    newSets[key] = {weight:row.weight_kg, reps:row.reps, completed:row.completed, rpe:row.rpe??null, id:row.id};
   });
+  loggedSets = newSets;
   if(!silent) renderWorkout();
 }
 

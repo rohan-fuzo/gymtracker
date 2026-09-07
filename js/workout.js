@@ -344,6 +344,11 @@ async function commitSet(weight, reps, completed){
     store.setState({loggedSets: newLoggedSets});
   });
 
+  // Keep warm-load cache current so next app open shows correct state immediately
+  if(selectedDateStr === todayStr) {
+    try { localStorage.setItem(`gm_sets_${todayStr}_${cPhase}`, JSON.stringify(newLoggedSets)); } catch(_) {}
+  }
+
   // Update chip directly (faster than waiting for full re-render)
   if(chipEl){
     chipEl.classList.add('done');

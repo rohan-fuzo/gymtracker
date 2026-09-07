@@ -4,7 +4,8 @@
     "phaseWeeks": [999],
     "minActiveDays": 4,
     "totalPhases": 1,
-    "deloadEveryWeeks": 6
+    "deloadEveryWeeks": 6,
+    "progressionRule": "Double-progression: when you complete ALL sets at the TOP of the rep range for 2 consecutive sessions on an exercise, add 2.5kg (dumbbells) or 5kg (machines) next session. Never sacrifice form to progress."
   },
   "WEEK_TARGETS": {
     "1":  105, "2":  104, "3":  103, "4":  102, "5":  101,
@@ -132,13 +133,13 @@
             },
             {
               "n":           "DB Lateral Raise",
-              "s":           "3×15",
+              "s":           "2×15",
               "r":           null,
               "ic":          "↔️",
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"B",
-              "note":        "Lead with elbows. 2s up / 3s down. Light — shoulder health, not ego."
+              "note":        "Lead with elbows. 2s up / 3s down. Light — shoulder health, not ego. Volume kept low here; dedicated shoulder day covers Friday."
             },
             {
               "n":           "DB Glute Bridge",
@@ -186,12 +187,12 @@
 
       "TUE": {
         "morning": {
-          "title":    "FULL BODY B",
-          "sub":      "Home · Circuit · 45–55 min",
-          "dur":      "50",
-          "kcal":     "320–400",
+          "title":    "LOWER BODY + CORE",
+          "sub":      "Home · Circuit · 40–50 min · Lower body only — Back+Biceps gym session this evening",
+          "dur":      "45",
+          "kcal":     "280–360",
           "location": "home",
-          "tags":     ["full","circuit"],
+          "tags":     ["legs","circuit"],
           "wu":       true,
           "ex": [
             {
@@ -202,7 +203,7 @@
               "eq":          ["bw"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright."
+              "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright. Full range — knee nearly touches floor."
             },
             {
               "n":           "DB Sumo Squat",
@@ -212,45 +213,24 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Wide stance, toes out. Hold DB between legs. Full depth.",
+              "note":        "Wide stance, toes out. Hold DB between legs. Full depth. Drive knees out.",
               "warn":        "⚠️ Wrist: hold DB by one end, wrists neutral."
             },
             {
-              "n":           "Neutral-Grip DB Floor Press",
-              "s":           "3×10-12",
+              "n":           "DB Romanian Deadlift",
+              "s":           "3×12-15",
               "r":           "90s",
-              "ic":          "💪",
+              "ic":          "🦾",
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Lie on floor. Palms facing each other. Press up, lower until elbows touch floor. Full ROM.",
-              "warn":        "⚠️ Wrist: neutral grip throughout. Stop if any wrist pain."
-            },
-            {
-              "n":           "Supported 1-Arm DB Row",
-              "s":           "3×12/side",
-              "r":           null,
-              "ic":          "💪",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "Hand and knee on bench or chair. Pull DB to hip. Full stretch at bottom. Keep hips square."
-            },
-            {
-              "n":           "DB Rear-Delt Fly",
-              "s":           "3×12-15",
-              "r":           null,
-              "ic":          "↔️",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "Hinge at hips 45°. Arms hang, slight bend at elbows. Raise to shoulder height. Squeeze rear delts.",
-              "warn":        "⚠️ Wrist: neutral grip, no wrist flexion."
+              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at the bottom. Squeeze glutes hard at top.",
+              "warn":        "⚠️ Wrist: neutral grip, don't flex wrists under load."
             },
             {
               "n":           "Single-Leg Glute Bridge",
-              "s":           "3×10-12/leg",
-              "r":           "60s",
+              "s":           "3×12/leg",
+              "r":           null,
               "ic":          "🍑",
               "eq":          ["bw"],
               "circuit":     true,
@@ -258,53 +238,41 @@
               "note":        "One leg extended. Drive single hip up, squeeze hard at top. Keep hips level. Alternate legs each round."
             },
             {
-              "n":           "Hammer Curl",
-              "s":           "2×12-15",
-              "r":           null,
-              "ic":          "💪",
-              "eq":          ["db"],
+              "n":           "Calf Raise",
+              "s":           "3×20",
+              "r":           "60s",
+              "ic":          "🦵",
+              "eq":          ["bw"],
               "circuit":     true,
-              "circuitGroup":"C",
-              "note":        "Neutral wrist throughout. Controlled — don't swing.",
-              "warn":        "⚠️ Wrist neutral — no flexion or extension under load."
+              "circuitGroup":"B",
+              "note":        "Hold wall for balance. Full range — max stretch at bottom, full extension at top. Slow and controlled. Calves need volume."
             },
             {
-              "n":           "DB Triceps Kickback",
-              "s":           "2×12-15",
+              "n":           "Dead Bug",
+              "s":           "2×10/side",
               "r":           null,
-              "ic":          "💪",
-              "eq":          ["db"],
+              "ic":          "🐛",
+              "eq":          ["bw"],
               "circuit":     true,
-              "circuitGroup":"C",
-              "note":        "Hinge forward. Upper arm parallel to floor. Extend fully, squeeze at top. Controlled lowering.",
-              "warn":        "⚠️ Wrist: neutral grip, don't rotate wrist under load."
-            },
-            {
-              "n":           "DB Shrug",
-              "s":           "2×15-20",
-              "r":           null,
-              "ic":          "🏔️",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"C",
-              "note":        "Straight arms, shrug straight up. Hold 1s at top. Don't roll the shoulders."
+              "circuitGroup":"CORE",
+              "note":        "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch. Quality over speed."
             },
             {
               "n":           "Side-Lying Oblique Crunch",
               "s":           "2×12-15/side",
-              "r":           "60s",
+              "r":           "45s",
               "ic":          "🔥",
               "eq":          ["bw"],
               "circuit":     true,
-              "circuitGroup":"C",
+              "circuitGroup":"CORE",
               "note":        "Lie on side. Crunch sideways, elbow to hip. Squeeze oblique at top."
             }
           ],
           "cd": [
             "Hip flexor lunge stretch — 30s each side",
-            "Chest doorframe stretch — 30s each side",
-            "Lat stretch overhead — 20s each side",
-            "Wrist flexor + extensor — 20s each direction"
+            "Hamstring seated reach — 30s",
+            "Quad stretch standing — 30s each side",
+            "Calf stretch against wall — 30s each side"
           ]
         },
         "evening": {
@@ -542,12 +510,12 @@
 
       "THU": {
         "morning": {
-          "title":    "FULL BODY A",
-          "sub":      "Home · Circuit · 40–50 min",
+          "title":    "LOWER BODY + CORE B",
+          "sub":      "Home · Circuit · 40–50 min · Lower body only — Chest+Triceps gym session this evening",
           "dur":      "45",
-          "kcal":     "300–380",
+          "kcal":     "280–360",
           "location": "home",
-          "tags":     ["full","circuit"],
+          "tags":     ["legs","circuit"],
           "wu":       true,
           "ex": [
             {
@@ -558,70 +526,69 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hold one DB vertically at chest. Hip-width stance, full depth. Drive through heels.",
+              "note":        "Hold one DB vertically at chest. Hip-width stance, full depth. Drive through heels. Pause 1s at the bottom.",
               "warn":        "⚠️ Wrist: cup DB head with both hands, wrists neutral."
+            },
+            {
+              "n":           "Reverse Lunge",
+              "s":           "3×10/leg",
+              "r":           null,
+              "ic":          "🦵",
+              "eq":          ["bw"],
+              "circuit":     true,
+              "circuitGroup":"A",
+              "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright. Different stimulus from Tue sumo squat — more quad + glute unilateral."
             },
             {
               "n":           "DB Romanian Deadlift",
               "s":           "3×12-15",
-              "r":           null,
+              "r":           "90s",
               "ic":          "🦾",
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch. Squeeze glutes at top.",
+              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at bottom. Squeeze glutes hard at top.",
               "warn":        "⚠️ Wrist: neutral grip, don't flex wrists under load."
-            },
-            {
-              "n":           "Neutral-Grip DB Floor Press",
-              "s":           "3×10-12",
-              "r":           "90s",
-              "ic":          "💪",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"A",
-              "note":        "Lie on floor. Palms facing each other. Press up, lower until elbows touch floor. Full ROM.",
-              "warn":        "⚠️ Wrist: neutral grip throughout. Stop if any wrist pain."
-            },
-            {
-              "n":           "Supported 1-Arm DB Row",
-              "s":           "3×12/side",
-              "r":           null,
-              "ic":          "💪",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "Hand and knee on bench or chair. Pull DB to hip. Full stretch at bottom. Keep hips square."
-            },
-            {
-              "n":           "DB Lateral Raise",
-              "s":           "3×15",
-              "r":           null,
-              "ic":          "↔️",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "Lead with elbows. 2s up / 3s down. Light — shoulder health, not ego."
             },
             {
               "n":           "DB Glute Bridge",
               "s":           "3×15-20",
-              "r":           "60s",
+              "r":           null,
               "ic":          "🍑",
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"B",
-              "note":        "DB on hips. Drive hips up, squeeze hard at top. Slow descent."
+              "note":        "DB on hips. Drive hips up, squeeze hard at top 1s. Slow 3s descent. Bilateral — different from Tue single-leg version."
             },
             {
-              "n":           "Dead Bug",
+              "n":           "Single-Leg Glute Bridge",
+              "s":           "2×10/leg",
+              "r":           null,
+              "ic":          "🍑",
+              "eq":          ["bw"],
+              "circuit":     true,
+              "circuitGroup":"B",
+              "note":        "One leg extended. Drive single hip up, squeeze hard at top. Keep hips level — don't let opposite hip sag."
+            },
+            {
+              "n":           "Calf Raise",
+              "s":           "2×20",
+              "r":           "60s",
+              "ic":          "🦵",
+              "eq":          ["bw"],
+              "circuit":     true,
+              "circuitGroup":"B",
+              "note":        "Hold wall for balance. Full range — max stretch at bottom, full extension at top."
+            },
+            {
+              "n":           "Bird Dog",
               "s":           "2×10/side",
               "r":           null,
-              "ic":          "🐛",
+              "ic":          "🐦",
               "eq":          ["bw"],
               "circuit":     true,
               "circuitGroup":"CORE",
-              "note":        "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch."
+              "note":        "On all fours. Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level — no rotation. Alternates with Dead Bug on Mon/Wed/Fri."
             },
             {
               "n":           "Reverse Crunch",
@@ -631,14 +598,14 @@
               "eq":          ["bw"],
               "circuit":     true,
               "circuitGroup":"CORE",
-              "note":        "Lie on back. Curl knees toward chest, lift hips. Slow descent."
+              "note":        "Lie on back. Curl knees toward chest, lift hips. Slow descent. Posterior pelvic tilt throughout."
             }
           ],
           "cd": [
-            "Chest doorframe stretch — 30s each side",
             "Hip flexor lunge stretch — 30s each side",
             "Hamstring seated reach — 30s",
-            "Wrist flexor + extensor — 20s each direction"
+            "Quad stretch standing — 30s each side",
+            "Calf stretch against wall — 30s each side"
           ]
         },
         "evening": {
@@ -840,15 +807,6 @@
               "note": "Face the pad. Rear delts and rhomboids. 2s out / 3s return. Full ROM."
             },
             {
-              "n":    "Cable Lateral Raise",
-              "s":    "2×12-15",
-              "r":    "60s",
-              "ic":   "↔️",
-              "eq":   ["cable"],
-              "note": "Single cable, arm crosses body. Raises with cable for longer tension curve. Squeeze at top.",
-              "warn": "⚠️ Wrist: neutral grip on handle."
-            },
-            {
               "n":    "Machine Shrug",
               "s":    "2×12-15",
               "r":    "60s",
@@ -896,8 +854,8 @@
         },
         "evening": {
           "title":    "MAIN GYM DAY",
-          "sub":      "Gym · Full Body Strength · 75–90 min",
-          "dur":      "85",
+          "sub":      "Gym · Full Body Strength · 65–75 min",
+          "dur":      "70",
           "kcal":     "450–600",
           "location": "gym",
           "tags":     ["full","strength"],
@@ -970,37 +928,12 @@
               "warn": "⚠️ Wrist: keep wrists straight behind handles."
             },
             {
-              "n":    "Lateral Raise",
-              "s":    "2×12-15",
-              "r":    "60s",
-              "ic":   "↔️",
-              "eq":   ["mach"],
-              "note": "Machine lateral raise. Lead elbows, 2s up / 3s down. Light."
-            },
-            {
-              "n":    "Reverse Pec Deck",
-              "s":    "2×12-15",
-              "r":    "60s",
-              "ic":   "↔️",
-              "eq":   ["mach"],
-              "note": "Face the pad. Rear delts and rhomboids. Full ROM."
-            },
-            {
               "n":    "Cable Curl",
               "s":    "2×10-15",
               "r":    "60s",
               "ic":   "💪",
               "eq":   ["cable"],
-              "note": "Full extension at bottom, squeeze at top. No swinging."
-            },
-            {
-              "n":    "Rope Triceps Pushdown",
-              "s":    "2×10-15",
-              "r":    "60s",
-              "ic":   "💪",
-              "eq":   ["cable"],
-              "note": "Elbows pinned to sides. Spread rope at bottom, squeeze triceps fully.",
-              "warn": "⚠️ Wrist: neutral grip on rope."
+              "note": "Full extension at bottom, squeeze at top. No swinging. Lateral raise + rear delt covered on Fri PM — don't repeat here."
             },
             {
               "n":    "Cable Crunch",
@@ -1008,15 +941,7 @@
               "r":    "60s",
               "ic":   "🧱",
               "eq":   ["cable"],
-              "note": "Kneel facing stack. Rope behind neck. Crunch down, round upper back. Feel the abs."
-            },
-            {
-              "n":    "Pallof Press",
-              "s":    "2×10-12/side",
-              "r":    "60s",
-              "ic":   "🔥",
-              "eq":   ["cable"],
-              "note": "Stand sideways to stack. Press and return at chest height. Anti-rotation core."
+              "note": "Kneel facing stack. Rope behind neck. Crunch down, round upper back. Feel the abs — don't pull with arms."
             }
           ],
           "fin": {
