@@ -93,10 +93,14 @@ async function renderScoreTab(){
     // _exLogs intentionally NOT cached here — Score only fetches 'date', Trends needs full rows
 
     const latestWeight  = metrics.length ? metrics[metrics.length-1].weight_kg : null;
-    const startWeight   = 105, targetWeight = 87;
+    const targetWeight  = 87;
+    const startStr      = prog.start ? localDateStr(prog.start) : null;
+    const progMetrics   = startStr ? metrics.filter(m => m.date >= startStr) : metrics;
+    const startWeight   = progMetrics.length ? progMetrics[0].weight_kg : 105;
     const lost          = latestWeight ? (startWeight - latestWeight).toFixed(1) : '—';
     const toGo          = latestWeight ? Math.max(0,(latestWeight - targetWeight)).toFixed(1) : '—';
-    const totalSessions = new Set(exLogs.map(r=>r.date)).size;
+    const progExLogs    = startStr ? exLogs.filter(r => r.date >= startStr) : exLogs;
+    const totalSessions = new Set(progExLogs.map(r=>r.date)).size;
 
     // sessions this week (Mon–today)
     const today = new Date(); const dow = today.getDay();
@@ -175,8 +179,8 @@ async function renderScoreTab(){
         </div>
         <div class="pw-stat-row">
           <div class="pw-stat-cell">
-            <div class="pw-stat-val" style="color:var(--p1)">${lost}kg</div>
-            <div class="pw-stat-lbl">LOST</div>
+            <div class="pw-stat-val" style="color:${parseFloat(lost)>=0?'var(--p3)':'var(--p1)'}">${parseFloat(lost)>=0?lost:'+'+Math.abs(parseFloat(lost)).toFixed(1)}kg</div>
+            <div class="pw-stat-lbl">${parseFloat(lost)>=0?'LOST':'GAINED'}</div>
           </div>
           <div class="pw-stat-cell">
             <div class="pw-stat-val" style="color:var(--dim)">${toGo}kg</div>
@@ -193,7 +197,7 @@ async function renderScoreTab(){
         </div>
       </div>
       <div class="journey-bar-wrap">
-        <div class="journey-bar-labels"><span>105 kg</span><span style="color:var(--p3)">87 kg GOAL</span></div>
+        <div class="journey-bar-labels"><span>${startWeight} kg</span><span style="color:var(--p3)">87 kg GOAL</span></div>
         <div class="journey-bar-track">
           <div class="journey-bar-fill" style="width:${journeyPct}%"></div>
           <div class="journey-bar-marker" style="left:${Math.max(1,journeyPct)}%">
@@ -245,10 +249,13 @@ async function renderTrendsTab(){
     const metrics    = _metricsCache;
     const exLogs     = _exLogs;
     const inbodyLogs = _inbodyForBody;
+    const startStr   = prog.start ? localDateStr(prog.start) : null;
+    // PRs and strength chart use only programme data; weight/body charts show full history
+    const progExLogs = startStr ? exLogs.filter(r => r.date >= startStr) : exLogs;
 
-    // PRs per exercise
+    // PRs per exercise (programme period only)
     const prs = {};
-    exLogs.forEach(row=>{
+    progExLogs.forEach(row=>{
       if(!row.weight_kg||row.is_mm_set) return;
       if(!prs[row.exercise_name]||row.weight_kg>prs[row.exercise_name].weight)
         prs[row.exercise_name]={weight:row.weight_kg,reps:row.reps,date:row.date};
@@ -369,7 +376,7 @@ async function renderTrendsTab(){
         });
       }
     }
-    if(uniqueEx.length) renderStrengthChartData(uniqueEx[0], exLogs);
+    if(uniqueEx.length) renderStrengthChartData(uniqueEx[0], progExLogs);
     if(inbodyLogs.length > 1){
       const rCtx = document.getElementById('recomp-chart')?.getContext('2d');
       if(rCtx){
@@ -1024,7 +1031,10 @@ function renderStrengthChartData(exName, exLogs){
 }
 
 function updateStrengthChart(exName){
-  if(_exLogs) renderStrengthChartData(exName, _exLogs);
+  if(!_exLogs) return;
+  const startStr = prog.start ? localDateStr(prog.start) : null;
+  const logs = startStr ? _exLogs.filter(r => r.date >= startStr) : _exLogs;
+  renderStrengthChartData(exName, logs);
 }
 
 // Weigh-in modal
