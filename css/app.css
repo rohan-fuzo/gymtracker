@@ -438,10 +438,19 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .empty-state p{font-size:13px;line-height:1.6}
 
 /* ── BODY MEASUREMENTS MODULE ── */
-.progress-tab-bar{display:flex;gap:6px;padding:16px 16px 12px}
-.progress-tab-btn{flex:1;padding:9px 10px;border-radius:10px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
-.progress-tab-btn.active{border-color:var(--p3);background:rgba(34,197,94,.1);color:var(--p3)}
+.progress-tab-bar{display:flex;gap:5px;padding:12px 12px 10px}
+.progress-tab-btn{flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progress-tab-btn.active{border-color:var(--p3);background:rgba(94,142,115,.1);color:var(--p3)}
 .progress-tab-btn:active{transform:scale(.97)}
+/* Journey bar */
+.journey-bar-wrap{margin:0 16px 12px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
+.journey-bar-labels{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.5px}
+.journey-bar-track{height:6px;background:var(--surface2);border-radius:6px;position:relative;overflow:visible}
+.journey-bar-fill{height:100%;background:var(--p1);border-radius:6px;transition:width .4s ease}
+.journey-bar-marker{position:absolute;top:50%;transform:translate(-50%,-50%);pointer-events:none}
+.journey-marker-dot{width:14px;height:14px;border-radius:50%;background:var(--text);border:2.5px solid var(--p3);box-shadow:0 0 6px rgba(94,142,115,.5);position:relative;z-index:1}
+.journey-marker-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;background:var(--surface);padding:1px 5px;border-radius:4px;border:1px solid var(--border)}
+.journey-bar-sub{font-size:11px;color:var(--muted);margin-top:14px;text-align:center}
 /* Measurement form */
 .meas-modal-sheet{max-height:88vh;overflow-y:auto}
 .meas-group-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 0 6px;border-top:1px solid var(--border);margin-top:6px}

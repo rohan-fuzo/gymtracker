@@ -10,12 +10,15 @@ import { setSyncStatus, withRetry } from './sync.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
 
 // ── Module-level state ──
-let _progressTab    = 'weight';
-let _bodyLastFetch  = 0;
-let _bodyData       = null;
-let _inbodyForBody  = null;
-let _measChart      = null;
-let _exLogs         = null;
+let _progressTab       = 'weight';
+let _bodyLastFetch     = 0;
+let _strengthLastFetch = 0;
+let _planLastFetch     = 0;
+let _bodyData          = null;
+let _inbodyForBody     = null;
+let _measChart         = null;
+let _exLogs            = null;
+let _metricsCache      = null;  // shared across weight/strength/plan tabs
 
 Object.defineProperty(window, '_latestInBody', {
   get(){ return _inbodyForBody?.length ? _inbodyForBody[_inbodyForBody.length-1] : null; },
@@ -41,26 +44,32 @@ export function fmtMDelta(cmDelta){
 
 function switchProgressTab(tab){
   _progressTab = tab;
-  _progressLastFetch = 0; // force weight tab re-render when re-entering
-  _bodyLastFetch = 0;     // force body tab re-render when re-entering
+  _progressLastFetch = 0;
+  _bodyLastFetch = 0;
+  _strengthLastFetch = 0;
+  _planLastFetch = 0;
   renderProgress();
 }
 
 async function renderProgress(){
   const el = document.getElementById('progress-content');
-  // Inject tab bar + container once
   if(!document.getElementById('progress-tab-content')){
     el.innerHTML = `
       <div class="progress-tab-bar">
-        <button class="progress-tab-btn" id="ptab-weight" onclick="switchProgressTab('weight')">⚖️ WEIGHT</button>
-        <button class="progress-tab-btn" id="ptab-body" onclick="switchProgressTab('body')">📏 BODY</button>
+        <button class="progress-tab-btn" id="ptab-weight"   onclick="switchProgressTab('weight')">⚖️ WEIGHT</button>
+        <button class="progress-tab-btn" id="ptab-strength" onclick="switchProgressTab('strength')">💪 STRENGTH</button>
+        <button class="progress-tab-btn" id="ptab-body"     onclick="switchProgressTab('body')">📏 BODY</button>
+        <button class="progress-tab-btn" id="ptab-plan"     onclick="switchProgressTab('plan')">📋 PLAN</button>
       </div>
       <div id="progress-tab-content"></div>`;
   }
-  document.getElementById('ptab-weight')?.classList.toggle('active', _progressTab==='weight');
-  document.getElementById('ptab-body')?.classList.toggle('active', _progressTab==='body');
-  if(_progressTab==='weight') await renderWeightTab();
-  else await renderBodyTab();
+  ['weight','strength','body','plan'].forEach(t=>{
+    document.getElementById(`ptab-${t}`)?.classList.toggle('active', _progressTab===t);
+  });
+  if(_progressTab==='weight')   await renderWeightTab();
+  else if(_progressTab==='strength') await renderStrengthTab();
+  else if(_progressTab==='body')     await renderBodyTab();
+  else                               await renderPlanTab();
 }
 
 async function renderWeightTab(){
@@ -127,23 +136,38 @@ async function renderWeightTab(){
     const curState = getProgrammeState(new Date());
     const curWeek = curState.beforeStart ? 0 : curState.week;
     const thisWeekTarget = prog.weekTargets[curWeek] || 87;
-    const nextWeekTarget = prog.weekTargets[curWeek+1] || 87;
     const onTrack = latestWeight ? latestWeight <= thisWeekTarget + 0.5 : null;
     const isMonday = new Date().getDay() === 1;
     const weightGap = latestWeight ? (latestWeight - thisWeekTarget).toFixed(1) : null;
 
-    // Build weekly schedule rows
-    const scheduleRows = Object.entries(prog.weekTargets).map(([w,t])=>{
-      const isCur = parseInt(w)===curWeek;
-      const hasMet = latestWeight && latestWeight <= t;
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${isCur?'':'opacity:.5'}">
-        <div style="font-size:12px;${isCur?'font-weight:700;color:var(--text)':'color:var(--muted)'}">Week ${w}${isCur?' ← NOW':''}</div>
-        <div style="font-size:12px;color:${hasMet?'var(--p3)':'var(--muted)'}">Target: ${t}kg ${hasMet?'✓':''}</div>
-      </div>`;
-    }).join('');
+    // Journey bar (105kg → 87kg)
+    const journeyPct = latestWeight
+      ? Math.min(100, Math.max(0, Math.round(((startWeight - latestWeight) / (startWeight - targetWeight)) * 100)))
+      : 0;
+
+    // 7-day weight trend
+    const weekAgoWeight = metrics && metrics.length > 1
+      ? (() => { const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7); const old = metrics.filter(m=>new Date(m.date)<=cutoff); return old.length ? old[old.length-1].weight_kg : null; })()
+      : null;
+    const weekDelta = (latestWeight && weekAgoWeight) ? (latestWeight - weekAgoWeight).toFixed(1) : null;
+    const trendArrow = weekDelta ? (parseFloat(weekDelta)<0 ? `<span style="color:var(--p3);font-size:12px;font-weight:700">↓ ${Math.abs(weekDelta)}kg</span>` : `<span style="color:var(--p1);font-size:12px;font-weight:700">↑ ${weekDelta}kg</span>`) : '';
+
+    // Cache metrics for other tabs
+    _metricsCache = metrics;
 
     let h=`
     ${inbodyBanner}
+    ${latestWeight ? `<div class="journey-bar-wrap">
+      <div class="journey-bar-labels"><span>105kg</span><span style="color:var(--p3)">87kg</span></div>
+      <div class="journey-bar-track">
+        <div class="journey-bar-fill" style="width:${journeyPct}%"></div>
+        <div class="journey-bar-marker" style="left:${journeyPct}%">
+          <div class="journey-marker-dot"></div>
+          <div class="journey-marker-label">${latestWeight}kg</div>
+        </div>
+      </div>
+      <div class="journey-bar-sub">${lost}kg lost · ${toGo}kg to go · ${journeyPct}% of the way</div>
+    </div>` : ''}
     <div class="weigh-in-card">
       <div class="weigh-in-title">⚖️ ${isMonday?'TODAY IS WEIGH-IN DAY':'LOG WEIGHT'}</div>
       ${isMonday?`<div style="font-size:12px;color:var(--p3);margin-bottom:10px">Monday morning · weigh fasted before eating</div>`:''}
@@ -154,29 +178,26 @@ async function renderWeightTab(){
       ${latestWeight?`<div style="margin-top:10px;display:flex;gap:8px;align-items:center">
         <div style="flex:1">
           <div style="font-size:11px;color:var(--muted)">Last recorded</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text)">${latestWeight}kg</div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text)">${latestWeight}kg</div>
+            ${trendArrow}
+          </div>
         </div>
         <div style="flex:1;text-align:right">
-          <div style="font-size:11px;color:var(--muted)">Week ${curWeek} target</div>
+          <div style="font-size:11px;color:var(--muted)">Wk ${curWeek} target</div>
           <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${onTrack?'var(--p3)':'var(--p1)'}">${thisWeekTarget}kg</div>
         </div>
       </div>
-      <div style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:600;background:${onTrack?'rgba(34,197,94,.1)':'rgba(255,69,32,.1)'};color:${onTrack?'var(--p3)':'var(--p1)'}">
+      <div style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:600;background:${onTrack?'rgba(94,142,115,.1)':'rgba(184,132,94,.1)'};color:${onTrack?'var(--p3)':'var(--p1)'}">
         ${onTrack?'✓ ON TRACK':'⚠️ '+weightGap+'kg above target — review diet this week'}
       </div>`:''}
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-val" style="color:var(--p3)">${latestWeight||startWeight}kg</div><div class="stat-key">Current Weight</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--p3)">${latestWeight||startWeight}kg</div><div class="stat-key">Current</div></div>
       <div class="stat-card"><div class="stat-val" style="color:var(--p1)">${lost}kg</div><div class="stat-key">Total Lost</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:var(--p2)">${toGo}kg</div><div class="stat-key">To Goal (87kg)</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--p2)">${toGo}kg</div><div class="stat-key">To Go</div></div>
       <div class="stat-card"><div class="stat-val" style="color:var(--cyan)">${totalSessions}</div><div class="stat-key">Sessions</div></div>
     </div>
-    ${latestInBody ? `<div class="stat-grid" style="margin-bottom:12px">
-      <div class="stat-card"><div class="stat-val" style="color:var(--p5);font-size:20px">${latestInBody.body_fat_pct||'—'}%</div><div class="stat-key">Body Fat</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:var(--p3);font-size:20px">${latestInBody.skeletal_muscle_mass||'—'}kg</div><div class="stat-key">Muscle Mass</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:var(--p2);font-size:20px">${latestInBody.visceral_fat_level||'—'}</div><div class="stat-key">Visceral Fat</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:var(--yellow);font-size:20px">${latestInBody.inbody_score||'—'}</div><div class="stat-key">InBody Score</div></div>
-    </div>` : ''}
     ${healthLogs.length > 0 ? (()=>{
       const latest = healthLogs[healthLogs.length-1];
       const last7 = healthLogs.slice(-7);
@@ -210,13 +231,7 @@ async function renderWeightTab(){
         Set up the Apple Health Shortcut to sync your daily vitals here
       </div>
     </div>`}
-    <div class="chart-card" style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="chart-title" style="margin-bottom:0">WEEKLY TARGETS</div>
-        <div style="font-size:11px;color:var(--muted)">Wk ${curWeek} of 19</div>
-      </div>
-      <div style="max-height:200px;overflow-y:auto">${scheduleRows}</div>
-    </div>`;
+    `;
 
     // Weight chart
     if(metrics && metrics.length > 1){
@@ -227,44 +242,6 @@ async function renderWeightTab(){
     } else {
       h+=`<div class="chart-card"><div class="chart-title">WEIGHT TREND</div>
         <div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Log your weight on Mondays to see the trend here</div>
-      </div>`;
-    }
-
-    // InBody recomposition chart (muscle vs fat over time)
-    if(inbodyLogs && inbodyLogs.length > 1){
-      h+=`<div class="chart-card">
-        <div class="chart-title">RECOMPOSITION</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Muscle mass vs Fat mass — bi-weekly InBody</div>
-        <div class="chart-wrap"><canvas id="recomp-chart"></canvas></div>
-      </div>`;
-    } else if(inbodyLogs && inbodyLogs.length === 1){
-      h+=`<div class="chart-card"><div class="chart-title">RECOMPOSITION</div>
-        <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Log your next InBody in 14 days to see the recomposition trend</div>
-      </div>`;
-    }
-
-    // Strength chart
-    if(uniqueEx.length > 0){
-      h+=`<div class="chart-card">
-        <div class="chart-title">STRENGTH PROGRESS</div>
-        <select class="ex-select" id="ex-select" onchange="updateStrengthChart(this.value)">
-          ${uniqueEx.map(n=>`<option value="${n}">${n}</option>`).join('')}
-        </select>
-        <div class="chart-wrap"><canvas id="strength-chart"></canvas></div>
-      </div>`;
-    }
-
-    // PRs
-    if(uniqueEx.length > 0){
-      h+=`<div class="chart-card">
-        <div class="chart-title">PERSONAL RECORDS</div>
-        <div class="pr-list">
-          ${uniqueEx.slice(0,8).map(n=>`
-            <div class="pr-item">
-              <div><div class="pr-name">${n}</div><div class="pr-date">${prs[n].date}</div></div>
-              <div class="pr-val">${prs[n].weight}kg × ${prs[n].reps}</div>
-            </div>`).join('')}
-        </div>
       </div>`;
     }
 
@@ -321,11 +298,128 @@ async function renderWeightTab(){
       }
     }
 
-    // Render strength chart for first exercise
-    if(uniqueEx.length > 0 && exLogs){
-      renderStrengthChartData(uniqueEx[0], exLogs);
-      _exLogs = exLogs;
+  } catch(e){
+    console.error(e);
+    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load data. Check connection.</p></div>`;
+  }
+}
+
+// ============================================================
+// STRENGTH TAB
+// ============================================================
+
+async function renderStrengthTab(){
+  const now = Date.now();
+  const tabEl = document.getElementById('progress-tab-content');
+  if(now - _strengthLastFetch < 60000 && tabEl?.dataset.tab === 'strength') return;
+  _strengthLastFetch = now;
+  if(tabEl){ tabEl.dataset.tab='strength'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading strength data...</p></div>`; }
+  try {
+    // Reuse cached data if weight tab was opened first; otherwise fetch
+    if(!_exLogs){
+      const r = await db.from('exercise_logs').select('date,exercise_name,weight_kg,reps,is_mm_set').eq('completed',true).order('date',{ascending:true});
+      _exLogs = r.data || [];
     }
+    if(!_inbodyForBody){
+      const r = await db.from('inbody_logs').select('*').order('date',{ascending:true});
+      _inbodyForBody = r.data || [];
+    }
+    const exLogs = _exLogs;
+    const inbodyLogs = _inbodyForBody;
+
+    // PRs per exercise
+    const prs = {};
+    exLogs.forEach(row=>{
+      if(!row.weight_kg||row.is_mm_set) return;
+      if(!prs[row.exercise_name]||row.weight_kg>prs[row.exercise_name].weight)
+        prs[row.exercise_name]={weight:row.weight_kg,reps:row.reps,date:row.date};
+    });
+    const uniqueEx = Object.keys(prs);
+
+    // Programme block context
+    const curState = getProgrammeState(new Date());
+    const curWeek  = curState.beforeStart ? 0 : curState.week;
+    const blockWeek = ((curWeek - 1) % 6) + 1; // which week within the 6-week block
+    const weeksToDeload = 6 - blockWeek;
+
+    let h = '';
+
+    if(uniqueEx.length > 0){
+      h += `<div class="chart-card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="chart-title" style="margin-bottom:0">STRENGTH PROGRESS</div>
+          <div style="font-size:11px;color:var(--muted)">max weight per session</div>
+        </div>
+        <select class="ex-select" id="ex-select" onchange="updateStrengthChart(this.value)">
+          ${uniqueEx.map(n=>`<option value="${n}">${n}</option>`).join('')}
+        </select>
+        <div class="chart-wrap"><canvas id="strength-chart"></canvas></div>
+      </div>`;
+    } else {
+      h += `<div class="chart-card" style="margin-bottom:12px">
+        <div class="chart-title">STRENGTH PROGRESS</div>
+        <div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Log sets with weight to see your strength trend</div>
+      </div>`;
+    }
+
+    // Block progression status
+    h += `<div class="chart-card" style="margin-bottom:12px">
+      <div class="chart-title">PROGRAMME BLOCK</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:22px;font-family:'Bebas Neue',sans-serif;color:var(--p3)">Week ${curWeek}</div>
+          <div style="font-size:12px;color:var(--muted)">Block week ${blockWeek} of 6${weeksToDeload===0?' · DELOAD THIS WEEK':`  · deload in ${weeksToDeload}wk`}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">RULE</div>
+          <div style="font-size:11px;color:var(--text);max-width:160px;text-align:right;line-height:1.4">+1 rep each session → +2.5kg when top rep reached</div>
+        </div>
+      </div>
+      <div class="journey-bar-track" style="margin-bottom:0">
+        <div class="journey-bar-fill" style="width:${Math.round((blockWeek/6)*100)}%;background:var(--p3)"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:right">Week ${blockWeek}/6 of current block</div>
+    </div>`;
+
+    // All PRs
+    if(uniqueEx.length > 0){
+      const compound = uniqueEx.filter(n=> ['Press','Row','Squat','Deadlift','Pull','Bench','OHP'].some(k=>n.includes(k)));
+      const isolation = uniqueEx.filter(n=>!compound.includes(n));
+      const renderPRGroup = (label, exs) => exs.length ? `
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">${label}</div>
+        <div class="pr-list" style="margin-bottom:14px">
+          ${exs.map(n=>`
+            <div class="pr-item">
+              <div><div class="pr-name">${n}</div><div class="pr-date">${prs[n].date}</div></div>
+              <div class="pr-val">${prs[n].weight}kg × ${prs[n].reps}</div>
+            </div>`).join('')}
+        </div>` : '';
+      h += `<div class="chart-card">
+        <div class="chart-title">PERSONAL RECORDS</div>
+        ${renderPRGroup('COMPOUNDS', compound)}
+        ${renderPRGroup('ISOLATION', isolation)}
+        ${!compound.length && !isolation.length ? uniqueEx.map(n=>`
+          <div class="pr-item">
+            <div><div class="pr-name">${n}</div><div class="pr-date">${prs[n].date}</div></div>
+            <div class="pr-val">${prs[n].weight}kg × ${prs[n].reps}</div>
+          </div>`).join('') : ''}
+      </div>`;
+    }
+
+    // Recomposition chart
+    if(inbodyLogs && inbodyLogs.length > 1){
+      h+=`<div class="chart-card" style="margin-top:12px">
+        <div class="chart-title">RECOMPOSITION</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Muscle vs Fat mass — bi-weekly InBody</div>
+        <div class="chart-wrap"><canvas id="recomp-chart"></canvas></div>
+      </div>`;
+    }
+
+    h += `<div class="spacer"></div>`;
+    if(tabEl) tabEl.innerHTML = h;
+
+    // Render strength chart
+    if(uniqueEx.length > 0) renderStrengthChartData(uniqueEx[0], exLogs);
 
     // Render recomposition chart
     if(inbodyLogs && inbodyLogs.length > 1){
@@ -337,9 +431,9 @@ async function renderWeightTab(){
           data:{
             labels: inbodyLogs.map(r=>r.date.slice(5)),
             datasets:[
-              {label:'Muscle (kg)',data:inbodyLogs.map(r=>r.skeletal_muscle_mass),borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,.1)',tension:.3,pointRadius:4,pointBackgroundColor:'#22c55e',yAxisID:'y'},
-              {label:'Fat (kg)',data:inbodyLogs.map(r=>r.body_fat_mass),borderColor:'#ff4520',backgroundColor:'rgba(255,69,32,.08)',tension:.3,pointRadius:4,pointBackgroundColor:'#ff4520',yAxisID:'y'},
-              {label:'Visceral Fat',data:inbodyLogs.map(r=>r.visceral_fat_level),borderColor:'#f59e0b',borderDash:[4,4],tension:.3,pointRadius:3,yAxisID:'y2'},
+              {label:'Muscle (kg)',data:inbodyLogs.map(r=>r.skeletal_muscle_mass),borderColor:'#5e8e73',backgroundColor:'rgba(94,142,115,.1)',tension:.3,pointRadius:4,pointBackgroundColor:'#5e8e73',yAxisID:'y'},
+              {label:'Fat (kg)',data:inbodyLogs.map(r=>r.body_fat_mass),borderColor:'#b8845e',backgroundColor:'rgba(184,132,94,.08)',tension:.3,pointRadius:4,pointBackgroundColor:'#b8845e',yAxisID:'y'},
+              {label:'Visceral Fat',data:inbodyLogs.map(r=>r.visceral_fat_level),borderColor:'#bca36e',borderDash:[4,4],tension:.3,pointRadius:3,yAxisID:'y2'},
             ]
           },
           options:{
@@ -348,16 +442,122 @@ async function renderWeightTab(){
             scales:{
               x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},
               y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'},position:'left'},
-              y2:{ticks:{color:'#f59e0b',font:{size:9}},grid:{display:false},position:'right'}
+              y2:{ticks:{color:'#bca36e',font:{size:9}},grid:{display:false},position:'right'}
             }
           }
         });
       }
     }
-
   } catch(e){
     console.error(e);
-    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load data. Check connection.</p></div>`;
+    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load strength data.</p></div>`;
+  }
+}
+
+// ============================================================
+// PLAN TAB
+// ============================================================
+
+async function renderPlanTab(){
+  const now = Date.now();
+  const tabEl = document.getElementById('progress-tab-content');
+  if(now - _planLastFetch < 60000 && tabEl?.dataset.tab === 'plan') return;
+  _planLastFetch = now;
+  if(tabEl) tabEl.dataset.tab='plan';
+  try {
+    const curState   = getProgrammeState(new Date());
+    const curWeek    = curState.beforeStart ? 0 : curState.week;
+    const totalWeeks = Object.keys(prog.weekTargets).length;
+    const weekTarget = prog.weekTargets[curWeek] || 87;
+    const nextTarget = prog.weekTargets[curWeek+1] || weekTarget;
+    const blockWeek  = ((curWeek - 1) % 6) + 1;
+    const weeksToDeload = 6 - blockWeek;
+    const isDeloadWeek  = blockWeek === 6;
+
+    // Reuse metrics from weight tab if available
+    const latestWeight = _metricsCache && _metricsCache.length
+      ? _metricsCache[_metricsCache.length-1].weight_kg
+      : null;
+    const onTrack = latestWeight ? latestWeight <= weekTarget + 0.5 : null;
+
+    // Diet phase data
+    const dp = DP[dPhase];
+
+    const phaseCol = dp.col;
+    const journeyPct = latestWeight ? Math.min(100, Math.max(0, Math.round(((105 - latestWeight) / (105 - 87)) * 100))) : 0;
+
+    let h = `
+    <div class="chart-card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--p3)">WEEK ${curWeek}</div>
+        <div style="font-size:13px;color:var(--muted)">of ${totalWeeks}</div>
+      </div>
+      <div class="journey-bar-track" style="margin-bottom:8px">
+        <div class="journey-bar-fill" style="width:${Math.round((curWeek/totalWeeks)*100)}%;background:var(--p3)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+        <span>Wk 1</span>
+        <span>${Math.round((curWeek/totalWeeks)*100)}% complete</span>
+        <span>Wk ${totalWeeks}</span>
+      </div>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom:12px">
+      <div class="stat-card">
+        <div class="stat-val" style="color:${weekTarget<=87?'var(--p3)':'var(--text)'};">${weekTarget}kg</div>
+        <div class="stat-key">This week target</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color:var(--muted)">${nextTarget}kg</div>
+        <div class="stat-key">Next week target</div>
+      </div>
+    </div>
+
+    ${latestWeight && onTrack!=null ? `<div style="margin:0 0 12px;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;background:${onTrack?'rgba(94,142,115,.1)':'rgba(184,132,94,.1)'};color:${onTrack?'var(--p3)':'var(--p1)'};">
+      ${onTrack ? '✓ ON TRACK — weight is at or below this week\'s target' : `⚠️ ${(latestWeight-weekTarget).toFixed(1)}kg above target — tighten meals this week`}
+    </div>` : ''}
+
+    <div class="chart-card" style="margin-bottom:12px">
+      <div class="chart-title">${isDeloadWeek ? '⚡ DELOAD WEEK ACTIVE' : 'BLOCK STATUS'}</div>
+      ${isDeloadWeek
+        ? `<div style="font-size:13px;color:var(--muted);line-height:1.6">Drop 1 set from every exercise. Skip all isolation work (curls, lateral raises, calf raises, cable crunch). Main compounds only at 60% normal load. Full week — then resume normal progression.</div>`
+        : `<div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:11px;color:var(--muted)">Block week</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text)">${blockWeek} <span style="font-size:16px;color:var(--muted)">/ 6</span></div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--muted)">Deload in</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:${weeksToDeload<=2?'var(--yellow)':'var(--text)'}">${weeksToDeload} <span style="font-size:16px;color:var(--muted)">wk</span></div>
+            </div>
+          </div>
+          <div class="journey-bar-track" style="margin-top:10px;margin-bottom:0">
+            <div class="journey-bar-fill" style="width:${Math.round((blockWeek/6)*100)}%;background:${weeksToDeload<=2?'var(--yellow)':'var(--p3)'}"></div>
+          </div>`
+      }
+    </div>
+
+    <div class="chart-card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="chart-title" style="margin-bottom:0">DIET PHASE</div>
+        <div style="font-size:13px;font-family:'Bebas Neue',sans-serif;color:${phaseCol}">${dp.label}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${[{v:dp.kcal,k:'KCAL',c:phaseCol},{v:dp.pro,k:'PROTEIN',c:'var(--p3)'},{v:dp.carb,k:'CARBS',c:'var(--p2)'},{v:dp.fat,k:'FAT',c:'var(--text)'},{v:dp.def,k:'DEFICIT',c:phaseCol}]
+          .map(m=>`<div style="flex:1;min-width:60px;background:var(--surface2);border-radius:10px;padding:10px 8px;text-align:center">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:${m.c}">${m.v}</div>
+            <div style="font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.5px">${m.k}</div>
+          </div>`).join('')}
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted)">${dp.weeks} · ${dp.rNote}</div>
+    </div>
+
+    <div class="spacer"></div>`;
+
+    if(tabEl) tabEl.innerHTML = h;
+  } catch(e){
+    console.error(e);
+    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load plan.</p></div>`;
   }
 }
 
@@ -1386,6 +1586,8 @@ async function hardRefreshIDB() {
 export {
   renderProgress,
   switchProgressTab,
+  renderStrengthTab,
+  renderPlanTab,
   renderBodyTab,
   renderDiet,
   renderMobility,
