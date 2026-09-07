@@ -5,7 +5,7 @@
     "minActiveDays": 4,
     "totalPhases": 1,
     "deloadEveryWeeks": 6,
-    "progressionRule": "Double-progression: when you complete ALL sets at the TOP of the rep range for 2 consecutive sessions on an exercise, add 2.5kg (dumbbells) or 5kg (machines) next session. Never sacrifice form to progress."
+    "progressionRule": "Double-progression: when you complete ALL sets at the TOP of the rep range for 2 consecutive sessions on an exercise, add 2.5kg (dumbbells) or 5kg (machines) next session. Never sacrifice form to progress. Week 6 deload: drop 1 set from every exercise, skip all isolation work (curls, lateral raises, calf raises, cable crunch), do main compounds only at 60% normal load. Full week, then resume normal progression."
   },
   "WEEK_TARGETS": {
     "1":  105, "2":  104, "3":  103, "4":  102, "5":  101,
@@ -97,7 +97,7 @@
               "circuit":     true,
               "circuitGroup":"A",
               "note":        "Hold one DB vertically at chest. Hip-width stance, full depth. Drive through heels.",
-              "warn":        "⚠️ Wrist: cup DB head with both hands, wrists neutral."
+              "warn":        "⚠️ TFCC: grip the DB handle with both hands, thumbs pointing up — do NOT cup the head. Cupping forces ulnar deviation under load."
             },
             {
               "n":           "DB Romanian Deadlift",
@@ -107,8 +107,8 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch. Squeeze glutes at top.",
-              "warn":        "⚠️ Wrist: neutral grip, don't flex wrists under load."
+              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch. Squeeze glutes at top. At 10kg: 4s descent, 2s pause at full stretch, then drive up — tempo is the stimulus at this load.",
+              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid — no flexion under load."
             },
             {
               "n":           "Neutral-Grip DB Floor Press",
@@ -118,8 +118,8 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Lie on floor. Palms facing each other. Press up, lower until elbows touch floor. Full ROM.",
-              "warn":        "⚠️ Wrist: neutral grip throughout. Stop if any wrist pain."
+              "note":        "Lie on floor. Palms facing each other. Press up, lower until elbows touch floor. At 10kg: 3s descent, 1s pause when elbows touch floor, drive up. Tempo turns a light load into a real stimulus.",
+              "warn":        "⚠️ TFCC: neutral grip throughout — palms facing each other, wrists never bent back. Stop immediately if wrist pain."
             },
             {
               "n":           "Supported 1-Arm DB Row",
@@ -129,7 +129,7 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"B",
-              "note":        "Hand and knee on bench or chair. Pull DB to hip. Full stretch at bottom. Keep hips square."
+              "note":        "Hand and knee on bench or chair. Pull DB to hip. Full stretch at bottom. Keep hips square. At 10kg: 3s pull, 1s hold at top, 3s return — 15-20 reps. Wrist stays neutral throughout, no supination at the top."
             },
             {
               "n":           "DB Lateral Raise",
@@ -149,7 +149,7 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"B",
-              "note":        "DB on hips. Drive hips up, squeeze hard at top. Slow descent."
+              "note":        "DB on hips. Drive hips up, squeeze 2s at top. 3s controlled descent. At 10kg go 20 reps — when easy, progress to single-leg with the DB."
             },
             {
               "n":           "Dead Bug",
@@ -214,7 +214,7 @@
               "circuit":     true,
               "circuitGroup":"A",
               "note":        "Wide stance, toes out. Hold DB between legs. Full depth. Drive knees out.",
-              "warn":        "⚠️ Wrist: hold DB by one end, wrists neutral."
+              "warn":        "⚠️ TFCC: hold DB by the handle (not cupped), thumbs up, wrist neutral. At 10kg: 4s descent, 2s pause at bottom depth."
             },
             {
               "n":           "DB Romanian Deadlift",
@@ -224,8 +224,8 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at the bottom. Squeeze glutes hard at top.",
-              "warn":        "⚠️ Wrist: neutral grip, don't flex wrists under load."
+              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at the bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at full stretch — without tempo this won't challenge you at 105kg.",
+              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid throughout."
             },
             {
               "n":           "Single-Leg Glute Bridge",
@@ -302,12 +302,13 @@
               "note": "Chest on pad — no momentum. Retract scapula, pull elbows back. Squeeze at peak contraction."
             },
             {
-              "n":    "Back Extension",
-              "s":    "3×12-15",
-              "r":    "75s",
+              "n":    "Cable Romanian Deadlift",
+              "s":    "3×10-12",
+              "r":    "90s",
               "ic":   "🦾",
-              "eq":   ["mach"],
-              "note": "Hold weight at chest or arms crossed. Lower until hips flex 90°, then extend to neutral — don't hyperextend. Controlled throughout."
+              "eq":   ["cable"],
+              "note": "Low pulley. Hip hinge — push hips back, flat back, feel hamstring stretch at the bottom, drive hips through at top. This is the loaded hinge the 10kg home DB work can't replicate — build to meaningful weight here.",
+              "warn": "⚠️ TFCC: rope handle or EZ-bar attachment — NOT straight bar. Rope keeps wrists neutral throughout."
             },
             {
               "n":    "Reverse Pec Deck",
@@ -323,7 +324,8 @@
               "r":    "60s",
               "ic":   "💪",
               "eq":   ["cable"],
-              "note": "Straight bar or EZ. Full extension at bottom, squeeze at top. No swinging."
+              "note": "EZ-bar or rope attachment only — NOT straight bar. Full extension at bottom, squeeze at top. No swinging.",
+              "warn": "⚠️ TFCC: straight bar forces full supination under load. EZ-bar keeps wrists in semi-neutral — mandatory during recovery."
             },
             {
               "n":    "Hammer Curl",
@@ -527,7 +529,7 @@
               "circuit":     true,
               "circuitGroup":"A",
               "note":        "Hold one DB vertically at chest. Hip-width stance, full depth. Drive through heels. Pause 1s at the bottom.",
-              "warn":        "⚠️ Wrist: cup DB head with both hands, wrists neutral."
+              "warn":        "⚠️ TFCC: grip the DB handle with both hands, thumbs pointing up — do NOT cup the head. Cupping forces ulnar deviation under load."
             },
             {
               "n":           "Reverse Lunge",
@@ -547,8 +549,8 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at bottom. Squeeze glutes hard at top.",
-              "warn":        "⚠️ Wrist: neutral grip, don't flex wrists under load."
+              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at stretch, explode up — tempo is essential at this load.",
+              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid — no flexion under load."
             },
             {
               "n":           "DB Glute Bridge",
@@ -558,7 +560,7 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"B",
-              "note":        "DB on hips. Drive hips up, squeeze hard at top 1s. Slow 3s descent. Bilateral — different from Tue single-leg version."
+              "note":        "DB on hips. Drive hips up, squeeze hard 2s at top. Controlled 3s descent. At 10kg go 20 reps. Bilateral here, single-leg on Tuesday — different stimulus."
             },
             {
               "n":           "Single-Leg Glute Bridge",
@@ -740,12 +742,12 @@
               "note": "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch."
             },
             {
-              "n":    "Side-Lying Leg Raise",
-              "s":    "2×15/side",
+              "n":    "Single-Leg RDL",
+              "s":    "2×10/leg",
               "r":    "45s",
-              "ic":   "🦵",
+              "ic":   "🦾",
               "eq":   ["bw"],
-              "note": "Lie on side, stack hips. Raise top leg to 45°, lower with control."
+              "note": "Stand on one leg, hinge forward until torso is parallel — opposite leg extends back. Feel the hamstring stretch. Touch floor with fingertips for balance if needed. No wrist load — pure balance and hamstring."
             },
             {
               "n":    "Calf Raise",
@@ -871,22 +873,6 @@
               "note": "Feet shoulder-width, mid-plate. Lower to 90° knee angle. Drive through heels. Don't lock knees at top."
             },
             {
-              "n":    "Leg Curl",
-              "s":    "3×10-15",
-              "r":    "90s",
-              "ic":   "🦵",
-              "eq":   ["mach"],
-              "note": "Full stretch at top, squeeze at peak. Control the eccentric — don't let weight drop."
-            },
-            {
-              "n":    "Leg Extension",
-              "s":    "2×10-15",
-              "r":    "75s",
-              "ic":   "🦵",
-              "eq":   ["mach"],
-              "note": "Full extension at top, hold 1s. Control the descent. Quad focus."
-            },
-            {
               "n":    "Hip Thrust",
               "s":    "3×10-15",
               "r":    "90s",
@@ -895,12 +881,13 @@
               "note": "Drive hips up to full extension. Squeeze glutes hard at top. Control descent. Hip-width feet."
             },
             {
-              "n":    "Calf Raise",
-              "s":    "3×12-20",
-              "r":    "60s",
-              "ic":   "🦵",
+              "n":    "Machine Chest Press",
+              "s":    "3×8-12",
+              "r":    "90s",
+              "ic":   "💪",
               "eq":   ["mach"],
-              "note": "Full stretch at bottom, full extension at top. Pause at both ends. Controlled."
+              "note": "Done early while upper body is still fresh. Seat height so handles are mid-chest. Full stretch, full press. Control the eccentric.",
+              "warn": "⚠️ TFCC: keep wrists straight behind handles — no bend back."
             },
             {
               "n":    "Neutral-Grip Lat Pulldown",
@@ -919,13 +906,28 @@
               "note": "Chest on pad — no momentum. Retract scapula, pull elbows back. Squeeze at peak."
             },
             {
-              "n":    "Machine Chest Press",
-              "s":    "3×8-12",
+              "n":    "Leg Curl",
+              "s":    "3×10-15",
               "r":    "90s",
-              "ic":   "💪",
+              "ic":   "🦵",
               "eq":   ["mach"],
-              "note": "Seat height so handles are mid-chest. Full stretch, full press.",
-              "warn": "⚠️ Wrist: keep wrists straight behind handles."
+              "note": "Full stretch at top, squeeze at peak. Control the eccentric — don't let weight drop."
+            },
+            {
+              "n":    "Leg Extension",
+              "s":    "2×10-15",
+              "r":    "75s",
+              "ic":   "🦵",
+              "eq":   ["mach"],
+              "note": "Full extension at top, hold 1s. Control the descent. Quad focus."
+            },
+            {
+              "n":    "Calf Raise",
+              "s":    "3×12-20",
+              "r":    "60s",
+              "ic":   "🦵",
+              "eq":   ["mach"],
+              "note": "Full stretch at bottom, full extension at top. Pause at both ends. Controlled."
             },
             {
               "n":    "Cable Curl",
@@ -933,7 +935,8 @@
               "r":    "60s",
               "ic":   "💪",
               "eq":   ["cable"],
-              "note": "Full extension at bottom, squeeze at top. No swinging. Lateral raise + rear delt covered on Fri PM — don't repeat here."
+              "note": "EZ-bar or rope attachment — NOT straight bar. Full extension at bottom, squeeze at top. No swinging.",
+              "warn": "⚠️ TFCC: straight bar forces full supination. EZ-bar or rope only."
             },
             {
               "n":    "Cable Crunch",
