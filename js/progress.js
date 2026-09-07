@@ -10,7 +10,7 @@ import { setSyncStatus, withRetry } from './sync.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
 
 // ── Module-level state ──
-let _progressTab       = 'weight';
+let _progressTab       = 'score';
 let _bodyLastFetch     = 0;
 let _strengthLastFetch = 0;
 let _planLastFetch     = 0;
@@ -56,266 +56,184 @@ async function renderProgress(){
   if(!document.getElementById('progress-tab-content')){
     el.innerHTML = `
       <div class="progress-tab-bar">
-        <button class="progress-tab-btn" id="ptab-weight"   onclick="switchProgressTab('weight')">⚖️ WEIGHT</button>
-        <button class="progress-tab-btn" id="ptab-strength" onclick="switchProgressTab('strength')">💪 STRENGTH</button>
-        <button class="progress-tab-btn" id="ptab-body"     onclick="switchProgressTab('body')">📏 BODY</button>
-        <button class="progress-tab-btn" id="ptab-plan"     onclick="switchProgressTab('plan')">📋 PLAN</button>
+        <button class="progress-tab-btn" id="ptab-score"  onclick="switchProgressTab('score')">SCORE</button>
+        <button class="progress-tab-btn" id="ptab-trends" onclick="switchProgressTab('trends')">TRENDS</button>
+        <button class="progress-tab-btn" id="ptab-plan"   onclick="switchProgressTab('plan')">PLAN</button>
       </div>
       <div id="progress-tab-content"></div>`;
   }
-  ['weight','strength','body','plan'].forEach(t=>{
+  ['score','trends','plan'].forEach(t=>{
     document.getElementById(`ptab-${t}`)?.classList.toggle('active', _progressTab===t);
   });
-  if(_progressTab==='weight')   await renderWeightTab();
-  else if(_progressTab==='strength') await renderStrengthTab();
-  else if(_progressTab==='body')     await renderBodyTab();
-  else                               await renderPlanTab();
+  if(_progressTab==='score')       await renderScoreTab();
+  else if(_progressTab==='trends') await renderTrendsTab();
+  else if(_progressTab==='body')   await renderBodyTab();
+  else                             await renderPlanTab();
 }
 
-async function renderWeightTab(){
+async function renderScoreTab(){
   const now = Date.now();
   const tabEl = document.getElementById('progress-tab-content');
-  if(now - _progressLastFetch < 60000 && tabEl?.dataset.tab === 'weight') return;
+  if(now - _progressLastFetch < 60000 && tabEl?.dataset.tab === 'score') return;
   _progressLastFetch = now;
-  if(tabEl) { tabEl.dataset.tab='weight'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading your data...</p></div>`; }
+  if(tabEl){ tabEl.dataset.tab='score'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading...</p></div>`; }
   try {
-    // All 4 queries in parallel — select only columns we actually use
     const [metricsRes, inbodyRes, exLogsRes, healthRes] = await Promise.all([
       db.from('body_metrics').select('*').order('date',{ascending:true}),
       db.from('inbody_logs').select('*').order('date',{ascending:true}),
-      db.from('exercise_logs').select('date,exercise_name,weight_kg,reps,is_mm_set').eq('completed',true).order('date',{ascending:true}),
+      db.from('exercise_logs').select('date').eq('completed',true),
       db.from('apple_health_logs').select('*').order('date',{ascending:true}),
     ]);
-    const metrics = metricsRes.data;
-    const inbodyLogs = inbodyRes.data;
-    _inbodyForBody = inbodyLogs; // share with body tab — avoids duplicate fetch on tab switch
-    const exLogs = exLogsRes.data;
-    _exLogs = exLogs;
-    const healthLogs = healthRes.data || [];
-    // Stats
-    const latestWeight = metrics && metrics.length>0 ? metrics[metrics.length-1].weight_kg : null;
-    const latestInBody = inbodyLogs && inbodyLogs.length>0 ? inbodyLogs[inbodyLogs.length-1] : null;
-    const startWeight = 105;
-    const targetWeight = 87;
-    const lost = latestWeight ? (startWeight - latestWeight).toFixed(1) : '—';
-    const toGo = latestWeight ? (latestWeight - targetWeight).toFixed(1) : '—';
-    const totalSessions = new Set(exLogs?.map(r=>r.date)||[]).size;
-    // PRs per exercise
-    const prs = {};
-    if(exLogs) exLogs.forEach(row=>{
-      if(!row.weight_kg||row.is_mm_set) return;
-      if(!prs[row.exercise_name]||row.weight_kg>prs[row.exercise_name].weight){
-        prs[row.exercise_name]={weight:row.weight_kg,reps:row.reps,date:row.date};
-      }
-    });
-    // Unique exercises logged
-    const uniqueEx = Object.keys(prs);
+    const metrics    = metricsRes.data || [];
+    const inbodyLogs = inbodyRes.data  || [];
+    const exLogs     = exLogsRes.data  || [];
+    const healthLogs = healthRes.data  || [];
+    _metricsCache   = metrics;
+    _inbodyForBody  = inbodyLogs;
+    // _exLogs intentionally NOT cached here — Score only fetches 'date', Trends needs full rows
 
-    // InBody due banner
-    const inbodyDue = isInBodyDue();
-    const daysSince = daysSinceInBody();
-    const inbodyBanner = inbodyDue
-      ? `<div class="notif-banner inbody">
-          <div class="notif-banner-icon">📊</div>
-          <div class="notif-banner-text">
-            <div class="notif-banner-title">INBODY DUE${daysSince?` — ${daysSince} DAYS AGO`:' — FIRST SCAN'}</div>
-            <div class="notif-banner-sub">Bi-weekly check-in · InBody 770 · gym front desk</div>
-          </div>
-          <button class="notif-banner-btn" onclick="openInBodyModal()">LOG</button>
-        </div>`
-      : `<div class="notif-banner inbody" style="opacity:.6">
-          <div class="notif-banner-icon">📊</div>
-          <div class="notif-banner-text">
-            <div class="notif-banner-title">INBODY UP TO DATE</div>
-            <div class="notif-banner-sub">Next scan in ${14-(daysSince||0)} days</div>
-          </div>
-          <button class="notif-banner-btn" onclick="openInBodyModal()">UPDATE</button>
-        </div>`;
+    const latestWeight  = metrics.length ? metrics[metrics.length-1].weight_kg : null;
+    const startWeight   = 105, targetWeight = 87;
+    const lost          = latestWeight ? (startWeight - latestWeight).toFixed(1) : '—';
+    const toGo          = latestWeight ? Math.max(0,(latestWeight - targetWeight)).toFixed(1) : '—';
+    const totalSessions = new Set(exLogs.map(r=>r.date)).size;
 
-    // Programme week + target weight
-    const curState = getProgrammeState(new Date());
-    const curWeek = curState.beforeStart ? 0 : curState.week;
+    // sessions this week (Mon–today)
+    const today = new Date(); const dow = today.getDay();
+    const mon = new Date(today); mon.setDate(today.getDate() - (dow===0?6:dow-1));
+    const monStr = localDateStr(mon);
+    const weekSessions = new Set(exLogs.filter(r=>r.date>=monStr).map(r=>r.date)).size;
+
+    const curState      = getProgrammeState(new Date());
+    const curWeek       = curState.beforeStart ? 0 : curState.week;
     const thisWeekTarget = prog.weekTargets[curWeek] || 87;
-    const onTrack = latestWeight ? latestWeight <= thisWeekTarget + 0.5 : null;
-    const isMonday = new Date().getDay() === 1;
-    const weightGap = latestWeight ? (latestWeight - thisWeekTarget).toFixed(1) : null;
-
-    // Journey bar (105kg → 87kg)
-    const journeyPct = latestWeight
+    const onTrack       = latestWeight ? latestWeight <= thisWeekTarget + 0.5 : null;
+    const weightGap     = latestWeight ? (latestWeight - thisWeekTarget).toFixed(1) : null;
+    const isMonday      = new Date().getDay() === 1;
+    const journeyPct    = latestWeight
       ? Math.min(100, Math.max(0, Math.round(((startWeight - latestWeight) / (startWeight - targetWeight)) * 100)))
       : 0;
 
-    // 7-day weight trend
-    const weekAgoWeight = metrics && metrics.length > 1
-      ? (() => { const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7); const old = metrics.filter(m=>new Date(m.date)<=cutoff); return old.length ? old[old.length-1].weight_kg : null; })()
-      : null;
+    // 7-day trend
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
+    const weekAgoArr = metrics.filter(m=>new Date(m.date)<=cutoff);
+    const weekAgoWeight = weekAgoArr.length ? weekAgoArr[weekAgoArr.length-1].weight_kg : null;
     const weekDelta = (latestWeight && weekAgoWeight) ? (latestWeight - weekAgoWeight).toFixed(1) : null;
-    const trendArrow = weekDelta ? (parseFloat(weekDelta)<0 ? `<span style="color:var(--p3);font-size:12px;font-weight:700">↓ ${Math.abs(weekDelta)}kg</span>` : `<span style="color:var(--p1);font-size:12px;font-weight:700">↑ ${weekDelta}kg</span>`) : '';
+    const trendClass = weekDelta ? (parseFloat(weekDelta)<0?'pw-trend-good':'pw-trend-bad') : 'pw-trend-neutral';
+    const trendTxt   = weekDelta
+      ? (parseFloat(weekDelta)<0 ? `↓ ${Math.abs(weekDelta)}kg this week` : `↑ ${weekDelta}kg this week`)
+      : 'No prior week data';
 
-    // Cache metrics for other tabs
-    _metricsCache = metrics;
-
-    let h=`
-    ${inbodyBanner}
-    ${latestWeight ? `<div class="journey-bar-wrap">
-      <div class="journey-bar-labels"><span>105kg</span><span style="color:var(--p3)">87kg</span></div>
-      <div class="journey-bar-track">
-        <div class="journey-bar-fill" style="width:${journeyPct}%"></div>
-        <div class="journey-bar-marker" style="left:${journeyPct}%">
-          <div class="journey-marker-dot"></div>
-          <div class="journey-marker-label">${latestWeight}kg</div>
+    // Vitals strip — latest values only, no chart
+    const vitalsHTML = healthLogs.length ? (()=>{
+      const v = healthLogs[healthLogs.length-1];
+      return `<div class="pw-section">VITALS <span style="font-size:10px;font-weight:400;color:var(--dim);text-transform:none;letter-spacing:0"> · ${v.date}</span></div>
+      <div class="pw-vitals">
+        <div class="pw-vital">
+          <div class="pw-vital-num" style="color:#ff4520">${v.active_calories||'—'}</div>
+          <div class="pw-vital-lbl">ACTIVE CAL</div>
         </div>
+        <div class="pw-vital">
+          <div class="pw-vital-num" style="color:var(--p3)">${v.steps ? (v.steps/1000).toFixed(1)+'k' : '—'}</div>
+          <div class="pw-vital-lbl">STEPS</div>
+        </div>
+        <div class="pw-vital">
+          <div class="pw-vital-num" style="color:var(--cyan)">${v.sleep_hours ? v.sleep_hours+'h' : '—'}</div>
+          <div class="pw-vital-lbl">SLEEP</div>
+        </div>
+        <div class="pw-vital">
+          <div class="pw-vital-num" style="color:var(--p5)">${v.resting_hr||'—'}</div>
+          <div class="pw-vital-lbl">RESTING HR</div>
+        </div>
+      </div>`;
+    })() : '';
+
+    // InBody due banner
+    const inbodyDue  = isInBodyDue();
+    const daysSince  = daysSinceInBody();
+    const inbodyBanner = `<div class="notif-banner inbody" style="${inbodyDue?'':'opacity:.55'}">
+      <div class="notif-banner-icon">📊</div>
+      <div class="notif-banner-text">
+        <div class="notif-banner-title">${inbodyDue ? `INBODY DUE${daysSince?` — ${daysSince} DAYS AGO`:' — FIRST SCAN'}` : 'INBODY UP TO DATE'}</div>
+        <div class="notif-banner-sub">${inbodyDue ? 'Bi-weekly · InBody 770 · gym front desk' : `Next scan in ${14-(daysSince||0)} days`}</div>
       </div>
-      <div class="journey-bar-sub">${lost}kg lost · ${toGo}kg to go · ${journeyPct}% of the way</div>
-    </div>` : ''}
-    <div class="weigh-in-card">
-      <div class="weigh-in-title">⚖️ ${isMonday?'TODAY IS WEIGH-IN DAY':'LOG WEIGHT'}</div>
-      ${isMonday?`<div style="font-size:12px;color:var(--p3);margin-bottom:10px">Monday morning · weigh fasted before eating</div>`:''}
-      <div class="weigh-in-row">
-        <input class="weigh-in-input" id="weigh-quick" type="number" placeholder="${latestWeight||'105.0'}" step="0.1" inputmode="decimal">
-        <button class="weigh-in-btn" onclick="openWeighModal()">LOG</button>
-      </div>
-      ${latestWeight?`<div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-        <div style="flex:1">
-          <div style="font-size:11px;color:var(--muted)">Last recorded</div>
-          <div style="display:flex;align-items:baseline;gap:6px">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text)">${latestWeight}kg</div>
-            ${trendArrow}
+      <button class="notif-banner-btn" onclick="openInBodyModal()">${inbodyDue?'LOG':'UPDATE'}</button>
+    </div>`;
+
+    tabEl.innerHTML = `
+      ${latestWeight===null ? `<div class="pw-status warn" style="margin-top:12px">No weight logged yet — tap LOG to start</div>` : ''}
+      <div class="pw-hero">
+        <div class="pw-hero-eyebrow">${isMonday?'WEIGH-IN DAY · ':''}CURRENT WEIGHT</div>
+        <div class="pw-hero-main">
+          <div class="pw-weight-block">
+            <div>
+              <span class="pw-weight-num">${latestWeight||'—'}</span><span class="pw-weight-unit">kg</span>
+            </div>
+            <div class="pw-trend ${trendClass}">${trendTxt}</div>
+          </div>
+          <button class="pw-log-btn" onclick="openWeighModal()">${isMonday?'WEIGH IN':'LOG'}</button>
+        </div>
+        <div class="pw-stat-row">
+          <div class="pw-stat-cell">
+            <div class="pw-stat-val" style="color:var(--p1)">${lost}kg</div>
+            <div class="pw-stat-lbl">LOST</div>
+          </div>
+          <div class="pw-stat-cell">
+            <div class="pw-stat-val" style="color:var(--dim)">${toGo}kg</div>
+            <div class="pw-stat-lbl">TO GO</div>
+          </div>
+          <div class="pw-stat-cell">
+            <div class="pw-stat-val" style="color:var(--cyan)">${weekSessions}</div>
+            <div class="pw-stat-lbl">THIS WEEK</div>
+          </div>
+          <div class="pw-stat-cell">
+            <div class="pw-stat-val" style="color:var(--p4)">${totalSessions}</div>
+            <div class="pw-stat-lbl">TOTAL SESSIONS</div>
           </div>
         </div>
-        <div style="flex:1;text-align:right">
-          <div style="font-size:11px;color:var(--muted)">Wk ${curWeek} target</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:${onTrack?'var(--p3)':'var(--p1)'}">${thisWeekTarget}kg</div>
-        </div>
       </div>
-      <div style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:600;background:${onTrack?'rgba(94,142,115,.1)':'rgba(184,132,94,.1)'};color:${onTrack?'var(--p3)':'var(--p1)'}">
-        ${onTrack?'✓ ON TRACK':'⚠️ '+weightGap+'kg above target — review diet this week'}
-      </div>`:''}
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="stat-val" style="color:var(--p3)">${latestWeight||startWeight}kg</div><div class="stat-key">Current</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:var(--p1)">${lost}kg</div><div class="stat-key">Total Lost</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:var(--p2)">${toGo}kg</div><div class="stat-key">To Go</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:var(--cyan)">${totalSessions}</div><div class="stat-key">Sessions</div></div>
-    </div>
-    ${healthLogs.length > 0 ? (()=>{
-      const latest = healthLogs[healthLogs.length-1];
-      const last7 = healthLogs.slice(-7);
-      const avgCal = last7.filter(h=>h.active_calories).length ? Math.round(last7.reduce((s,h)=>s+(h.active_calories||0),0)/last7.filter(h=>h.active_calories).length) : null;
-      const avgSteps = last7.filter(h=>h.steps).length ? Math.round(last7.reduce((s,h)=>s+(h.steps||0),0)/last7.filter(h=>h.steps).length) : null;
-      const avgSleep = last7.filter(h=>h.sleep_hours).length ? (last7.reduce((s,h)=>s+(h.sleep_hours||0),0)/last7.filter(h=>h.sleep_hours).length).toFixed(1) : null;
-      const avgHR = last7.filter(h=>h.resting_hr).length ? Math.round(last7.reduce((s,h)=>s+(h.resting_hr||0),0)/last7.filter(h=>h.resting_hr).length) : null;
-      return `<div class="chart-card" style="margin-bottom:12px">
-        <div class="chart-title">DAILY VITALS <span style="font-size:11px;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400">via Apple Health</span></div>
-        <div style="font-size:11px;color:var(--dim);margin-bottom:10px">Last synced: ${latest.date}</div>
-        <div class="stat-grid">
-          <div class="stat-card"><div class="stat-val" style="color:#ff4520;font-size:18px">${latest.active_calories||'—'}</div><div class="stat-key">Active Cal</div></div>
-          <div class="stat-card"><div class="stat-val" style="color:var(--p3);font-size:18px">${latest.steps ? latest.steps.toLocaleString() : '—'}</div><div class="stat-key">Steps</div></div>
-          <div class="stat-card"><div class="stat-val" style="color:var(--cyan);font-size:18px">${latest.sleep_hours||'—'}h</div><div class="stat-key">Sleep</div></div>
-          <div class="stat-card"><div class="stat-val" style="color:var(--p5);font-size:18px">${latest.resting_hr||'—'}</div><div class="stat-key">Rest HR</div></div>
-        </div>
-        <div style="margin-top:10px;padding:8px;border-radius:8px;background:var(--surface)">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">7-DAY AVERAGES</div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text)">
-            <span>🔥 ${avgCal||'—'} cal</span>
-            <span>🚶 ${avgSteps ? avgSteps.toLocaleString() : '—'}</span>
-            <span>😴 ${avgSleep||'—'}h</span>
-            <span>❤️ ${avgHR||'—'} bpm</span>
+      <div class="journey-bar-wrap">
+        <div class="journey-bar-labels"><span>105 kg</span><span style="color:var(--p3)">87 kg GOAL</span></div>
+        <div class="journey-bar-track">
+          <div class="journey-bar-fill" style="width:${journeyPct}%"></div>
+          <div class="journey-bar-marker" style="left:${Math.max(1,journeyPct)}%">
+            <div class="journey-marker-dot"></div>
+            ${latestWeight ? `<div class="journey-marker-label">${latestWeight}kg</div>` : ''}
           </div>
         </div>
-        ${last7.length >= 2 ? `<div class="chart-wrap" style="margin-top:12px"><canvas id="vitals-chart"></canvas></div>` : ''}
-      </div>`;
-    })() : `<div class="chart-card" style="margin-bottom:12px">
-      <div class="chart-title">DAILY VITALS</div>
-      <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">
-        Set up the Apple Health Shortcut to sync your daily vitals here
+        <div class="journey-bar-sub">${journeyPct}% of the way there</div>
       </div>
-    </div>`}
-    `;
-
-    // Weight chart
-    if(metrics && metrics.length > 1){
-      h+=`<div class="chart-card">
-        <div class="chart-title">WEIGHT TREND</div>
-        <div class="chart-wrap"><canvas id="weight-chart"></canvas></div>
-      </div>`;
-    } else {
-      h+=`<div class="chart-card"><div class="chart-title">WEIGHT TREND</div>
-        <div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Log your weight on Mondays to see the trend here</div>
-      </div>`;
-    }
-
-    h+=`<div class="spacer"></div>`;
-    if(tabEl) tabEl.innerHTML = h;
-
-    // Render weight chart
-    if(metrics && metrics.length > 1){
-      const wCtx = document.getElementById('weight-chart')?.getContext('2d');
-      if(wCtx){
-        if(weightChart) weightChart.destroy();
-        weightChart = new Chart(wCtx,{
-          type:'line',
-          data:{
-            labels: metrics.map(m=>m.date.slice(5)),
-            datasets:[
-              {label:'Weight',data:metrics.map(m=>m.weight_kg),borderColor:'#ff4520',backgroundColor:'rgba(255,69,32,.1)',tension:.3,pointRadius:4,pointBackgroundColor:'#ff4520'},
-              {label:'Weekly target',data:metrics.map(m=>{
-                const s = getProgrammeState(new Date(m.date));
-                return prog.weekTargets[s.week]||87;
-              }),borderColor:'rgba(34,197,94,.5)',borderDash:[4,4],pointRadius:0,tension:0}
-            ]
-          },
-          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#666',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'},min:85,max:110}}}
-        });
-      }
-    }
-
-    // Render vitals chart (steps + calories over last 7 days)
-    if(healthLogs.length >= 2){
-      const vCtx = document.getElementById('vitals-chart')?.getContext('2d');
-      if(vCtx){
-        const last7 = healthLogs.slice(-7);
-        if(window.vitalsChart) window.vitalsChart.destroy();
-        window.vitalsChart = new Chart(vCtx,{
-          type:'bar',
-          data:{
-            labels: last7.map(h=>h.date.slice(5)),
-            datasets:[
-              {label:'Active Cal',data:last7.map(h=>h.active_calories||0),backgroundColor:'rgba(255,69,32,.6)',borderRadius:4,yAxisID:'y'},
-              {label:'Steps',data:last7.map(h=>h.steps||0),type:'line',borderColor:'#22c55e',pointRadius:3,pointBackgroundColor:'#22c55e',tension:.3,yAxisID:'y2'},
-            ]
-          },
-          options:{
-            responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{labels:{color:'#666',font:{size:10}}}},
-            scales:{
-              x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},
-              y:{ticks:{color:'#ff4520',font:{size:9}},grid:{color:'#222'},position:'left',title:{display:true,text:'Calories',color:'#555',font:{size:9}}},
-              y2:{ticks:{color:'#22c55e',font:{size:9}},grid:{display:false},position:'right',title:{display:true,text:'Steps',color:'#555',font:{size:9}}}
-            }
-          }
-        });
-      }
-    }
-
+      ${onTrack !== null ? `
+      <div class="pw-status ${onTrack?'good':'warn'}">
+        ${onTrack
+          ? `✓ On track — at or below Wk ${curWeek} target (${thisWeekTarget}kg)`
+          : `⚠️ ${weightGap}kg above Wk ${curWeek} target (${thisWeekTarget}kg) — review meals`}
+      </div>` : ''}
+      ${vitalsHTML}
+      ${inbodyBanner}
+      <div class="spacer"></div>`;
   } catch(e){
     console.error(e);
-    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load data. Check connection.</p></div>`;
+    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load. Check connection.</p></div>`;
   }
 }
 
 // ============================================================
-// STRENGTH TAB
+// TRENDS TAB
 // ============================================================
 
-async function renderStrengthTab(){
+async function renderTrendsTab(){
   const now = Date.now();
   const tabEl = document.getElementById('progress-tab-content');
-  if(now - _strengthLastFetch < 60000 && tabEl?.dataset.tab === 'strength') return;
+  if(now - _strengthLastFetch < 60000 && tabEl?.dataset.tab === 'trends') return;
   _strengthLastFetch = now;
-  if(tabEl){ tabEl.dataset.tab='strength'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading strength data...</p></div>`; }
+  if(tabEl){ tabEl.dataset.tab='trends'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading...</p></div>`; }
   try {
-    // Reuse cached data if weight tab was opened first; otherwise fetch
+    // Reuse cache from score tab if available
+    if(!_metricsCache){
+      const r = await db.from('body_metrics').select('*').order('date',{ascending:true});
+      _metricsCache = r.data || [];
+    }
     if(!_exLogs){
       const r = await db.from('exercise_logs').select('date,exercise_name,weight_kg,reps,is_mm_set').eq('completed',true).order('date',{ascending:true});
       _exLogs = r.data || [];
@@ -324,7 +242,8 @@ async function renderStrengthTab(){
       const r = await db.from('inbody_logs').select('*').order('date',{ascending:true});
       _inbodyForBody = r.data || [];
     }
-    const exLogs = _exLogs;
+    const metrics    = _metricsCache;
+    const exLogs     = _exLogs;
     const inbodyLogs = _inbodyForBody;
 
     // PRs per exercise
@@ -336,93 +255,122 @@ async function renderStrengthTab(){
     });
     const uniqueEx = Object.keys(prs);
 
-    // Programme block context
-    const curState = getProgrammeState(new Date());
-    const curWeek  = curState.beforeStart ? 0 : curState.week;
-    const blockWeek = ((curWeek - 1) % 6) + 1; // which week within the 6-week block
-    const weeksToDeload = 6 - blockWeek;
+    // InBody deltas
+    const latestIB = inbodyLogs.length ? inbodyLogs[inbodyLogs.length-1] : null;
+    const prevIB   = inbodyLogs.length > 1 ? inbodyLogs[inbodyLogs.length-2] : null;
+    const fatDelta    = (latestIB?.body_fat_pct    && prevIB?.body_fat_pct)    ? (latestIB.body_fat_pct    - prevIB.body_fat_pct).toFixed(1)    : null;
+    const muscleDelta = (latestIB?.skeletal_muscle_mass && prevIB?.skeletal_muscle_mass) ? (latestIB.skeletal_muscle_mass - prevIB.skeletal_muscle_mass).toFixed(1) : null;
 
     let h = '';
 
-    if(uniqueEx.length > 0){
-      h += `<div class="chart-card" style="margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div class="chart-title" style="margin-bottom:0">STRENGTH PROGRESS</div>
-          <div style="font-size:11px;color:var(--muted)">max weight per session</div>
-        </div>
-        <select class="ex-select" id="ex-select" onchange="updateStrengthChart(this.value)">
-          ${uniqueEx.map(n=>`<option value="${n}">${n}</option>`).join('')}
-        </select>
-        <div class="chart-wrap"><canvas id="strength-chart"></canvas></div>
-      </div>`;
-    } else {
-      h += `<div class="chart-card" style="margin-bottom:12px">
-        <div class="chart-title">STRENGTH PROGRESS</div>
-        <div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Log sets with weight to see your strength trend</div>
-      </div>`;
-    }
-
-    // Block progression status
-    h += `<div class="chart-card" style="margin-bottom:12px">
-      <div class="chart-title">PROGRAMME BLOCK</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div>
-          <div style="font-size:22px;font-family:'Bebas Neue',sans-serif;color:var(--p3)">Week ${curWeek}</div>
-          <div style="font-size:12px;color:var(--muted)">Block week ${blockWeek} of 6${weeksToDeload===0?' · DELOAD THIS WEEK':`  · deload in ${weeksToDeload}wk`}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">RULE</div>
-          <div style="font-size:11px;color:var(--text);max-width:160px;text-align:right;line-height:1.4">+1 rep each session → +2.5kg when top rep reached</div>
-        </div>
+    // ── Weight chart ──
+    h += `<div class="pw-chart">
+      <div class="pw-chart-head">
+        <div class="pw-chart-title">WEIGHT TREND</div>
+        <div class="pw-chart-sub">vs weekly target</div>
       </div>
-      <div class="journey-bar-track" style="margin-bottom:0">
-        <div class="journey-bar-fill" style="width:${Math.round((blockWeek/6)*100)}%;background:var(--p3)"></div>
+      <div class="pw-chart-body">
+        ${metrics.length > 1
+          ? `<div class="chart-wrap"><canvas id="weight-chart"></canvas></div>`
+          : `<div style="text-align:center;padding:24px;color:var(--dim);font-size:13px">Log weight on Mondays to see your trend</div>`}
       </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:right">Week ${blockWeek}/6 of current block</div>
     </div>`;
 
-    // All PRs
-    if(uniqueEx.length > 0){
-      const compound = uniqueEx.filter(n=> ['Press','Row','Squat','Deadlift','Pull','Bench','OHP'].some(k=>n.includes(k)));
-      const isolation = uniqueEx.filter(n=>!compound.includes(n));
-      const renderPRGroup = (label, exs) => exs.length ? `
-        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">${label}</div>
-        <div class="pr-list" style="margin-bottom:14px">
-          ${exs.map(n=>`
-            <div class="pr-item">
-              <div><div class="pr-name">${n}</div><div class="pr-date">${prs[n].date}</div></div>
-              <div class="pr-val">${prs[n].weight}kg × ${prs[n].reps}</div>
-            </div>`).join('')}
-        </div>` : '';
-      h += `<div class="chart-card">
-        <div class="chart-title">PERSONAL RECORDS</div>
-        ${renderPRGroup('COMPOUNDS', compound)}
-        ${renderPRGroup('ISOLATION', isolation)}
-        ${!compound.length && !isolation.length ? uniqueEx.map(n=>`
-          <div class="pr-item">
-            <div><div class="pr-name">${n}</div><div class="pr-date">${prs[n].date}</div></div>
-            <div class="pr-val">${prs[n].weight}kg × ${prs[n].reps}</div>
-          </div>`).join('') : ''}
+    // ── Body composition ──
+    if(latestIB){
+      h += `<div class="pw-chart">
+        <div class="pw-chart-head">
+          <div class="pw-chart-title">BODY COMPOSITION</div>
+          <div class="pw-chart-sub">InBody · ${latestIB.date}</div>
+        </div>
+        <div class="pw-macros">
+          <div class="pw-macro-cell">
+            <div class="pw-macro-val" style="color:var(--p1)">${latestIB.body_fat_pct||'—'}%</div>
+            <div class="pw-macro-lbl">BODY FAT</div>
+          </div>
+          <div class="pw-macro-cell">
+            <div class="pw-macro-val" style="color:var(--p3)">${latestIB.skeletal_muscle_mass||'—'}kg</div>
+            <div class="pw-macro-lbl">MUSCLE</div>
+          </div>
+          <div class="pw-macro-cell">
+            <div class="pw-macro-val" style="color:var(--gold)">${latestIB.visceral_fat_level||'—'}</div>
+            <div class="pw-macro-lbl">VISCERAL</div>
+          </div>
+          <div class="pw-macro-cell">
+            <div class="pw-macro-val" style="color:${fatDelta!==null&&parseFloat(fatDelta)<0?'var(--p3)':'var(--p1)'}">${fatDelta!==null?(parseFloat(fatDelta)<0?'↓':'+')+(Math.abs(parseFloat(fatDelta)).toFixed(1))+'%':'—'}</div>
+            <div class="pw-macro-lbl">FAT Δ</div>
+          </div>
+          <div class="pw-macro-cell">
+            <div class="pw-macro-val" style="color:${muscleDelta!==null&&parseFloat(muscleDelta)>0?'var(--p3)':'var(--p1)'}">${muscleDelta!==null?(parseFloat(muscleDelta)>0?'+':'')+muscleDelta+'kg':'—'}</div>
+            <div class="pw-macro-lbl">MUSCLE Δ</div>
+          </div>
+        </div>
+        ${inbodyLogs.length > 1
+          ? `<div class="pw-chart-body"><div class="chart-wrap"><canvas id="recomp-chart"></canvas></div></div>`
+          : ''}
       </div>`;
     }
 
-    // Recomposition chart
-    if(inbodyLogs && inbodyLogs.length > 1){
-      h+=`<div class="chart-card" style="margin-top:12px">
-        <div class="chart-title">RECOMPOSITION</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Muscle vs Fat mass — bi-weekly InBody</div>
-        <div class="chart-wrap"><canvas id="recomp-chart"></canvas></div>
+    // ── Personal Records ──
+    if(uniqueEx.length){
+      const compound  = uniqueEx.filter(n=>['Press','Row','Squat','Deadlift','Pull','Bench','OHP'].some(k=>n.includes(k)));
+      const isolation = uniqueEx.filter(n=>!compound.includes(n));
+      const prRows = list => list.map(n=>`
+        <div class="pr-item">
+          <div><div class="pr-name">${n}</div><div class="pr-date">${prs[n].date}</div></div>
+          <div class="pr-val">${prs[n].weight}kg × ${prs[n].reps}</div>
+        </div>`).join('');
+      h += `<div class="pw-card">
+        <div class="pw-card-head"><div class="pw-card-title">PERSONAL RECORDS</div></div>
+        ${compound.length  ? `<div class="pr-group-label">COMPOUNDS</div>${prRows(compound)}`  : ''}
+        ${isolation.length ? `<div class="pr-group-label">ISOLATION</div>${prRows(isolation)}` : ''}
+      </div>`;
+
+      // Strength progress chart
+      h += `<div class="pw-chart">
+        <div class="pw-chart-head">
+          <div class="pw-chart-title">STRENGTH PROGRESS</div>
+          <div class="pw-chart-sub">max weight per session</div>
+        </div>
+        <div class="pw-chart-body">
+          <select class="ex-select" id="ex-select" onchange="updateStrengthChart(this.value)">
+            ${uniqueEx.map(n=>`<option value="${n}">${n}</option>`).join('')}
+          </select>
+          <div class="chart-wrap"><canvas id="strength-chart"></canvas></div>
+        </div>
       </div>`;
     }
+
+    // ── Body Measurements link ──
+    h += `<div style="margin:0 16px 14px">
+      <button onclick="switchProgressTab('body')" style="width:100%;padding:14px;background:none;border:1px solid var(--border);border-radius:12px;color:var(--dim);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        Body Measurements →
+      </button>
+    </div>`;
 
     h += `<div class="spacer"></div>`;
     if(tabEl) tabEl.innerHTML = h;
 
-    // Render strength chart
-    if(uniqueEx.length > 0) renderStrengthChartData(uniqueEx[0], exLogs);
-
-    // Render recomposition chart
-    if(inbodyLogs && inbodyLogs.length > 1){
+    // Charts
+    if(metrics.length > 1){
+      const wCtx = document.getElementById('weight-chart')?.getContext('2d');
+      if(wCtx){
+        if(window.weightChart) window.weightChart.destroy();
+        window.weightChart = new Chart(wCtx,{
+          type:'line',
+          data:{
+            labels: metrics.map(m=>m.date.slice(5)),
+            datasets:[
+              {label:'Weight',data:metrics.map(m=>m.weight_kg),borderColor:'#ff4520',backgroundColor:'rgba(255,69,32,.08)',tension:.3,pointRadius:3,pointBackgroundColor:'#ff4520'},
+              {label:'Target', data:metrics.map(m=>{ const s=getProgrammeState(new Date(m.date)); return prog.weekTargets[s.week]||87; }),borderColor:'rgba(94,142,115,.5)',borderDash:[4,4],pointRadius:0,tension:0}
+            ]
+          },
+          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#666',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'},min:85,max:110}}}
+        });
+      }
+    }
+    if(uniqueEx.length) renderStrengthChartData(uniqueEx[0], exLogs);
+    if(inbodyLogs.length > 1){
       const rCtx = document.getElementById('recomp-chart')?.getContext('2d');
       if(rCtx){
         if(window.recompChart) window.recompChart.destroy();
@@ -431,26 +379,17 @@ async function renderStrengthTab(){
           data:{
             labels: inbodyLogs.map(r=>r.date.slice(5)),
             datasets:[
-              {label:'Muscle (kg)',data:inbodyLogs.map(r=>r.skeletal_muscle_mass),borderColor:'#5e8e73',backgroundColor:'rgba(94,142,115,.1)',tension:.3,pointRadius:4,pointBackgroundColor:'#5e8e73',yAxisID:'y'},
-              {label:'Fat (kg)',data:inbodyLogs.map(r=>r.body_fat_mass),borderColor:'#b8845e',backgroundColor:'rgba(184,132,94,.08)',tension:.3,pointRadius:4,pointBackgroundColor:'#b8845e',yAxisID:'y'},
-              {label:'Visceral Fat',data:inbodyLogs.map(r=>r.visceral_fat_level),borderColor:'#bca36e',borderDash:[4,4],tension:.3,pointRadius:3,yAxisID:'y2'},
+              {label:'Muscle (kg)',data:inbodyLogs.map(r=>r.skeletal_muscle_mass),borderColor:'#5e8e73',backgroundColor:'rgba(94,142,115,.08)',tension:.3,pointRadius:4,pointBackgroundColor:'#5e8e73'},
+              {label:'Fat (kg)',   data:inbodyLogs.map(r=>r.body_fat_mass),       borderColor:'#b8845e',backgroundColor:'rgba(184,132,94,.05)',tension:.3,pointRadius:4,pointBackgroundColor:'#b8845e'},
             ]
           },
-          options:{
-            responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{labels:{color:'#666',font:{size:11}}}},
-            scales:{
-              x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},
-              y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'},position:'left'},
-              y2:{ticks:{color:'#bca36e',font:{size:9}},grid:{display:false},position:'right'}
-            }
-          }
+          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#666',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'}}}}
         });
       }
     }
   } catch(e){
     console.error(e);
-    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load strength data.</p></div>`;
+    if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load data.</p></div>`;
   }
 }
 
@@ -465,96 +404,96 @@ async function renderPlanTab(){
   _planLastFetch = now;
   if(tabEl) tabEl.dataset.tab='plan';
   try {
-    const curState   = getProgrammeState(new Date());
-    const curWeek    = curState.beforeStart ? 0 : curState.week;
-    const totalWeeks = Object.keys(prog.weekTargets).length;
-    const weekTarget = prog.weekTargets[curWeek] || 87;
-    const nextTarget = prog.weekTargets[curWeek+1] || weekTarget;
-    const blockWeek  = ((curWeek - 1) % 6) + 1;
+    const curState      = getProgrammeState(new Date());
+    const curWeek       = curState.beforeStart ? 0 : curState.week;
+    const totalWeeks    = Object.keys(prog.weekTargets).length;
+    const weekTarget    = prog.weekTargets[curWeek] || 87;
+    const nextTarget    = prog.weekTargets[curWeek+1] || weekTarget;
+    const blockWeek     = ((curWeek - 1) % 6) + 1;
     const weeksToDeload = 6 - blockWeek;
     const isDeloadWeek  = blockWeek === 6;
+    const weekPct       = Math.round((curWeek / totalWeeks) * 100);
+    const blockPct      = Math.round((blockWeek / 6) * 100);
 
-    // Reuse metrics from weight tab if available
-    const latestWeight = _metricsCache && _metricsCache.length
-      ? _metricsCache[_metricsCache.length-1].weight_kg
-      : null;
-    const onTrack = latestWeight ? latestWeight <= weekTarget + 0.5 : null;
+    const latestWeight  = _metricsCache?.length ? _metricsCache[_metricsCache.length-1].weight_kg : null;
+    const onTrack       = latestWeight ? latestWeight <= weekTarget + 0.5 : null;
+    const weightGap     = latestWeight ? (latestWeight - weekTarget).toFixed(1) : null;
 
-    // Diet phase data
-    const dp = DP[dPhase];
-
+    const dp       = DP[dPhase];
     const phaseCol = dp.col;
-    const journeyPct = latestWeight ? Math.min(100, Math.max(0, Math.round(((105 - latestWeight) / (105 - 87)) * 100))) : 0;
 
-    let h = `
-    <div class="chart-card" style="margin-bottom:12px">
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--p3)">WEEK ${curWeek}</div>
-        <div style="font-size:13px;color:var(--muted)">of ${totalWeeks}</div>
-      </div>
-      <div class="journey-bar-track" style="margin-bottom:8px">
-        <div class="journey-bar-fill" style="width:${Math.round((curWeek/totalWeeks)*100)}%;background:var(--p3)"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
-        <span>Wk 1</span>
-        <span>${Math.round((curWeek/totalWeeks)*100)}% complete</span>
-        <span>Wk ${totalWeeks}</span>
-      </div>
-    </div>
+    const macros = [
+      {v:dp.kcal, k:'KCAL',    c:phaseCol},
+      {v:dp.pro,  k:'PROTEIN', c:'var(--p3)'},
+      {v:dp.carb, k:'CARBS',   c:'var(--p2)'},
+      {v:dp.fat,  k:'FAT',     c:'var(--text)'},
+      {v:dp.def,  k:'DEFICIT', c:phaseCol},
+    ].map(m=>`
+      <div class="pw-macro-cell">
+        <div class="pw-macro-val" style="color:${m.c}">${m.v}</div>
+        <div class="pw-macro-lbl">${m.k}</div>
+      </div>`).join('');
 
-    <div class="stat-grid" style="margin-bottom:12px">
-      <div class="stat-card">
-        <div class="stat-val" style="color:${weekTarget<=87?'var(--p3)':'var(--text)'};">${weekTarget}kg</div>
-        <div class="stat-key">This week target</div>
+    tabEl.innerHTML = `
+      <div class="pw-week-hero">
+        <div class="pw-week-eyebrow">PROGRAMME WEEK</div>
+        <div>
+          <span class="pw-week-main">${curWeek}</span><span class="pw-week-sub"> of ${totalWeeks}</span>
+        </div>
+        <div class="pw-week-bar"><div class="pw-week-fill" style="width:${weekPct}%"></div></div>
+        <div class="pw-stat-row" style="margin:0 -20px">
+          <div class="pw-stat-cell">
+            <div class="pw-stat-val" style="color:var(--p3)">${weekTarget}kg</div>
+            <div class="pw-stat-lbl">THIS WEEK TARGET</div>
+          </div>
+          <div class="pw-stat-cell">
+            <div class="pw-stat-val" style="color:var(--dim)">${nextTarget}kg</div>
+            <div class="pw-stat-lbl">NEXT WEEK TARGET</div>
+          </div>
+          <div class="pw-stat-cell">
+            <div class="pw-stat-val" style="color:${isDeloadWeek?'var(--p1)':weeksToDeload<=2?'var(--gold)':'var(--dim)'}">${isDeloadWeek?'NOW':weeksToDeload+'wk'}</div>
+            <div class="pw-stat-lbl">TO DELOAD</div>
+          </div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-val" style="color:var(--muted)">${nextTarget}kg</div>
-        <div class="stat-key">Next week target</div>
-      </div>
-    </div>
 
-    ${latestWeight && onTrack!=null ? `<div style="margin:0 0 12px;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:700;background:${onTrack?'rgba(94,142,115,.1)':'rgba(184,132,94,.1)'};color:${onTrack?'var(--p3)':'var(--p1)'};">
-      ${onTrack ? '✓ ON TRACK — weight is at or below this week\'s target' : `⚠️ ${(latestWeight-weekTarget).toFixed(1)}kg above target — tighten meals this week`}
-    </div>` : ''}
+      ${onTrack !== null ? `
+      <div class="pw-status ${onTrack?'good':'warn'}" style="margin-top:12px">
+        ${onTrack
+          ? `✓ On track — at or below target (${weekTarget}kg)`
+          : `⚠️ ${weightGap}kg above target — tighten meals this week`}
+      </div>` : ''}
 
-    <div class="chart-card" style="margin-bottom:12px">
-      <div class="chart-title">${isDeloadWeek ? '⚡ DELOAD WEEK ACTIVE' : 'BLOCK STATUS'}</div>
-      ${isDeloadWeek
-        ? `<div style="font-size:13px;color:var(--muted);line-height:1.6">Drop 1 set from every exercise. Skip all isolation work (curls, lateral raises, calf raises, cable crunch). Main compounds only at 60% normal load. Full week — then resume normal progression.</div>`
-        : `<div style="display:flex;align-items:center;justify-content:space-between">
+      ${isDeloadWeek ? `
+      <div class="pw-status warn">
+        ⚡ Deload active — drop 1 set, skip isolation, 60% load on compounds
+      </div>` : ''}
+
+      <div class="pw-section">BLOCK STATUS</div>
+      <div class="pw-chart" style="margin-top:0">
+        <div class="pw-chart-body">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <div>
-              <div style="font-size:11px;color:var(--muted)">Block week</div>
-              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text)">${blockWeek} <span style="font-size:16px;color:var(--muted)">/ 6</span></div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--dim)">BLOCK WEEK</div>
+              <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;color:var(--text)">${blockWeek}<span style="font-size:16px;color:var(--dim)"> / 6</span></div>
             </div>
-            <div style="text-align:right">
-              <div style="font-size:11px;color:var(--muted)">Deload in</div>
-              <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:${weeksToDeload<=2?'var(--yellow)':'var(--text)'}">${weeksToDeload} <span style="font-size:16px;color:var(--muted)">wk</span></div>
+            <div style="text-align:right;font-size:12px;color:var(--dim);max-width:180px;line-height:1.5">
+              +1 rep each session → +2.5kg when top rep reached
             </div>
           </div>
-          <div class="journey-bar-track" style="margin-top:10px;margin-bottom:0">
-            <div class="journey-bar-fill" style="width:${Math.round((blockWeek/6)*100)}%;background:${weeksToDeload<=2?'var(--yellow)':'var(--p3)'}"></div>
-          </div>`
-      }
-    </div>
-
-    <div class="chart-card" style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div class="chart-title" style="margin-bottom:0">DIET PHASE</div>
-        <div style="font-size:13px;font-family:'Bebas Neue',sans-serif;color:${phaseCol}">${dp.label}</div>
+          <div class="journey-bar-track">
+            <div class="journey-bar-fill" style="width:${blockPct}%;background:${isDeloadWeek?'var(--p1)':weeksToDeload<=2?'var(--gold)':'var(--p3)'}"></div>
+          </div>
+        </div>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${[{v:dp.kcal,k:'KCAL',c:phaseCol},{v:dp.pro,k:'PROTEIN',c:'var(--p3)'},{v:dp.carb,k:'CARBS',c:'var(--p2)'},{v:dp.fat,k:'FAT',c:'var(--text)'},{v:dp.def,k:'DEFICIT',c:phaseCol}]
-          .map(m=>`<div style="flex:1;min-width:60px;background:var(--surface2);border-radius:10px;padding:10px 8px;text-align:center">
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:${m.c}">${m.v}</div>
-            <div style="font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.5px">${m.k}</div>
-          </div>`).join('')}
+
+      <div class="pw-section">DIET PHASE ${dPhase} <span style="color:${phaseCol};letter-spacing:0;text-transform:none;font-size:11px;font-weight:600"> — ${dp.label}</span></div>
+      <div class="pw-chart" style="margin-top:0">
+        <div class="pw-macros">${macros}</div>
+        <div style="padding:0 16px 14px;font-size:11px;color:var(--dim)">${dp.weeks} · ${dp.rNote}</div>
       </div>
-      <div style="margin-top:10px;font-size:12px;color:var(--muted)">${dp.weeks} · ${dp.rNote}</div>
-    </div>
 
-    <div class="spacer"></div>`;
-
-    if(tabEl) tabEl.innerHTML = h;
+      <div class="spacer"></div>`;
   } catch(e){
     console.error(e);
     if(tabEl) tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⚠️</div><p>Could not load plan.</p></div>`;
@@ -1586,7 +1525,8 @@ async function hardRefreshIDB() {
 export {
   renderProgress,
   switchProgressTab,
-  renderStrengthTab,
+  renderScoreTab,
+  renderTrendsTab,
   renderPlanTab,
   renderBodyTab,
   renderDiet,

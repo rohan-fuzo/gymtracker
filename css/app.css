@@ -313,27 +313,97 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .hyd-total span{color:var(--cyan);font-weight:600}
 
 /* PROGRESS SCREEN */
-.progress-screen{padding:16px}
+.progress-screen{padding:0}
+/* stat-grid / stat-card used in Diet + Body tabs */
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
 .stat-val{font-family:'Bebas Neue',sans-serif;font-size:26px;line-height:1}
 .stat-key{font-size:11px;color:var(--muted);margin-top:2px}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
-.chart-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;margin-bottom:12px}
+/* chart-card used in Body tab and Diet */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin:0 16px 12px}
+.chart-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
 .chart-wrap{position:relative;height:200px}
-.ex-select{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:12px;cursor:pointer}
-.weigh-in-card{background:var(--surface);border:1px solid rgba(34,197,94,.25);border-radius:14px;padding:16px;margin-bottom:12px}
-.weigh-in-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;color:var(--p3);margin-bottom:12px}
-.weigh-in-row{display:flex;gap:10px;align-items:flex-end}
-.weigh-in-input{flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-size:22px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;text-align:center;outline:none;transition:border-color .15s}
-.weigh-in-input:focus{border-color:var(--p3)}
-.weigh-in-btn{padding:12px 20px;background:var(--p3);border:none;border-radius:10px;color:#000;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;font-weight:700}
-.pr-list{display:flex;flex-direction:column;gap:6px}
-.pr-item{background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
-.pr-name{font-size:13px;font-weight:600}
-.pr-val{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--gold)}
-.pr-date{font-size:10px;color:var(--muted);margin-top:1px}
-.spacer{height:20px}
+.ex-select{width:100%;background:var(--bg);border:none;border-bottom:1px solid var(--border);padding:10px 14px;color:var(--text);font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:14px;cursor:pointer;border-radius:0}
+/* PR list — border-row style */
+.pr-list{display:flex;flex-direction:column;gap:0}
+.pr-item{background:none;border-radius:0;padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;-webkit-tap-highlight-color:transparent}
+.pr-item:last-child{border-bottom:none}
+.pr-name{font-size:13px;font-weight:500;color:var(--text)}
+.pr-val{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gold);letter-spacing:.5px}
+.pr-date{font-size:10px;color:var(--dim);margin-top:2px}
+.pr-group-label{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);padding:16px 16px 6px}
+.spacer{height:24px}
+
+/* ── Progress tab hero (weight screen) ── */
+.pw-hero{background:var(--surface);padding:20px 20px 0;border-bottom:1px solid var(--border)}
+.pw-hero-eyebrow{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.pw-hero-main{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.pw-weight-block{display:flex;flex-direction:column}
+.pw-weight-num{font-family:'Bebas Neue',sans-serif;font-size:82px;line-height:.9;color:var(--text);letter-spacing:2px}
+.pw-weight-unit{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--muted);margin-left:4px;vertical-align:middle}
+.pw-trend{font-size:12px;font-weight:600;margin-top:8px;display:flex;align-items:center;gap:5px}
+.pw-trend-good{color:var(--p3)}
+.pw-trend-bad{color:var(--p1)}
+.pw-trend-neutral{color:var(--dim)}
+.pw-log-btn{margin-top:6px;padding:13px 20px;background:var(--p3);border:none;border-radius:12px;color:#000;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:800;letter-spacing:.3px;cursor:pointer;flex-shrink:0;transition:opacity .15s}
+.pw-log-btn:active{opacity:.8;transform:scale(.97)}
+.pw-stat-row{display:flex;border-top:1px solid var(--border);margin-top:18px}
+.pw-stat-cell{flex:1;padding:13px 14px;border-right:1px solid var(--border);min-width:0}
+.pw-stat-cell:last-child{border-right:none}
+.pw-stat-val{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;margin-bottom:3px;letter-spacing:.5px}
+.pw-stat-lbl{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--dim)}
+
+/* ── Journey bar — full bleed ── */
+.journey-bar-wrap{padding:16px 20px 20px;background:var(--bg);border-bottom:1px solid var(--border)}
+.journey-bar-labels{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--muted);margin-bottom:12px;letter-spacing:.5px}
+.journey-bar-track{height:5px;background:var(--surface2);border-radius:5px;position:relative;overflow:visible}
+.journey-bar-fill{height:100%;background:linear-gradient(90deg,var(--p1),var(--p3));border-radius:5px;transition:width .5s ease}
+.journey-bar-marker{position:absolute;top:50%;transform:translate(-50%,-50%);pointer-events:none}
+.journey-marker-dot{width:14px;height:14px;border-radius:50%;background:var(--bg);border:2.5px solid var(--p3);box-shadow:0 0 0 3px rgba(94,142,115,.18),0 0 10px rgba(94,142,115,.35)}
+.journey-marker-label{position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;background:var(--surface);padding:2px 6px;border-radius:5px;border:1px solid var(--border);letter-spacing:.3px}
+.journey-bar-sub{font-size:11px;color:var(--muted);margin-top:14px;text-align:center;letter-spacing:.2px}
+
+/* ── Status pill ── */
+.pw-status{margin:12px 16px;padding:11px 14px;border-radius:10px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+.pw-status.good{background:rgba(94,142,115,.1);color:var(--p3)}
+.pw-status.warn{background:rgba(184,132,94,.1);color:var(--p1)}
+
+/* ── Section label ── */
+.pw-section{padding:18px 20px 6px;font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--dim)}
+
+/* ── Vitals strip — full bleed ── */
+.pw-vitals{display:flex;background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:16px}
+.pw-vital{flex:1;padding:14px 10px;border-right:1px solid var(--border);text-align:center;min-width:0}
+.pw-vital:last-child{border-right:none}
+.pw-vital-num{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;margin-bottom:3px;letter-spacing:.5px}
+.pw-vital-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--dim)}
+
+/* ── Progress chart card ── */
+.pw-chart{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 16px 14px;overflow:hidden}
+.pw-chart-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 0}
+.pw-chart-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.pw-chart-sub{font-size:10px;color:var(--dim)}
+.pw-chart-body{padding:12px 16px 16px}
+
+/* ── PR card wrapper ── */
+.pw-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 16px 14px;overflow:hidden}
+.pw-card-head{padding:14px 16px 0;margin-bottom:4px}
+.pw-card-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+
+/* ── Plan week hero ── */
+.pw-week-hero{background:var(--surface);padding:24px 20px 0;border-bottom:1px solid var(--border)}
+.pw-week-eyebrow{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
+.pw-week-main{font-family:'Bebas Neue',sans-serif;font-size:76px;line-height:.9;color:var(--p3);letter-spacing:3px}
+.pw-week-sub{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--muted);margin-left:4px}
+.pw-week-bar{height:3px;background:var(--surface2);border-radius:3px;margin:18px 0 0;overflow:hidden}
+.pw-week-fill{height:100%;background:var(--p3);transition:width .6s ease}
+.pw-week-stats{display:flex;border-top:1px solid var(--border);margin:0 -20px}
+
+/* ── Macro grid (plan tab) ── */
+.pw-macros{padding:14px 16px 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.pw-macro-cell{background:var(--surface2);border-radius:10px;padding:10px 6px;text-align:center}
+.pw-macro-val{font-family:'Bebas Neue',sans-serif;font-size:15px;line-height:1;margin-bottom:3px}
+.pw-macro-lbl{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim)}
 .notif-banner{margin:0 16px 10px;padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:12px;border:1px solid}
 .notif-banner.inbody{background:rgba(168,85,247,.08);border-color:rgba(168,85,247,.3)}
 .notif-banner-icon{font-size:24px;flex-shrink:0}
@@ -438,19 +508,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .empty-state p{font-size:13px;line-height:1.6}
 
 /* ── BODY MEASUREMENTS MODULE ── */
-.progress-tab-bar{display:flex;gap:5px;padding:12px 12px 10px}
-.progress-tab-btn{flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:.3px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.progress-tab-btn.active{border-color:var(--p3);background:rgba(94,142,115,.1);color:var(--p3)}
-.progress-tab-btn:active{transform:scale(.97)}
-/* Journey bar */
-.journey-bar-wrap{margin:0 16px 12px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
-.journey-bar-labels{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.5px}
-.journey-bar-track{height:6px;background:var(--surface2);border-radius:6px;position:relative;overflow:visible}
-.journey-bar-fill{height:100%;background:var(--p1);border-radius:6px;transition:width .4s ease}
-.journey-bar-marker{position:absolute;top:50%;transform:translate(-50%,-50%);pointer-events:none}
-.journey-marker-dot{width:14px;height:14px;border-radius:50%;background:var(--text);border:2.5px solid var(--p3);box-shadow:0 0 6px rgba(94,142,115,.5);position:relative;z-index:1}
-.journey-marker-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;background:var(--surface);padding:1px 5px;border-radius:4px;border:1px solid var(--border)}
-.journey-bar-sub{font-size:11px;color:var(--muted);margin-top:14px;text-align:center}
+.progress-tab-bar{display:flex;gap:0;padding:0;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
+.progress-tab-btn{flex:1;padding:14px 4px 12px;border-radius:0;border:none;border-bottom:2px solid transparent;background:none;color:var(--dim);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3px;cursor:pointer;transition:color .15s,border-color .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progress-tab-btn.active{border-bottom-color:var(--p3);color:var(--text)}
+.progress-tab-btn:active{opacity:.7}
 /* Measurement form */
 .meas-modal-sheet{max-height:88vh;overflow-y:auto}
 .meas-group-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 0 6px;border-top:1px solid var(--border);margin-top:6px}
@@ -485,7 +546,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .derived-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .derived-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
 /* Log CTA */
-.meas-log-cta{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.meas-log-cta{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;margin:0 16px 12px;display:flex;align-items:center;gap:12px}
 .meas-log-btn{padding:10px 16px;background:var(--p3);border:none;border-radius:10px;color:#000;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;cursor:pointer;flex-shrink:0;transition:opacity .15s}
 .meas-log-btn:active{opacity:.8}
 /* Comparison */

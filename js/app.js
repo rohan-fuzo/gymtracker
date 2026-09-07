@@ -21,7 +21,7 @@ import { renderWeekStrip, renderWorkout, renderPhaseBanner,
          patchWorkoutSets, patchCheckCache, renderHydrationRow, tEx,
          parseSets, isExerciseDone, isDayDone,
          cSession } from './workout.js';
-import { renderProgress, switchProgressTab, renderStrengthTab, renderPlanTab, renderBodyTab, renderDiet, renderMobility,
+import { renderProgress, switchProgressTab, renderScoreTab, renderTrendsTab, renderPlanTab, renderBodyTab, renderDiet, renderMobility,
          renderSettings, openResetModal, closeResetModal, confirmReset,
          openInBodyModal, closeInBodyModal, handleInBodyModalClick, handleInBodyPDF,
          saveInBody, openWeighModal, closeWeighModal, handleWeighModalClick, saveWeighIn,
