@@ -516,6 +516,11 @@ if(window.location.hostname === 'localhost' || window.location.hostname.includes
   setTimeout(() => {
     const newToday = localDateStr();
     if(newToday !== todayStr) {
+      // ponytail: clear stale data BEFORE date update so any subscription-triggered
+      // renders fire with empty state instead of yesterday's loggedSets.
+      loggedSets = {};
+      checkCache = {};
+      hydrationGlasses = 0;
       todayStr = newToday;
       cDay = getTodayDowIndex();
       selectedDateStr = todayStr;
@@ -524,7 +529,12 @@ if(window.location.hostname === 'localhost' || window.location.hostname.includes
       window._stripCache = {};
       window._workoutRenderKey = null;
       renderWeekStrip();
-      renderWorkout();
+      renderSkeletonWorkout();
+      Promise.all([
+        loadSetsForDate(todayStr, /*silent=*/true),
+        loadCheckCache(todayStr),
+        loadHydration(todayStr),
+      ]).then(() => renderWorkout());
     }
     scheduleMidnightRefresh();
   }, msUntilMidnight);
