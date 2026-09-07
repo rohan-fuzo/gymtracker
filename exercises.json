@@ -445,15 +445,31 @@
           ]
         },
         "evening": {
-          "title":    "CORE + CARDIO",
-          "sub":      "Gym · 50–60 min",
-          "dur":      "55",
-          "kcal":     "350–450",
+          "title":    "BACK + CORE + CARDIO",
+          "sub":      "Gym · 65–75 min · Back at moderate effort — Tuesday is your heavy back day",
+          "dur":      "70",
+          "kcal":     "420–520",
           "location": "gym",
-          "tags":     ["core","cardio"],
+          "tags":     ["pull","core","cardio"],
           "wu":       false,
-          "wuNote":   "Start with 5 min easy treadmill walk, then move to cables.",
+          "wuNote":   "Start with 5 min easy treadmill walk, then lat pulldown.",
           "ex": [
+            {
+              "n":    "Neutral-Grip Lat Pulldown",
+              "s":    "2×10",
+              "r":    "75s",
+              "ic":   "💪",
+              "eq":   ["mach"],
+              "note": "Moderate effort — RPE 6-7, not to failure. Tuesday is the heavy set; this is frequency and technique practice. Full stretch at top, squeeze lats at bottom."
+            },
+            {
+              "n":    "Chest-Supported Row",
+              "s":    "2×10",
+              "r":    "75s",
+              "ic":   "💪",
+              "eq":   ["mach"],
+              "note": "Moderate effort — RPE 6-7. Chest on pad, no momentum. Focus on the full stretch at extension and the squeeze at contraction. Not a heavy set."
+            },
             {
               "n":    "Cable Crunch",
               "s":    "3×12-15",
@@ -856,9 +872,9 @@
         },
         "evening": {
           "title":    "MAIN GYM DAY",
-          "sub":      "Gym · Full Body Strength · 65–75 min",
-          "dur":      "70",
-          "kcal":     "450–600",
+          "sub":      "Gym · Lower Body + Chest · 60–65 min · Back covered Tue (heavy) + Wed (moderate)",
+          "dur":      "65",
+          "kcal":     "420–540",
           "location": "gym",
           "tags":     ["full","strength"],
           "wu":       false,
@@ -886,24 +902,17 @@
               "r":    "90s",
               "ic":   "💪",
               "eq":   ["mach"],
-              "note": "Done early while upper body is still fresh. Seat height so handles are mid-chest. Full stretch, full press. Control the eccentric.",
-              "warn": "⚠️ TFCC: keep wrists straight behind handles — no bend back."
+              "note": "Done while upper body is fresh. Seat so handles are mid-chest. Full stretch, full press. Control the eccentric.",
+              "warn": "⚠️ TFCC: wrists straight behind handles — no bend back."
             },
             {
-              "n":    "Neutral-Grip Lat Pulldown",
-              "s":    "3×8-12",
+              "n":    "Incline Machine Press",
+              "s":    "2×10-12",
               "r":    "90s",
               "ic":   "💪",
               "eq":   ["mach"],
-              "note": "Pull bar to upper chest. Full stretch at top. Squeeze lats at bottom."
-            },
-            {
-              "n":    "Chest-Supported Row",
-              "s":    "3×8-12",
-              "r":    "90s",
-              "ic":   "💪",
-              "eq":   ["mach"],
-              "note": "Chest on pad — no momentum. Retract scapula, pull elbows back. Squeeze at peak."
+              "note": "Upper chest. Elbows slightly below parallel at bottom. Squeeze chest at top. Thursday already hit flat + incline — this is the Saturday repeat for upper chest frequency.",
+              "warn": "⚠️ TFCC: wrists straight, same as flat press."
             },
             {
               "n":    "Leg Curl",
