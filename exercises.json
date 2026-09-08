@@ -196,14 +196,15 @@
           "wu":       true,
           "ex": [
             {
-              "n":           "Reverse Lunge",
-              "s":           "3×10/leg",
+              "n":           "DB Romanian Deadlift",
+              "s":           "3×12-15",
               "r":           null,
-              "ic":          "🦵",
-              "eq":          ["bw"],
+              "ic":          "🦾",
+              "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright. Full range — knee nearly touches floor."
+              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at the bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at full stretch — without tempo this won't challenge you at 105kg.",
+              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid throughout."
             },
             {
               "n":           "DB Sumo Squat",
@@ -217,15 +218,14 @@
               "warn":        "⚠️ TFCC: hold DB by the handle (not cupped), thumbs up, wrist neutral. At 10kg: 4s descent, 2s pause at bottom depth."
             },
             {
-              "n":           "DB Romanian Deadlift",
-              "s":           "3×12-15",
+              "n":           "Reverse Lunge",
+              "s":           "3×10/leg",
               "r":           "90s",
-              "ic":          "🦾",
-              "eq":          ["db"],
+              "ic":          "🦵",
+              "eq":          ["bw"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at the bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at full stretch — without tempo this won't challenge you at 105kg.",
-              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid throughout."
+              "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright. Full range — knee nearly touches floor."
             },
             {
               "n":           "Single-Leg Glute Bridge",
@@ -537,6 +537,17 @@
           "wu":       true,
           "ex": [
             {
+              "n":           "DB Romanian Deadlift",
+              "s":           "3×12-15",
+              "r":           null,
+              "ic":          "🦾",
+              "eq":          ["db"],
+              "circuit":     true,
+              "circuitGroup":"A",
+              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at stretch, explode up — tempo is essential at this load.",
+              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid — no flexion under load."
+            },
+            {
               "n":           "Goblet Squat",
               "s":           "3×12-15",
               "r":           null,
@@ -550,23 +561,12 @@
             {
               "n":           "Reverse Lunge",
               "s":           "3×10/leg",
-              "r":           null,
+              "r":           "90s",
               "ic":          "🦵",
               "eq":          ["bw"],
               "circuit":     true,
               "circuitGroup":"A",
               "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright. Different stimulus from Tue sumo squat — more quad + glute unilateral."
-            },
-            {
-              "n":           "DB Romanian Deadlift",
-              "s":           "3×12-15",
-              "r":           "90s",
-              "ic":          "🦾",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at stretch, explode up — tempo is essential at this load.",
-              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid — no flexion under load."
             },
             {
               "n":           "DB Glute Bridge",
