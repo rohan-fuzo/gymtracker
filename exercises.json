@@ -80,116 +80,9 @@
 
       "MON": {
         "morning": {
-          "title":    "FULL BODY A",
-          "sub":      "Home · Circuit · 40–50 min",
-          "dur":      "45",
-          "kcal":     "300–380",
-          "location": "home",
-          "tags":     ["full","circuit"],
-          "wu":       true,
-          "ex": [
-            {
-              "n":           "Goblet Squat",
-              "s":           "3×12-15",
-              "r":           null,
-              "ic":          "🏋️",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"A",
-              "note":        "Hold one DB vertically at chest. Hip-width stance, full depth. Drive through heels.",
-              "warn":        "⚠️ TFCC: grip the DB handle with both hands, thumbs pointing up — do NOT cup the head. Cupping forces ulnar deviation under load."
-            },
-            {
-              "n":           "DB Romanian Deadlift",
-              "s":           "3×12-15",
-              "r":           null,
-              "ic":          "🦾",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch. Squeeze glutes at top. At 10kg: 4s descent, 2s pause at full stretch, then drive up — tempo is the stimulus at this load.",
-              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid — no flexion under load."
-            },
-            {
-              "n":           "Neutral-Grip DB Floor Press",
-              "s":           "3×10-12",
-              "r":           "90s",
-              "ic":          "💪",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"A",
-              "note":        "Lie on floor. Palms facing each other. Press up, lower until elbows touch floor. At 10kg: 3s descent, 1s pause when elbows touch floor, drive up. Tempo turns a light load into a real stimulus.",
-              "warn":        "⚠️ TFCC: neutral grip throughout — palms facing each other, wrists never bent back. Stop immediately if wrist pain."
-            },
-            {
-              "n":           "Supported 1-Arm DB Row",
-              "s":           "3×12/side",
-              "r":           null,
-              "ic":          "💪",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "Hand and knee on bench or chair. Pull DB to hip. Full stretch at bottom. Keep hips square. At 10kg: 3s pull, 1s hold at top, 3s return — 15-20 reps. Wrist stays neutral throughout, no supination at the top."
-            },
-            {
-              "n":           "DB Lateral Raise",
-              "s":           "2×15",
-              "r":           null,
-              "ic":          "↔️",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "Lead with elbows. 2s up / 3s down. Light — shoulder health, not ego. Volume kept low here; dedicated shoulder day covers Friday."
-            },
-            {
-              "n":           "DB Glute Bridge",
-              "s":           "3×15-20",
-              "r":           "60s",
-              "ic":          "🍑",
-              "eq":          ["db"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "DB on hips. Drive hips up, squeeze 2s at top. 3s controlled descent. At 10kg go 20 reps — when easy, progress to single-leg with the DB."
-            },
-            {
-              "n":           "Dead Bug",
-              "s":           "2×10/side",
-              "r":           null,
-              "ic":          "🐛",
-              "eq":          ["bw"],
-              "circuit":     true,
-              "circuitGroup":"CORE",
-              "note":        "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch."
-            },
-            {
-              "n":           "Reverse Crunch",
-              "s":           "2×12-15",
-              "r":           "45s",
-              "ic":          "🧱",
-              "eq":          ["bw"],
-              "circuit":     true,
-              "circuitGroup":"CORE",
-              "note":        "Lie on back. Curl knees toward chest, lift hips. Slow descent."
-            }
-          ],
-          "cd": [
-            "Chest doorframe stretch — 30s each side",
-            "Hip flexor lunge stretch — 30s each side",
-            "Hamstring seated reach — 30s",
-            "Wrist flexor + extensor — 20s each direction"
-          ]
-        },
-        "evening": {
-          "isRest": true,
-          "note":   "No gym on Mondays. Recovery, walk, stretch, sleep well."
-        }
-      },
-
-      "TUE": {
-        "morning": {
-          "title":    "LOWER BODY + CORE",
-          "sub":      "Home · Circuit · 40–50 min · Lower body only — Back+Biceps gym session this evening",
-          "dur":      "45",
+          "title":    "LEG CIRCUIT",
+          "sub":      "Home · Circuit · 35–45 min",
+          "dur":      "40",
           "kcal":     "280–360",
           "location": "home",
           "tags":     ["legs","circuit"],
@@ -203,7 +96,7 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at the bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at full stretch — without tempo this won't challenge you at 105kg.",
+              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at the bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at full stretch, then drive up — tempo is the stimulus at this load.",
               "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid throughout."
             },
             {
@@ -214,8 +107,8 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Wide stance, toes out. Hold DB between legs. Full depth. Drive knees out.",
-              "warn":        "⚠️ TFCC: hold DB by the handle (not cupped), thumbs up, wrist neutral. At 10kg: 4s descent, 2s pause at bottom depth."
+              "note":        "Wide stance, toes out. Hold DB between legs. Full depth. Drive knees out. At 10kg: 4s descent, 2s pause at bottom depth.",
+              "warn":        "⚠️ TFCC: hold DB by the handle (not cupped), thumbs up, wrist neutral."
             },
             {
               "n":           "Reverse Lunge",
@@ -255,7 +148,7 @@
               "eq":          ["bw"],
               "circuit":     true,
               "circuitGroup":"CORE",
-              "note":        "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch. Quality over speed."
+              "note":        "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch."
             },
             {
               "n":           "Side-Lying Oblique Crunch",
@@ -276,8 +169,94 @@
           ]
         },
         "evening": {
-          "title":    "BACK + BICEPS",
-          "sub":      "Gym · 45–55 min",
+          "isRest": true,
+          "note":   "No gym Monday — by design. Morning leg circuit is the full session."
+        }
+      },
+
+      "TUE": {
+        "morning": {
+          "title":    "PULL ACTIVATION",
+          "sub":      "Home · DB · 30–40 min · Prime the pull chain before evening",
+          "dur":      "35",
+          "kcal":     "200–260",
+          "location": "home",
+          "tags":     ["pull","circuit"],
+          "wu":       true,
+          "ex": [
+            {
+              "n":           "Supported 1-Arm DB Row",
+              "s":           "3×12/side",
+              "r":           null,
+              "ic":          "💪",
+              "eq":          ["db"],
+              "circuit":     true,
+              "circuitGroup":"A",
+              "note":        "Hand and knee on bench or chair. Pull DB to hip. Full stretch at bottom. Keep hips square. At 10kg: 3s pull, 1s hold at top, 3s return — 15 reps. Wrist stays neutral throughout, no supination at the top."
+            },
+            {
+              "n":           "DB Rear-Delt Fly",
+              "s":           "2×15",
+              "r":           null,
+              "ic":          "↔️",
+              "eq":          ["db"],
+              "circuit":     true,
+              "circuitGroup":"A",
+              "note":        "Hinge forward 45°, arms hanging. Raise elbows out to sides, squeeze rear delts. 2s up / 3s down. Activation — not exhaustion.",
+              "warn":        "⚠️ TFCC: neutral grip throughout, no wrist flex."
+            },
+            {
+              "n":           "Hammer Curl",
+              "s":           "2×12",
+              "r":           "90s",
+              "ic":          "💪",
+              "eq":          ["db"],
+              "circuit":     true,
+              "circuitGroup":"A",
+              "note":        "Neutral wrist. Controlled tempo. Hits brachialis and brachioradialis. Keep elbows pinned to sides.",
+              "warn":        "⚠️ Wrist neutral — no flexion under load."
+            },
+            {
+              "n":           "DB Shrug",
+              "s":           "2×15",
+              "r":           "60s",
+              "ic":          "🏔️",
+              "eq":          ["db"],
+              "circuit":     true,
+              "circuitGroup":"B",
+              "note":        "Hold DBs at sides. Shrug straight up — don't roll shoulders. Hold 1s at top. Controlled descent. Upper trap activation.",
+              "warn":        "⚠️ TFCC: neutral grip, wrists rigid."
+            },
+            {
+              "n":           "Dead Bug",
+              "s":           "2×10/side",
+              "r":           null,
+              "ic":          "🐛",
+              "eq":          ["bw"],
+              "circuit":     true,
+              "circuitGroup":"CORE",
+              "note":        "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch. Quality over speed."
+            },
+            {
+              "n":           "Side-Lying Oblique Crunch",
+              "s":           "2×12-15/side",
+              "r":           "45s",
+              "ic":          "🔥",
+              "eq":          ["bw"],
+              "circuit":     true,
+              "circuitGroup":"CORE",
+              "note":        "Lie on side. Crunch sideways, elbow to hip. Squeeze oblique at top."
+            }
+          ],
+          "cd": [
+            "Lat stretch overhead — 20s each side",
+            "Bicep doorframe stretch — 30s each side",
+            "Wrist flexor + extensor — 20s each direction"
+          ]
+        },
+        "evening": {
+          "title":    "HEAVY PULL",
+          "sub":      "Gym · Back + Biceps · 45–55 min",
           "dur":      "50",
           "kcal":     "280–360",
           "location": "gym",
@@ -341,8 +320,8 @@
             "type":  "cardio",
             "title": "TREADMILL",
             "desc":  "Steady pace — HR 130–145. Fat-burning zone.",
-            "dur":   "18",
-            "kcal":  "~130 kcal"
+            "dur":   "10",
+            "kcal":  "~70 kcal"
           },
           "cd": [
             "Lat stretch overhead — 20s each side",
@@ -355,248 +334,46 @@
 
       "WED": {
         "morning": {
-          "title":    "ACTIVE RECOVERY",
-          "sub":      "Home · Bodyweight · 25–35 min",
-          "dur":      "30",
-          "kcal":     "150–200",
+          "title":    "PUSH ACTIVATION",
+          "sub":      "Home · DB · 30–40 min · Prime the push chain before evening",
+          "dur":      "35",
+          "kcal":     "200–260",
           "location": "home",
-          "tags":     ["full","bw"],
+          "tags":     ["push","circuit"],
           "wu":       true,
           "ex": [
             {
-              "n":    "Bodyweight Squat",
-              "s":    "2×15",
-              "r":    "60s",
-              "ic":   "🏔️",
-              "eq":   ["bw"],
-              "note": "Shoulder-width stance. Full depth. Knees track toes. Controlled tempo — this is movement quality day."
-            },
-            {
-              "n":    "Reverse Lunge",
-              "s":    "2×8/leg",
-              "r":    "60s",
-              "ic":   "🦵",
-              "eq":   ["bw"],
-              "note": "Step back, lower knee near floor. Front heel drives up. Torso upright."
-            },
-            {
-              "n":    "Glute Bridge",
-              "s":    "2×20",
-              "r":    "60s",
-              "ic":   "🍑",
-              "eq":   ["bw"],
-              "note": "Feet flat, drive hips up, squeeze hard at top. Hold 1s. Slow descent."
-            },
-            {
-              "n":    "Knee Push-up",
-              "s":    "2×10-15",
-              "r":    "60s",
-              "ic":   "💪",
-              "eq":   ["bw"],
-              "note": "Knees on floor, body straight from knees to shoulders. Full depth to floor. Lead chest, not chin.",
-              "warn": "⚠️ Wrist: keep wrists neutral. Stop if pain — don't push through wrist discomfort."
-            },
-            {
-              "n":    "Bird Dog",
-              "s":    "2×10/side",
-              "r":    "45s",
-              "ic":   "🐦",
-              "eq":   ["bw"],
-              "note": "On all fours. Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level — no rotation."
-            },
-            {
-              "n":    "Dead Bug",
-              "s":    "2×10/side",
-              "r":    "45s",
-              "ic":   "🐛",
-              "eq":   ["bw"],
-              "note": "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch."
-            },
-            {
-              "n":    "Side-Lying Leg Raise",
-              "s":    "2×15/side",
-              "r":    "45s",
-              "ic":   "🦵",
-              "eq":   ["bw"],
-              "note": "Lie on side, stack hips. Raise top leg to 45°, lower with control. Hip abductors."
-            },
-            {
-              "n":    "Calf Raise",
-              "s":    "2×20",
-              "r":    "45s",
-              "ic":   "🦵",
-              "eq":   ["bw"],
-              "note": "Hold wall for balance. Full range — max stretch at bottom, full extension at top. Slow and controlled."
-            },
-            {
-              "n":    "Side-Lying Oblique Crunch",
-              "s":    "2×12-15/side",
-              "r":    "45s",
-              "ic":   "🔥",
-              "eq":   ["bw"],
-              "note": "Lie on side. Crunch sideways, elbow to hip. Squeeze oblique at top."
-            }
-          ],
-          "cd": [
-            "Hip flexor lunge stretch — 30s each side",
-            "Thoracic spine rotation — 10 each side",
-            "Hamstring seated reach — 30s",
-            "Wrist flexor + extensor — 20s each direction"
-          ]
-        },
-        "evening": {
-          "title":    "BACK + CORE + CARDIO",
-          "sub":      "Gym · 65–75 min · Back at moderate effort — Tuesday is your heavy back day",
-          "dur":      "70",
-          "kcal":     "420–520",
-          "location": "gym",
-          "tags":     ["pull","core","cardio"],
-          "wu":       false,
-          "wuNote":   "Start with 5 min easy treadmill walk, then lat pulldown.",
-          "ex": [
-            {
-              "n":    "Neutral-Grip Lat Pulldown",
-              "s":    "2×10",
-              "r":    "75s",
-              "ic":   "💪",
-              "eq":   ["mach"],
-              "note": "Moderate effort — RPE 6-7, not to failure. Tuesday is the heavy set; this is frequency and technique practice. Full stretch at top, squeeze lats at bottom."
-            },
-            {
-              "n":    "Chest-Supported Row",
-              "s":    "2×10",
-              "r":    "75s",
-              "ic":   "💪",
-              "eq":   ["mach"],
-              "note": "Moderate effort — RPE 6-7. Chest on pad, no momentum. Focus on the full stretch at extension and the squeeze at contraction. Not a heavy set."
-            },
-            {
-              "n":    "Cable Crunch",
-              "s":    "3×12-15",
-              "r":    "60s",
-              "ic":   "🧱",
-              "eq":   ["cable"],
-              "note": "Kneel facing stack. Rope behind neck. Crunch down, round upper back. Don't pull with arms — feel the abs."
-            },
-            {
-              "n":    "Reverse Crunch",
-              "s":    "3×12-15",
-              "r":    "60s",
-              "ic":   "🧱",
-              "eq":   ["bw"],
-              "note": "Lie on bench or floor. Curl knees toward chest, lift hips. Slow descent. Posterior pelvic tilt throughout."
-            },
-            {
-              "n":    "Pallof Press",
-              "s":    "3×10-12/side",
-              "r":    "60s",
-              "ic":   "🔥",
-              "eq":   ["cable"],
-              "note": "Stand sideways to stack. Press and return at chest height. Resist rotation — anti-rotation core."
-            },
-            {
-              "n":    "Side-Lying Oblique Crunch",
-              "s":    "2×12-15/side",
-              "r":    "45s",
-              "ic":   "🔥",
-              "eq":   ["bw"],
-              "note": "Lie on side. Crunch sideways, elbow to hip. Squeeze oblique at top."
-            },
-            {
-              "n":    "Bird Dog",
-              "s":    "2×10/side",
-              "r":    "45s",
-              "ic":   "🐦",
-              "eq":   ["bw"],
-              "note": "Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level."
-            }
-          ],
-          "fin": {
-            "type":  "cardio",
-            "title": "TREADMILL",
-            "desc":  "Steady pace — HR 125–140. Main cardio session of the week.",
-            "dur":   "35",
-            "kcal":  "~280 kcal"
-          },
-          "cd": [
-            "Hip flexor lunge — 30s each side",
-            "Hamstring seated reach — 30s",
-            "Calf stretch against wall — 30s each side"
-          ]
-        }
-      },
-
-      "THU": {
-        "morning": {
-          "title":    "LOWER BODY + CORE B",
-          "sub":      "Home · Circuit · 40–50 min · Lower body only — Chest+Triceps gym session this evening",
-          "dur":      "45",
-          "kcal":     "280–360",
-          "location": "home",
-          "tags":     ["legs","circuit"],
-          "wu":       true,
-          "ex": [
-            {
-              "n":           "DB Romanian Deadlift",
-              "s":           "3×12-15",
+              "n":           "Neutral-Grip DB Floor Press",
+              "s":           "3×10-12",
               "r":           null,
-              "ic":          "🦾",
+              "ic":          "💪",
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hip hinge — push hips back, flat back. Feel hamstring stretch at bottom. Squeeze glutes hard at top. At 10kg: 4s descent, 2s pause at stretch, explode up — tempo is essential at this load.",
-              "warn":        "⚠️ TFCC: neutral grip (knuckles forward), wrists rigid — no flexion under load."
+              "note":        "Lie on floor. Palms facing each other. Press up, lower until elbows touch floor. At 10kg: 3s descent, 1s pause when elbows touch floor, drive up. Tempo turns a light load into a real stimulus.",
+              "warn":        "⚠️ TFCC: neutral grip throughout — palms facing each other, wrists never bent back. Stop immediately if wrist pain."
             },
             {
-              "n":           "Goblet Squat",
-              "s":           "3×12-15",
+              "n":           "DB Lateral Raise",
+              "s":           "3×15",
               "r":           null,
-              "ic":          "🏋️",
+              "ic":          "↔️",
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hold one DB vertically at chest. Hip-width stance, full depth. Drive through heels. Pause 1s at the bottom.",
-              "warn":        "⚠️ TFCC: grip the DB handle with both hands, thumbs pointing up — do NOT cup the head. Cupping forces ulnar deviation under load."
+              "note":        "Lead with elbows. 2s up / 3s down. Activation — shoulder health, not ego.",
+              "warn":        "⚠️ TFCC: neutral grip, no wrist flex during raise."
             },
             {
-              "n":           "Reverse Lunge",
-              "s":           "3×10/leg",
+              "n":           "DB Triceps Kickback",
+              "s":           "2×12",
               "r":           "90s",
-              "ic":          "🦵",
-              "eq":          ["bw"],
-              "circuit":     true,
-              "circuitGroup":"A",
-              "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright. Different stimulus from Tue sumo squat — more quad + glute unilateral."
-            },
-            {
-              "n":           "DB Glute Bridge",
-              "s":           "3×15-20",
-              "r":           null,
-              "ic":          "🍑",
+              "ic":          "💪",
               "eq":          ["db"],
               "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "DB on hips. Drive hips up, squeeze hard 2s at top. Controlled 3s descent. At 10kg go 20 reps. Bilateral here, single-leg on Tuesday — different stimulus."
-            },
-            {
-              "n":           "Single-Leg Glute Bridge",
-              "s":           "2×10/leg",
-              "r":           null,
-              "ic":          "🍑",
-              "eq":          ["bw"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "One leg extended. Drive single hip up, squeeze hard at top. Keep hips level — don't let opposite hip sag."
-            },
-            {
-              "n":           "Calf Raise",
-              "s":           "2×20",
-              "r":           "60s",
-              "ic":          "🦵",
-              "eq":          ["bw"],
-              "circuit":     true,
-              "circuitGroup":"B",
-              "note":        "Hold wall for balance. Full range — max stretch at bottom, full extension at top."
+              "circuitGroup":"A",
+              "note":        "Hinge forward, upper arm parallel to floor. Extend elbow fully. Squeeze tricep at top. Control the return. At 10kg: slow and controlled, full extension.",
+              "warn":        "⚠️ TFCC: neutral grip, wrist locked rigid — no wrist flex at end range."
             },
             {
               "n":           "Bird Dog",
@@ -606,7 +383,7 @@
               "eq":          ["bw"],
               "circuit":     true,
               "circuitGroup":"CORE",
-              "note":        "On all fours. Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level — no rotation. Alternates with Dead Bug on Mon/Wed/Fri."
+              "note":        "On all fours. Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level — no rotation."
             },
             {
               "n":           "Reverse Crunch",
@@ -620,17 +397,16 @@
             }
           ],
           "cd": [
-            "Hip flexor lunge stretch — 30s each side",
-            "Hamstring seated reach — 30s",
-            "Quad stretch standing — 30s each side",
-            "Calf stretch against wall — 30s each side"
+            "Chest doorframe stretch — 30s each side",
+            "Overhead tricep stretch — 20s each side",
+            "Wrist flexor + extensor — 20s each direction"
           ]
         },
         "evening": {
-          "title":    "CHEST + TRICEPS",
-          "sub":      "Gym · 40–50 min",
-          "dur":      "45",
-          "kcal":     "250–320",
+          "title":    "HEAVY PUSH",
+          "sub":      "Gym · Chest + Triceps · 45–55 min",
+          "dur":      "50",
+          "kcal":     "280–360",
           "location": "gym",
           "tags":     ["push"],
           "wu":       false,
@@ -686,8 +462,8 @@
             "type":  "cardio",
             "title": "TREADMILL",
             "desc":  "Easy pace — HR 130–145. Keep it light after pressing.",
-            "dur":   "18",
-            "kcal":  "~130 kcal"
+            "dur":   "10",
+            "kcal":  "~70 kcal"
           },
           "cd": [
             "Chest doorframe stretch — 30s each side",
@@ -698,15 +474,15 @@
         }
       },
 
-      "FRI": {
+      "THU": {
         "morning": {
           "title":    "ACTIVE RECOVERY",
-          "sub":      "Home · Bodyweight · 25–35 min",
-          "dur":      "30",
-          "kcal":     "150–200",
+          "sub":      "Home · Bodyweight · 20 min · Easy movement, not training",
+          "dur":      "20",
+          "kcal":     "100–140",
           "location": "home",
-          "tags":     ["full","bw"],
-          "wu":       true,
+          "tags":     ["bw","recovery"],
+          "wu":       false,
           "ex": [
             {
               "n":    "Bodyweight Squat",
@@ -714,15 +490,7 @@
               "r":    "60s",
               "ic":   "🏔️",
               "eq":   ["bw"],
-              "note": "Shoulder-width stance. Full depth. Knees track toes. Movement quality — no load today."
-            },
-            {
-              "n":    "Reverse Lunge",
-              "s":    "2×8/leg",
-              "r":    "60s",
-              "ic":   "🦵",
-              "eq":   ["bw"],
-              "note": "Step back, lower knee near floor. Front heel drives up. Torso upright."
+              "note": "Shoulder-width stance. Full depth. No rushing — movement quality, not a workout."
             },
             {
               "n":    "Glute Bridge",
@@ -733,21 +501,12 @@
               "note": "Feet flat, drive hips up, squeeze hard at top. Hold 1s. Slow descent."
             },
             {
-              "n":    "Knee Push-up",
-              "s":    "2×10-15",
-              "r":    "60s",
-              "ic":   "💪",
-              "eq":   ["bw"],
-              "note": "Knees on floor, body straight from knees to shoulders. Full depth to floor. Lead chest, not chin.",
-              "warn": "⚠️ Wrist: keep wrists neutral. Stop if pain."
-            },
-            {
               "n":    "Bird Dog",
               "s":    "2×10/side",
               "r":    "45s",
               "ic":   "🐦",
               "eq":   ["bw"],
-              "note": "On all fours. Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level."
+              "note": "Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level."
             },
             {
               "n":    "Dead Bug",
@@ -758,20 +517,94 @@
               "note": "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch."
             },
             {
-              "n":    "Single-Leg RDL",
-              "s":    "2×10/leg",
-              "r":    "45s",
-              "ic":   "🦾",
-              "eq":   ["bw"],
-              "note": "Stand on one leg, hinge forward until torso is parallel — opposite leg extends back. Feel the hamstring stretch. Touch floor with fingertips for balance if needed. No wrist load — pure balance and hamstring."
-            },
-            {
               "n":    "Calf Raise",
-              "s":    "2×20",
+              "s":    "2×15",
               "r":    "45s",
               "ic":   "🦵",
               "eq":   ["bw"],
-              "note": "Hold wall for balance. Full range — max stretch at bottom, full extension at top."
+              "note": "Hold wall for balance. Full range. Easy pace — not a calf burnout."
+            }
+          ],
+          "cd": [
+            "Hip flexor lunge stretch — 30s each side",
+            "Thoracic spine rotation — 10 each side",
+            "Hamstring seated reach — 30s"
+          ]
+        },
+        "evening": {
+          "title":    "LISS CARDIO",
+          "sub":      "Gym · Zone 2 Treadmill Walk · 40–50 min",
+          "dur":      "45",
+          "kcal":     "300–380",
+          "location": "gym",
+          "tags":     ["cardio"],
+          "wu":       false,
+          "ex": [],
+          "fin": {
+            "type":  "cardio",
+            "title": "TREADMILL WALK",
+            "desc":  "Zone 2 — HR 120–135. Incline 4–6%, pace 4.5–5.5 km/h. Active recovery, not a workout. Breathe through your nose if you can.",
+            "dur":   "45",
+            "kcal":  "~300 kcal"
+          },
+          "cd": [
+            "Hip flexor lunge stretch — 30s each side",
+            "Calf stretch against wall — 30s each side"
+          ]
+        }
+      },
+
+      "FRI": {
+        "morning": {
+          "title":    "WIDTH + CORE",
+          "sub":      "Home · DB + Bodyweight · 30–40 min",
+          "dur":      "35",
+          "kcal":     "180–240",
+          "location": "home",
+          "tags":     ["pull","core"],
+          "wu":       true,
+          "ex": [
+            {
+              "n":    "Supported 1-Arm DB Row",
+              "s":    "2×12/side",
+              "r":    "60s",
+              "ic":   "💪",
+              "eq":   ["db"],
+              "note": "Hand and knee on chair. Pull DB to hip, full stretch at bottom. At 10kg: slow tempo, feel the lat stretch."
+            },
+            {
+              "n":    "DB Rear-Delt Fly",
+              "s":    "3×15",
+              "r":    "60s",
+              "ic":   "↔️",
+              "eq":   ["db"],
+              "note": "Hinge forward 45°. Raise elbows out to sides, squeeze rear delts. 2s up / 3s down. Priority movement today — rear delts are what gives you width from the back.",
+              "warn": "⚠️ TFCC: neutral grip, no wrist flex."
+            },
+            {
+              "n":    "DB Lateral Raise",
+              "s":    "3×15",
+              "r":    "60s",
+              "ic":   "↔️",
+              "eq":   ["db"],
+              "note": "Lead with elbows. 2s up / 3s down. Side delts — visual width from the front.",
+              "warn": "⚠️ TFCC: neutral grip, wrist rigid."
+            },
+            {
+              "n":    "Dead Bug",
+              "s":    "2×10/side",
+              "r":    "45s",
+              "ic":   "🐛",
+              "eq":   ["bw"],
+              "note": "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch."
+            },
+            {
+              "n":    "Bird Dog",
+              "s":    "2×10/side",
+              "r":    "45s",
+              "ic":   "🐦",
+              "eq":   ["bw"],
+              "note": "Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level."
             },
             {
               "n":    "Side-Lying Oblique Crunch",
@@ -783,19 +616,18 @@
             }
           ],
           "cd": [
-            "Hip flexor lunge stretch — 30s each side",
-            "Quad stretch — 30s each side",
-            "Hamstring seated reach — 30s",
+            "Shoulder cross-body stretch — 30s each side",
+            "Lat stretch overhead — 20s each side",
             "Wrist flexor + extensor — 20s each direction"
           ]
         },
         "evening": {
-          "title":    "SHOULDERS + CORE",
-          "sub":      "Gym · 45–55 min",
+          "title":    "WIDTH, DENSITY & CORE",
+          "sub":      "Gym · Shoulders + Lats + Core · 45–55 min",
           "dur":      "50",
           "kcal":     "280–360",
           "location": "gym",
-          "tags":     ["push","core"],
+          "tags":     ["push","pull","core"],
           "wu":       false,
           "wuNote":   "5 min easy treadmill walk. Start shoulder press light.",
           "ex": [
@@ -807,6 +639,14 @@
               "eq":   ["mach"],
               "note": "Neutral or pronated grip. Press overhead, lower to ear height. Don't lock out hard at top.",
               "warn": "⚠️ Wrist: keep wrists in line with forearms — no bend back."
+            },
+            {
+              "n":    "Neutral-Grip Lat Pulldown",
+              "s":    "2×10-12",
+              "r":    "75s",
+              "ic":   "💪",
+              "eq":   ["mach"],
+              "note": "Moderate effort — RPE 6-7. Pull bar to upper chest. Full stretch at top. Width work — this is the lat frequency session."
             },
             {
               "n":    "Lateral Raise",
@@ -853,8 +693,8 @@
             "type":  "cardio",
             "title": "TREADMILL",
             "desc":  "Moderate pace — HR 130–145. Into the weekend, keep it enjoyable.",
-            "dur":   "25",
-            "kcal":  "~200 kcal"
+            "dur":   "10",
+            "kcal":  "~70 kcal"
           },
           "cd": [
             "Shoulder cross-body stretch — 30s each side",
@@ -868,21 +708,21 @@
       "SAT": {
         "morning": {
           "isRest": true,
-          "note":   "Saturday morning is rest. Save everything for the main evening session."
+          "note":   "Saturday morning is rest. Save everything for the heavy leg session."
         },
         "evening": {
-          "title":    "MAIN GYM DAY",
-          "sub":      "Gym · Lower Body + Chest · 60–65 min · Back covered Tue (heavy) + Wed (moderate)",
-          "dur":      "65",
-          "kcal":     "420–540",
+          "title":    "HEAVY LEGS",
+          "sub":      "Gym · Lower Body · 45–55 min",
+          "dur":      "50",
+          "kcal":     "350–450",
           "location": "gym",
-          "tags":     ["full","strength"],
+          "tags":     ["legs","strength"],
           "wu":       false,
-          "wuNote":   "10 min easy treadmill walk. First set of each exercise light — feel the movement.",
+          "wuNote":   "5 min easy treadmill walk. First set of each exercise light — feel the movement.",
           "ex": [
             {
               "n":    "Leg Press",
-              "s":    "3×8-12",
+              "s":    "4×8-12",
               "r":    "120s",
               "ic":   "🦵",
               "eq":   ["mach"],
@@ -897,24 +737,6 @@
               "note": "Drive hips up to full extension. Squeeze glutes hard at top. Control descent. Hip-width feet."
             },
             {
-              "n":    "Machine Chest Press",
-              "s":    "3×8-12",
-              "r":    "90s",
-              "ic":   "💪",
-              "eq":   ["mach"],
-              "note": "Done while upper body is fresh. Seat so handles are mid-chest. Full stretch, full press. Control the eccentric.",
-              "warn": "⚠️ TFCC: wrists straight behind handles — no bend back."
-            },
-            {
-              "n":    "Incline Machine Press",
-              "s":    "2×10-12",
-              "r":    "90s",
-              "ic":   "💪",
-              "eq":   ["mach"],
-              "note": "Upper chest. Elbows slightly below parallel at bottom. Squeeze chest at top. Thursday already hit flat + incline — this is the Saturday repeat for upper chest frequency.",
-              "warn": "⚠️ TFCC: wrists straight, same as flat press."
-            },
-            {
               "n":    "Leg Curl",
               "s":    "3×10-15",
               "r":    "90s",
@@ -924,7 +746,7 @@
             },
             {
               "n":    "Leg Extension",
-              "s":    "2×10-15",
+              "s":    "3×10-12",
               "r":    "75s",
               "ic":   "🦵",
               "eq":   ["mach"],
@@ -937,38 +759,20 @@
               "ic":   "🦵",
               "eq":   ["mach"],
               "note": "Full stretch at bottom, full extension at top. Pause at both ends. Controlled."
-            },
-            {
-              "n":    "Cable Curl",
-              "s":    "2×10-15",
-              "r":    "60s",
-              "ic":   "💪",
-              "eq":   ["cable"],
-              "note": "EZ-bar or rope attachment — NOT straight bar. Full extension at bottom, squeeze at top. No swinging.",
-              "warn": "⚠️ TFCC: straight bar forces full supination. EZ-bar or rope only."
-            },
-            {
-              "n":    "Cable Crunch",
-              "s":    "2×12-15",
-              "r":    "60s",
-              "ic":   "🧱",
-              "eq":   ["cable"],
-              "note": "Kneel facing stack. Rope behind neck. Crunch down, round upper back. Feel the abs — don't pull with arms."
             }
           ],
           "fin": {
             "type":  "cardio",
             "title": "TREADMILL",
-            "desc":  "Optional — 10–15 min easy cool-down walk if energy allows.",
-            "dur":   "12",
-            "kcal":  "~80 kcal"
+            "desc":  "Easy cool-down walk — HR 120–130. Let the legs flush out.",
+            "dur":   "10",
+            "kcal":  "~65 kcal"
           },
           "cd": [
             "Quad stretch — 30s each side",
             "Hip flexor lunge — 30s each side",
-            "Lat stretch overhead — 20s each side",
-            "Chest doorframe stretch — 30s",
-            "Wrist flexor + extensor — 20s each direction"
+            "Hamstring seated reach — 30s",
+            "Calf stretch against wall — 30s each side"
           ]
         }
       },
