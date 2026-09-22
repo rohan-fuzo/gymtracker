@@ -784,7 +784,7 @@ function renderWorkout(){
   const isPowerDay = travelW ? false : !!w.isPower; // travel days never render as power
 
   let h = sessionToggleH;
-
+  h += renderTravelToggle(isTravelDay, travelType);
 
   h+=`<div class="workout-card">`;
   if(isPowerDay){
