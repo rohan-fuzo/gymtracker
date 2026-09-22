@@ -705,9 +705,14 @@ function renderWorkout(){
   Perf.start('renderWorkout');
   const dk=DAYS[cDay];
   const dayData = exData.W[cPhase]?.[dk] || {};
-  const w = dayData[cSession];
+  const isTravelDay = getTravelMode(selectedDateStr);
+  // Travel mode: show one session — use whichever session has a real workout
+  const effectiveSession = isTravelDay
+    ? (dayData.morning && !dayData.morning.isRest ? 'morning' : 'evening')
+    : cSession;
+  const w = dayData[effectiveSession];
   const viewDate = getDateForDay(cDay);
-  const newRenderKey = `${cPhase}_${cDay}_${selectedDateStr}_${cSession}`;
+  const newRenderKey = `${cPhase}_${cDay}_${selectedDateStr}_${cSession}_${isTravelDay?'T':''}`;
 
   // If same day/phase — patch in-place instead of full rebuild
   if(_workoutRenderKey === newRenderKey && document.getElementById('workout-content').children.length > 0){
@@ -748,7 +753,7 @@ function renderWorkout(){
   const hasMorning = morningSess && !morningSess.isRest;
   const hasEvening = eveningSess && !eveningSess.isRest;
   let sessionToggleH = '';
-  if(hasMorning || hasEvening){
+  if(!isTravelDay && (hasMorning || hasEvening)){
     sessionToggleH = `<div class="session-toggle" style="display:flex;gap:8px;margin-bottom:12px;padding:0 16px">
       ${hasMorning ? `<button class="sess-btn${cSession==='morning'?' active':''}" onclick="setSession('morning')" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${cSession==='morning'?'var(--p1)':'var(--border)'};background:${cSession==='morning'?'rgba(99,102,241,.15)':'transparent'};color:${cSession==='morning'?'var(--p1)':'var(--dim)'};font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.5px">🌅 MORNING${morningSess?.location==='home'?' · HOME':''}</button>` : ''}
       ${hasEvening ? `<button class="sess-btn${cSession==='evening'?' active':''}" onclick="setSession('evening')" style="flex:1;padding:10px;border-radius:10px;border:2px solid ${cSession==='evening'?'var(--p1)':'var(--border)'};background:${cSession==='evening'?'rgba(99,102,241,.15)':'transparent'};color:${cSession==='evening'?'var(--p1)':'var(--dim)'};font-weight:700;font-size:12px;cursor:pointer;letter-spacing:.5px">🌆 EVENING${eveningSess?.location==='gym'?' · GYM':''}</button>` : ''}
@@ -761,8 +766,7 @@ function renderWorkout(){
     return;
   }
 
-  // ── TRAVEL MODE ── detect before LISS check so LISS can carry the travel flag too
-  const isTravelDay = getTravelMode(selectedDateStr);
+  // ── TRAVEL MODE ── isTravelDay detected above; derive type from effective session
   const travelType = getTravelDayType(w);
 
   if(w.isLiss){ renderLiss(w, c, isTravelDay); return; }
