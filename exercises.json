@@ -175,13 +175,13 @@
       "tags":  ["pull","bw"],
       "ex": [
         {
-          "n":    "Inverted Row",
-          "s":    "3×10-12",
-          "r":    "90s",
+          "n":    "Prone W-Raise",
+          "s":    "3×15",
+          "r":    "60s",
           "ic":   "💪",
           "eq":   ["bw"],
-          "note": "Lie under a sturdy desk or table, grip the edge with neutral grip (knuckles forward). Row chest up to the surface. Feet flat on floor. Angle body to adjust difficulty — more horizontal = harder.",
-          "warn": "⚠️ TFCC: neutral grip only — knuckles forward, no supination at the top. If the table edge forces an uncomfortable wrist angle, skip to Superman instead."
+          "note": "Lie face-down, arms out at 90° (goalpost position). Squeeze shoulder blades together and lift elbows off the floor, forming a W shape. Hold 1s at top. Pure floor — no equipment.",
+          "warn": "⚠️ TFCC: wrists stay neutral, knuckles facing down throughout. No wrist curl at the top."
         },
         {
           "n":    "Prone Y-Raise",
