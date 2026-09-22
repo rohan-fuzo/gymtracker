@@ -75,6 +75,323 @@
     { "k": "hinge",    "label": "Hip Hinge × 15",      "detail": "Push hips back · flat back · feel the hamstring", "ic": "🦾" },
     { "k": "march",    "label": "March in Place 1 min","detail": "Knees up · arms swinging · heart rate up",        "ic": "🚶" }
   ],
+  "TRAVEL_WORKOUTS": {
+
+    "legs": {
+      "title": "TRAVEL — LEGS",
+      "sub":   "Bodyweight · 30 min · No equipment needed",
+      "dur":   "30",
+      "kcal":  "200–280",
+      "tags":  ["legs","bw"],
+      "ex": [
+        {
+          "n":           "Bodyweight Squat",
+          "s":           "3×20",
+          "r":           null,
+          "ic":          "🏔️",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"A",
+          "note":        "Full depth. Pause 2s at the bottom. Tempo is the load here — no rushing."
+        },
+        {
+          "n":           "Reverse Lunge",
+          "s":           "3×12/leg",
+          "r":           null,
+          "ic":          "🦵",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"A",
+          "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright."
+        },
+        {
+          "n":           "Single-Leg RDL",
+          "s":           "3×10/leg",
+          "r":           "90s",
+          "ic":          "🦾",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"A",
+          "note":        "Balance on one leg, hinge forward until torso is parallel — opposite leg extends back. Feel the hamstring stretch. Touch floor with fingertips for balance. No wrist load."
+        },
+        {
+          "n":           "Single-Leg Glute Bridge",
+          "s":           "3×15/leg",
+          "r":           null,
+          "ic":          "🍑",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"B",
+          "note":        "One leg extended. Drive hip up, squeeze hard 2s at top. Keep hips level."
+        },
+        {
+          "n":           "Wall Sit",
+          "s":           "3×45s",
+          "r":           "60s",
+          "ic":          "🏔️",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"B",
+          "note":        "Back flat against wall, thighs parallel to floor. Hold. Isometric quad burn — arms relaxed at sides."
+        },
+        {
+          "n":           "Calf Raise",
+          "s":           "3×25",
+          "r":           "60s",
+          "ic":          "🦵",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"B",
+          "note":        "Hold wall for balance. Full range — max stretch at bottom, full extension at top. Slow and controlled."
+        },
+        {
+          "n":           "Dead Bug",
+          "s":           "2×10/side",
+          "r":           null,
+          "ic":          "🐛",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"CORE",
+          "note":        "Lower back glued to floor. Opposite arm + leg extend slowly. Never let back arch."
+        },
+        {
+          "n":           "Reverse Crunch",
+          "s":           "2×15",
+          "r":           "45s",
+          "ic":          "🧱",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"CORE",
+          "note":        "Curl knees toward chest, lift hips. Slow descent."
+        }
+      ]
+    },
+
+    "pull": {
+      "title": "TRAVEL — PULL",
+      "sub":   "Bodyweight · 30 min · Desk or table needed for rows",
+      "dur":   "30",
+      "kcal":  "160–220",
+      "tags":  ["pull","bw"],
+      "ex": [
+        {
+          "n":    "Inverted Row",
+          "s":    "3×10-12",
+          "r":    "90s",
+          "ic":   "💪",
+          "eq":   ["bw"],
+          "note": "Lie under a sturdy desk or table, grip the edge with neutral grip (knuckles forward). Row chest up to the surface. Feet flat on floor. Angle body to adjust difficulty — more horizontal = harder.",
+          "warn": "⚠️ TFCC: neutral grip only — knuckles forward, no supination at the top. If the table edge forces an uncomfortable wrist angle, skip to Superman instead."
+        },
+        {
+          "n":    "Prone Y-Raise",
+          "s":    "3×15",
+          "r":    "60s",
+          "ic":   "↔️",
+          "eq":   ["bw"],
+          "note": "Lie face down. Arms at 45° (Y shape), thumbs pointing up. Lift arms off floor, squeeze between shoulder blades. Rear delt + upper back activation.",
+          "warn": "⚠️ TFCC: thumbs pointing up throughout — keeps wrist in neutral, no ulnar deviation."
+        },
+        {
+          "n":    "Superman",
+          "s":    "3×12",
+          "r":    "60s",
+          "ic":   "🦾",
+          "eq":   ["bw"],
+          "note": "Lie face down, arms forward. Lift chest + arms + legs simultaneously. Hold 2s at top. Lower back, glutes, and full posterior chain."
+        },
+        {
+          "n":    "Prone T-Raise",
+          "s":    "2×12",
+          "r":    "45s",
+          "ic":   "↔️",
+          "eq":   ["bw"],
+          "note": "Lie face down. Arms out to sides in T shape, thumbs pointing up. Lift arms off floor. Rhomboids and rear delts.",
+          "warn": "⚠️ TFCC: thumbs up, wrist neutral."
+        },
+        {
+          "n":    "Bird Dog",
+          "s":    "3×10/side",
+          "r":    "45s",
+          "ic":   "🐦",
+          "eq":   ["bw"],
+          "note": "Extend opposite arm + leg simultaneously. Hold 2s. Keep hips level — posterior chain and core."
+        },
+        {
+          "n":    "Dead Bug",
+          "s":    "2×10/side",
+          "r":    null,
+          "ic":   "🐛",
+          "eq":   ["bw"],
+          "note": "Lower back glued to floor. Opposite arm + leg extend slowly."
+        },
+        {
+          "n":    "Side-Lying Oblique Crunch",
+          "s":    "2×12/side",
+          "r":    "45s",
+          "ic":   "🔥",
+          "eq":   ["bw"],
+          "note": "Lie on side. Crunch sideways, elbow to hip. Squeeze oblique at top."
+        }
+      ]
+    },
+
+    "push": {
+      "title": "TRAVEL — PUSH",
+      "sub":   "Bodyweight · 30 min · Chair or desk for incline",
+      "dur":   "30",
+      "kcal":  "160–220",
+      "tags":  ["push","bw"],
+      "ex": [
+        {
+          "n":    "Incline Push-up",
+          "s":    "3×12-15",
+          "r":    "90s",
+          "ic":   "💪",
+          "eq":   ["bw"],
+          "note": "Hands on desk, chair, or bed edge (waist-to-chest height). Body straight from head to heels. Full depth — chest touches the surface. The higher the surface, the easier and the less wrist extension.",
+          "warn": "⚠️ TFCC: wrists in slight extension at this angle — manageable. If any wrist discomfort, raise hands to a higher surface (bed > chair > desk) to reduce extension. Stop if pain."
+        },
+        {
+          "n":    "Pike Push-up",
+          "s":    "2×10",
+          "r":    "75s",
+          "ic":   "💪",
+          "eq":   ["bw"],
+          "note": "Hips high, body in inverted V. Lower crown of head toward floor. Shoulder-dominant push.",
+          "warn": "⚠️ TFCC: fingers spread wide on floor — distribute load across the whole palm and fingers to reduce ulnar wrist stress."
+        },
+        {
+          "n":    "Slow-Negative Incline Push-up",
+          "s":    "2×8",
+          "r":    "75s",
+          "ic":   "💪",
+          "eq":   ["bw"],
+          "note": "Same setup as incline push-up. Lower in 4 seconds, hold 1s at the bottom, drive up. Eccentric focus turns a light movement into a real stimulus.",
+          "warn": "⚠️ TFCC: same wrist cue — raise surface height if discomfort."
+        },
+        {
+          "n":    "Overhead Tricep Extension",
+          "s":    "2×15",
+          "r":    "60s",
+          "ic":   "💪",
+          "eq":   ["bw"],
+          "note": "Clasp both hands together. Raise arms overhead, elbows by ears. Bend elbows, lower hands behind head, extend back up. Add a water bottle or bag for resistance.",
+          "warn": "⚠️ TFCC: interlaced fingers keep both wrists in neutral — low TFCC load. Do not let wrists bend under the weight of the load."
+        },
+        {
+          "n":    "Bird Dog",
+          "s":    "2×10/side",
+          "r":    "45s",
+          "ic":   "🐦",
+          "eq":   ["bw"],
+          "note": "Extend opposite arm + leg simultaneously. Hold 2s. Core and posterior chain."
+        },
+        {
+          "n":    "Reverse Crunch",
+          "s":    "2×15",
+          "r":    "45s",
+          "ic":   "🧱",
+          "eq":   ["bw"],
+          "note": "Curl knees toward chest, lift hips. Slow descent."
+        }
+      ]
+    },
+
+    "fullbody": {
+      "title": "TRAVEL — FULL BODY",
+      "sub":   "Bodyweight · 30 min · No equipment needed",
+      "dur":   "30",
+      "kcal":  "200–270",
+      "tags":  ["full","bw"],
+      "ex": [
+        {
+          "n":           "Bodyweight Squat",
+          "s":           "3×15",
+          "r":           null,
+          "ic":          "🏔️",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"A",
+          "note":        "Full depth. Pause 1s at bottom. Controlled tempo."
+        },
+        {
+          "n":           "Reverse Lunge",
+          "s":           "3×10/leg",
+          "r":           null,
+          "ic":          "🦵",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"A",
+          "note":        "Step back, lower knee near floor. Front heel drives up. Torso upright."
+        },
+        {
+          "n":           "Incline Push-up",
+          "s":           "3×12",
+          "r":           "90s",
+          "ic":          "💪",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"A",
+          "note":        "Hands on desk or bed edge. Full depth — chest touches the surface.",
+          "warn":        "⚠️ TFCC: raise surface height to reduce wrist extension angle if needed."
+        },
+        {
+          "n":           "Single-Leg Glute Bridge",
+          "s":           "3×12/leg",
+          "r":           null,
+          "ic":          "🍑",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"B",
+          "note":        "One leg extended. Drive hip up, squeeze 2s at top. Keep hips level."
+        },
+        {
+          "n":           "Superman",
+          "s":           "2×12",
+          "r":           "60s",
+          "ic":          "🦾",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"B",
+          "note":        "Lie face down. Lift chest + arms + legs simultaneously. Hold 2s. Full posterior chain."
+        },
+        {
+          "n":           "Prone Y-Raise",
+          "s":           "2×15",
+          "r":           "60s",
+          "ic":          "↔️",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"B",
+          "note":        "Arms at 45°, thumbs up. Lift off floor, squeeze between shoulder blades.",
+          "warn":        "⚠️ TFCC: thumbs pointing up, wrist neutral throughout."
+        },
+        {
+          "n":           "Dead Bug",
+          "s":           "2×10/side",
+          "r":           null,
+          "ic":          "🐛",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"CORE",
+          "note":        "Lower back glued to floor. Opposite arm + leg extend slowly."
+        },
+        {
+          "n":           "Side-Lying Oblique Crunch",
+          "s":           "2×12/side",
+          "r":           "45s",
+          "ic":          "🔥",
+          "eq":          ["bw"],
+          "circuit":     true,
+          "circuitGroup":"CORE",
+          "note":        "Lie on side. Crunch sideways, elbow to hip. Squeeze oblique at top."
+        }
+      ]
+    }
+
+  },
+
   "W": {
     "1": {
 
@@ -541,6 +858,7 @@
           "location": "gym",
           "tags":     ["cardio"],
           "wu":       false,
+          "isLiss":   true,
           "ex": [],
           "fin": {
             "type":  "cardio",
