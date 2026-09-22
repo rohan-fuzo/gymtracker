@@ -192,7 +192,8 @@
               "eq":          ["db"],
               "circuit":     true,
               "circuitGroup":"A",
-              "note":        "Hand and knee on bench or chair. Pull DB to hip. Full stretch at bottom. Keep hips square. At 10kg: 3s pull, 1s hold at top, 3s return — 15 reps. Wrist stays neutral throughout, no supination at the top."
+              "note":        "Hand and knee on bench or chair. Pull DB to hip. Full stretch at bottom. Keep hips square. At 10kg: 3s pull, 1s hold at top, 3s return — 15 reps. Wrist stays neutral throughout, no supination at the top.",
+              "warn":        "⚠️ TFCC: knuckles forward throughout — resist the urge to supinate (rotate palm up) at the top of each rep. The forearm should not rotate at all under load."
             },
             {
               "n":           "DB Rear-Delt Fly",
@@ -214,7 +215,7 @@
               "circuit":     true,
               "circuitGroup":"A",
               "note":        "Neutral wrist. Controlled tempo. Hits brachialis and brachioradialis. Keep elbows pinned to sides.",
-              "warn":        "⚠️ Wrist neutral — no flexion under load."
+              "warn":        "⚠️ TFCC: neutral grip (knuckles forward) throughout — no wrist flexion or supination under load."
             },
             {
               "n":           "DB Shrug",
@@ -278,7 +279,8 @@
               "r":    "90s",
               "ic":   "💪",
               "eq":   ["mach"],
-              "note": "Chest on pad — no momentum. Retract scapula, pull elbows back. Squeeze at peak contraction."
+              "note": "Chest on pad — no momentum. Retract scapula, pull elbows back. Squeeze at peak contraction.",
+              "warn": "⚠️ TFCC: grip handles with knuckles forward (neutral/pronated) — the machine naturally allows this. Don't supinate the forearm to 'get a better squeeze' at the top."
             },
             {
               "n":    "Cable Romanian Deadlift",
@@ -313,7 +315,7 @@
               "ic":   "💪",
               "eq":   ["db"],
               "note": "Neutral wrist. Controlled tempo. Hits brachialis and brachioradialis.",
-              "warn": "⚠️ Wrist neutral — no flexion under load."
+              "warn": "⚠️ TFCC: neutral grip throughout — no supination, no wrist flexion under load."
             }
           ],
           "fin": {
@@ -362,7 +364,7 @@
               "circuit":     true,
               "circuitGroup":"A",
               "note":        "Lead with elbows. 2s up / 3s down. Activation — shoulder health, not ego.",
-              "warn":        "⚠️ TFCC: neutral grip, no wrist flex during raise."
+              "warn":        "⚠️ TFCC: thumbs pointing forward, not down — this prevents ulnar deviation at the top of the arc. Wrist stays in line with the forearm throughout; never 'pour water' at the top."
             },
             {
               "n":           "DB Triceps Kickback",
@@ -419,7 +421,7 @@
               "ic":   "💪",
               "eq":   ["mach"],
               "note": "Seat height so handles are mid-chest. Full stretch, full press. Control the eccentric.",
-              "warn": "⚠️ Wrist: keep wrists straight behind handles, not bent back."
+              "warn": "⚠️ TFCC: wrists straight behind handles — no extension (bending back) under load. If the machine only has fully pronated handles that force wrist extension, substitute Cable Chest Press: D-ring handles at mid-cable, push forward at chest height in a neutral hammer grip."
             },
             {
               "n":    "Incline Machine Press",
@@ -428,7 +430,7 @@
               "ic":   "💪",
               "eq":   ["mach"],
               "note": "Upper chest focus. Elbows slightly below parallel. Squeeze chest at top.",
-              "warn": "⚠️ Wrist: same as flat press — wrists straight."
+              "warn": "⚠️ TFCC: same rule as flat — wrists straight, no extension. If handles are problematic, substitute Incline Cable Press: D-ring handles on upper cables, push down at an angle, neutral grip."
             },
             {
               "n":    "Cable Fly",
@@ -437,7 +439,7 @@
               "ic":   "🪁",
               "eq":   ["cable"],
               "note": "High-to-low or mid. Slight bend in elbows. Squeeze chest — not a press, a hug motion.",
-              "warn": "⚠️ Wrist: neutral grip on single-handle cables."
+              "warn": "⚠️ TFCC: D-ring (single handle) only — not a spreader bar. Keep wrist neutral throughout the arc; don't let it bend inward at the squeeze."
             },
             {
               "n":    "Rope Triceps Pushdown",
@@ -446,7 +448,7 @@
               "ic":   "💪",
               "eq":   ["cable"],
               "note": "Rope at face height. Elbows pinned to sides. Spread rope at bottom, squeeze triceps fully.",
-              "warn": "⚠️ Wrist: neutral grip on rope — don't flex wrists to push."
+              "warn": "⚠️ TFCC: rope attachment only — never a straight bar (forces wrist extension under load). Wrists stay rigid and neutral as you spread the rope ends down."
             },
             {
               "n":    "Overhead Cable Extension",
@@ -455,7 +457,7 @@
               "ic":   "💪",
               "eq":   ["cable"],
               "note": "Face away from stack, rope behind head. Elbows up, extend fully overhead. Long-head tricep.",
-              "warn": "⚠️ Wrist: neutral grip on rope throughout."
+              "warn": "⚠️ TFCC: rope only — wrists stay neutral throughout the extension. Keep the grip light; the rope allows natural wrist position where a bar would force extension."
             }
           ],
           "fin": {
@@ -570,7 +572,8 @@
               "r":    "60s",
               "ic":   "💪",
               "eq":   ["db"],
-              "note": "Hand and knee on chair. Pull DB to hip, full stretch at bottom. At 10kg: slow tempo, feel the lat stretch."
+              "note": "Hand and knee on chair. Pull DB to hip, full stretch at bottom. At 10kg: slow tempo, feel the lat stretch.",
+              "warn": "⚠️ TFCC: knuckles forward throughout — no supination at the top. Let the lat do the work, not a forearm rotation."
             },
             {
               "n":    "DB Rear-Delt Fly",
@@ -588,7 +591,7 @@
               "ic":   "↔️",
               "eq":   ["db"],
               "note": "Lead with elbows. 2s up / 3s down. Side delts — visual width from the front.",
-              "warn": "⚠️ TFCC: neutral grip, wrist rigid."
+              "warn": "⚠️ TFCC: thumbs pointing forward throughout the arc — this prevents ulnar deviation at the top. Wrist stays in line with forearm; never tilt/dip at the top of the raise."
             },
             {
               "n":    "Dead Bug",
@@ -638,7 +641,7 @@
               "ic":   "💪",
               "eq":   ["mach"],
               "note": "Neutral or pronated grip. Press overhead, lower to ear height. Don't lock out hard at top.",
-              "warn": "⚠️ Wrist: keep wrists in line with forearms — no bend back."
+              "warn": "⚠️ TFCC: use the machine's neutral-grip handles if available. If only pronated, keep wrists rigid and in line with forearms — no extension at the top of the press. Stop if you feel wrist load increase as the weight goes up."
             },
             {
               "n":    "Neutral-Grip Lat Pulldown",
@@ -670,7 +673,8 @@
               "r":    "60s",
               "ic":   "🏔️",
               "eq":   ["mach"],
-              "note": "Straight up — don't roll shoulders. Hold 1s at top. Controlled descent."
+              "note": "Straight up — don't roll shoulders. Hold 1s at top. Controlled descent.",
+              "warn": "⚠️ TFCC: use the machine's vertical handles in hammer grip — don't force into a fully pronated grip if the handle geometry resists it. If the handles only allow pronation with wrist deviation, substitute DB Shrug (10kg each hand, neutral grip) for the same trap stimulus."
             },
             {
               "n":    "Cable Crunch",
@@ -686,7 +690,8 @@
               "r":    "60s",
               "ic":   "🔥",
               "eq":   ["cable"],
-              "note": "Stand sideways to stack. Press and return at chest height. Resist rotation."
+              "note": "Stand sideways to stack. Press and return at chest height. Resist rotation.",
+              "warn": "⚠️ TFCC: D-ring (single handle) attachment — NOT a cable bar. D-ring lets the wrist stay fully neutral as you press out and return. Wrist should not rotate or deviate at any point."
             }
           ],
           "fin": {
