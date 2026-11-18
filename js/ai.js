@@ -12,7 +12,10 @@ export async function callGroq(messages) {
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: GROQ_MODEL, messages, max_tokens: 400 })
   });
-  if (!res.ok) throw new Error(`Groq error ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Groq error ${res.status}`);
+  }
   const data = await res.json();
   return data.choices[0].message.content.trim();
 }
