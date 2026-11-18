@@ -11,7 +11,7 @@ import * as localdb from './localdb.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
 
 // ── Module-level state ──
-let _progressTab       = 'score';
+let _progressTab       = 'trends';
 let _bodyLastFetch     = 0;
 let _strengthLastFetch = 0;
 let _planLastFetch     = 0;
@@ -57,19 +57,27 @@ async function renderProgress(){
   if(!document.getElementById('progress-tab-content')){
     el.innerHTML = `
       <div class="progress-tab-bar">
-        <button class="progress-tab-btn" id="ptab-score"  onclick="switchProgressTab('score')">SCORE</button>
-        <button class="progress-tab-btn" id="ptab-trends" onclick="switchProgressTab('trends')">TRENDS</button>
-        <button class="progress-tab-btn" id="ptab-plan"   onclick="switchProgressTab('plan')">PLAN</button>
+        <button class="progress-tab-btn" id="ptab-trends"   onclick="switchProgressTab('trends')">TRENDS</button>
+        <button class="progress-tab-btn" id="ptab-body"     onclick="switchProgressTab('body')">BODY</button>
+        <button class="progress-tab-btn" id="ptab-mobility" onclick="switchProgressTab('mobility')">MOBILITY</button>
       </div>
       <div id="progress-tab-content"></div>`;
   }
-  ['score','trends','plan'].forEach(t=>{
+  ['trends','body','mobility'].forEach(t=>{
     document.getElementById(`ptab-${t}`)?.classList.toggle('active', _progressTab===t);
   });
-  if(_progressTab==='score')       await renderScoreTab();
-  else if(_progressTab==='trends') await renderTrendsTab();
-  else if(_progressTab==='body')   await renderBodyTab();
-  else                             await renderPlanTab();
+  if(_progressTab==='trends')   await renderTrendsTab();
+  else if(_progressTab==='body')     await renderBodyTab();
+  else                               renderMobilityTab();
+}
+
+function renderMobilityTab(){
+  const tabEl = document.getElementById('progress-tab-content');
+  if(!tabEl) return;
+  if(tabEl.dataset.tab === 'mobility') return; // already rendered, toggleMob updates in-place
+  tabEl.dataset.tab = 'mobility';
+  tabEl.innerHTML = `<div id="mob-content" style="padding:16px"></div><div class="spacer"></div>`;
+  renderMobility();
 }
 
 async function renderScoreTab(){
@@ -267,7 +275,45 @@ async function renderTrendsTab(){
     const fatDelta    = (latestIB?.body_fat_pct    && prevIB?.body_fat_pct)    ? (latestIB.body_fat_pct    - prevIB.body_fat_pct).toFixed(1)    : null;
     const muscleDelta = (latestIB?.skeletal_muscle_mass && prevIB?.skeletal_muscle_mass) ? (latestIB.skeletal_muscle_mass - prevIB.skeletal_muscle_mass).toFixed(1) : null;
 
-    let h = '';
+    // ── Compact summary banner (replaces Score tab) ──
+    const latestWeight = metrics.length ? metrics[metrics.length-1].weight_kg : null;
+    const targetWeight = 87;
+    const startStr2    = prog.start ? localDateStr(prog.start) : null;
+    const progMetrics2 = startStr2 ? metrics.filter(m => m.date >= startStr2) : metrics;
+    const startWeight  = progMetrics2.length ? progMetrics2[0].weight_kg : null;
+    const lost         = (latestWeight && startWeight) ? (startWeight - latestWeight).toFixed(1) : null;
+    const toGo         = latestWeight ? Math.max(0, latestWeight - targetWeight).toFixed(1) : null;
+    const totalSessions = new Set(progExLogs.map(r => r.date)).size;
+    const today2 = new Date(); const dow2 = today2.getDay();
+    const mon2 = new Date(today2); mon2.setDate(today2.getDate() - (dow2===0?6:dow2-1));
+    const weekSessions = new Set(exLogs.filter(r=>r.date>=localDateStr(mon2)).map(r=>r.date)).size;
+    const cutoff2 = new Date(); cutoff2.setDate(cutoff2.getDate()-7);
+    const weekAgoW = metrics.filter(m=>new Date(m.date)<=cutoff2);
+    const weekAgoWeight = weekAgoW.length ? weekAgoW[weekAgoW.length-1].weight_kg : null;
+    const weekDelta = (latestWeight && weekAgoWeight) ? (latestWeight - weekAgoWeight).toFixed(1) : null;
+
+    let h = `<div class="trends-summary">
+      <div class="ts-stat">
+        <div class="ts-val">${latestWeight ? latestWeight+'kg' : '—'}</div>
+        <div class="ts-lbl">CURRENT</div>
+      </div>
+      <div class="ts-stat">
+        <div class="ts-val" style="color:var(--p3)">${lost !== null ? '↓'+lost+'kg' : '—'}</div>
+        <div class="ts-lbl">LOST</div>
+      </div>
+      <div class="ts-stat">
+        <div class="ts-val" style="color:${toGo=='0.0'?'var(--p3)':'var(--p1)'}">${toGo !== null ? toGo+'kg' : '—'}</div>
+        <div class="ts-lbl">TO GO</div>
+      </div>
+      <div class="ts-stat">
+        <div class="ts-val" style="color:${weekDelta!==null&&parseFloat(weekDelta)<0?'var(--p3)':weekDelta!==null?'var(--p1)':'var(--muted)'}">${weekDelta!==null?(parseFloat(weekDelta)<0?'↓':'↑')+Math.abs(weekDelta)+'kg':'—'}</div>
+        <div class="ts-lbl">7-DAY</div>
+      </div>
+      <div class="ts-stat">
+        <div class="ts-val">${weekSessions}/${totalSessions}</div>
+        <div class="ts-lbl">WK/TOT</div>
+      </div>
+    </div>`;
 
     // ── Weight chart ──
     h += `<div class="pw-chart">

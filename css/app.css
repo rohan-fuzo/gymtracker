@@ -144,6 +144,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 
 /* TODAY */
 .today-header{padding:20px 16px 14px;background:linear-gradient(180deg,var(--surface2),var(--bg))}
+.today-header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.today-header-top .today-date{margin-bottom:0}
+.weigh-pill{background:transparent;border:1px solid var(--border);border-radius:20px;color:var(--dim);font-size:9px;font-weight:700;letter-spacing:1px;padding:5px 10px;cursor:pointer;text-transform:uppercase}
 .today-date{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px}
 .today-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;line-height:1;margin-bottom:2px}
 .today-sub{font-size:13px;color:var(--muted)}
@@ -382,6 +385,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .pw-vital:last-child{border-right:none}
 .pw-vital-num{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;margin-bottom:3px;letter-spacing:.5px}
 .pw-vital-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--dim)}
+
+/* ── Trends summary banner ── */
+.trends-summary{display:flex;justify-content:space-around;padding:14px 16px 10px;gap:4px}
+.ts-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+.ts-val{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;color:var(--text)}
+.ts-lbl{font-size:8px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim)}
 
 /* ── Progress chart card ── */
 .pw-chart{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 16px 14px;overflow:hidden}
