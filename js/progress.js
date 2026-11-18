@@ -57,11 +57,19 @@ async function renderProgress(){
   const el = document.getElementById('progress-content');
   if(!document.getElementById('progress-tab-content')){
     el.innerHTML = `
+      <div class="ai-coach-card" id="ai-coach-card">
+        <div class="ai-coach-header">
+          <span class="ai-coach-label">⚡ AI COACH</span>
+          <span class="ai-coach-date" id="ai-coach-date"></span>
+        </div>
+        <div id="ai-summary-out" class="ai-coach-text">Generating your summary…</div>
+      </div>
       <div class="progress-tab-bar">
         <button class="progress-tab-btn" id="ptab-trends" onclick="switchProgressTab('trends')">TRENDS</button>
         <button class="progress-tab-btn" id="ptab-body"   onclick="switchProgressTab('body')">BODY</button>
       </div>
       <div id="progress-tab-content"></div>`;
+    generateProgressSummary();
   }
   ['trends','body'].forEach(t=>{
     document.getElementById(`ptab-${t}`)?.classList.toggle('active', _progressTab===t);
@@ -399,11 +407,6 @@ async function renderTrendsTab(){
       </button>
     </div>`;
 
-    h += `<div class="settings-card" style="margin:0 16px 14px">
-      <div class="settings-card-title">AI Coach Summary</div>
-      <div id="ai-summary-out" style="font-size:13px;line-height:1.6;color:var(--text);padding:0 0 12px;min-height:0;white-space:pre-wrap"></div>
-      <button id="ai-summary-btn" class="settings-apply-btn" onclick="generateProgressSummary()">Generate Summary</button>
-    </div>`;
     h += `<div class="spacer"></div>`;
     if(tabEl) tabEl.innerHTML = h;
 
@@ -1407,15 +1410,32 @@ async function updateSettingsSyncCard() {
 function saveGroqKey(val) { setGroqKey(val); }
 
 async function generateProgressSummary() {
-  const btn = document.getElementById('ai-summary-btn');
-  const out = document.getElementById('ai-summary-out');
-  if (btn) { btn.textContent = 'Thinking…'; btn.disabled = true; }
-  if (out) out.textContent = '';
+  const out     = document.getElementById('ai-summary-out');
+  const dateEl  = document.getElementById('ai-coach-date');
+  const today   = localDateStr();
+
+  // ── Smart cache: skip if same day AND data fingerprint unchanged ──
+  try {
+    const cached = JSON.parse(localStorage.getItem('ai_summary_cache') || 'null');
+    if (cached?.date === today) {
+      // Build quick fingerprint to detect new data
+      const lastW = _metricsCache?.length ? _metricsCache[_metricsCache.length-1] : null;
+      const fp = `${lastW?.date}|${lastW?.weight_kg}|${_exLogs?.length}`;
+      if (cached.fp === fp) {
+        if (out) out.textContent = cached.summary;
+        if (dateEl) dateEl.textContent = 'today';
+        return;
+      }
+    }
+  } catch(e) {}
+
+  if (out) out.textContent = 'Generating…';
+  if (!getGroqKey()) { if (out) out.textContent = 'Add Groq API key in Settings to enable AI coaching.'; return; }
+
   try {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 28);
     const cutStr = localDateStr(cutoff);
 
-    // Use in-memory cache if populated, else fall back to Supabase
     let metrics = _metricsCache?.length ? _metricsCache : [];
     let exLogs  = _exLogs?.length       ? _exLogs       : [];
     if (!metrics.length) {
@@ -1423,31 +1443,62 @@ async function generateProgressSummary() {
       metrics = data || [];
     }
     if (!exLogs.length) {
-      const { data } = await db.from(TABLES.EXERCISES).select('date').gte('date', cutStr);
+      const { data } = await db.from(TABLES.EXERCISES).select('date,exercise_name,weight_kg,reps').gte('date', cutStr);
       exLogs = data || [];
     }
 
-    const recentW  = metrics.filter(m => m.date >= cutStr).map(m => `${m.date}:${m.weight_kg}kg`);
-    const sessions = [...new Set(exLogs.filter(r => r.date >= cutStr).map(r => r.date))];
-    const latest   = metrics.length ? metrics[metrics.length-1].weight_kg : null;
-    const start    = prog.start ? metrics.find(m => m.date >= localDateStr(prog.start)) : null;
-    const lost     = (latest && start) ? (start.weight_kg - latest).toFixed(1) : null;
+    const recentMetrics = metrics.filter(m => m.date >= cutStr);
+    const sessions      = [...new Set(exLogs.map(r => r.date))].sort();
+    const latest        = metrics.length ? metrics[metrics.length-1].weight_kg : null;
+    const startM        = prog.start ? metrics.find(m => m.date >= localDateStr(prog.start)) : null;
+    const lost          = (latest && startM) ? (startM.weight_kg - latest).toFixed(1) : null;
 
-    const prompt = `You are a concise, encouraging strength coach. Summarise this athlete's last 4 weeks in 3-4 sentences. Be specific about numbers. No fluff.
+    // Weight trend: compare first vs last in window
+    const wFirst = recentMetrics[0]?.weight_kg;
+    const wLast  = recentMetrics[recentMetrics.length-1]?.weight_kg;
+    const wTrend = (wFirst && wLast) ? (wLast - wFirst).toFixed(1) : null;
 
-Weight log (date:kg): ${recentW.slice(-14).join(', ') || 'none'}
-Training days: ${sessions.length} in last 28 days
-Total weight lost since programme start: ${lost ? lost+'kg' : 'unknown'}
-Target weight: 87kg, current: ${latest ? latest+'kg' : 'unknown'}
+    // Top lifts by max weight this month
+    const bests = {};
+    for (const r of exLogs) {
+      if (!r.weight_kg) continue;
+      if (!bests[r.exercise_name] || r.weight_kg > bests[r.exercise_name].w)
+        bests[r.exercise_name] = { w: r.weight_kg, r: r.reps };
+    }
+    const topLifts = Object.entries(bests)
+      .sort((a,b) => b[1].w - a[1].w).slice(0,5)
+      .map(([n,v]) => `${n}: ${v.w}kg×${v.r}`).join(', ');
 
-Give a punchy coach-style summary.`;
+    // Weekly streak (consecutive weeks with ≥1 session)
+    let streak = 0;
+    for (let w = 0; w < 8; w++) {
+      const wStart = new Date(); wStart.setDate(wStart.getDate() - (w+1)*7);
+      const wEnd   = new Date(); wEnd.setDate(wEnd.getDate() - w*7);
+      const wStr = localDateStr(wStart); const wEStr = localDateStr(wEnd);
+      if (sessions.some(d => d >= wStr && d < wEStr)) streak++; else break;
+    }
+
+    const prompt = `You are a direct, no-fluff strength coach. Write a 3-sentence summary of this athlete's last 4 weeks. Use their actual numbers. Be honest but motivating.
+
+Current weight: ${latest ? latest+'kg' : '?'} | Target: 87kg | To go: ${latest ? Math.max(0,latest-87).toFixed(1)+'kg' : '?'}
+Lost since start: ${lost ? lost+'kg' : 'unknown'}
+4-week weight trend: ${wTrend !== null ? (parseFloat(wTrend) <= 0 ? '↓'+Math.abs(wTrend)+'kg' : '↑'+wTrend+'kg') : 'unknown'}
+Training sessions (28 days): ${sessions.length} days
+Consecutive weeks trained: ${streak}
+Top lifts this month: ${topLifts || 'none logged'}
+
+3 sentences max. No greetings. Start with the most important insight.`;
 
     const summary = await callGroq([{ role: 'user', content: prompt }]);
     if (out) out.textContent = summary;
+    if (dateEl) dateEl.textContent = 'today';
+
+    // Cache it
+    const lastW2 = metrics.length ? metrics[metrics.length-1] : null;
+    const fp2 = `${lastW2?.date}|${lastW2?.weight_kg}|${exLogs.length}`;
+    localStorage.setItem('ai_summary_cache', JSON.stringify({ date: today, fp: fp2, summary }));
   } catch(e) {
     if (out) out.textContent = e.message;
-  } finally {
-    if (btn) { btn.textContent = 'Regenerate'; btn.disabled = false; }
   }
 }
 

@@ -386,6 +386,13 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .pw-vital-num{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;margin-bottom:3px;letter-spacing:.5px}
 .pw-vital-lbl{font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--dim)}
 
+/* ── AI Coach card ── */
+.ai-coach-card{margin:16px 16px 4px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--p1);border-radius:14px;padding:14px 16px}
+.ai-coach-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.ai-coach-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--p1)}
+.ai-coach-date{font-size:9px;color:var(--dim);letter-spacing:.5px}
+.ai-coach-text{font-size:13px;line-height:1.65;color:var(--text);white-space:pre-wrap}
+
 /* ── Trends summary banner ── */
 .trends-summary{display:flex;justify-content:space-around;padding:14px 16px 10px;gap:4px}
 .ts-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
