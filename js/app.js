@@ -550,14 +550,24 @@ function showExContextMenu(name) {
 
 // iOS Safari doesn't fire contextmenu on long-press — use touch timer
 let _lpTimer = null;
+let _lpFired = false;
 document.addEventListener('touchstart', e => {
   const nameEl = e.target.closest('[data-ex]');
   if (!nameEl) return;
-  _lpTimer = setTimeout(() => { _lpTimer = null; showExContextMenu(nameEl.dataset.ex); }, 500);
+  _lpTimer = setTimeout(() => {
+    _lpTimer = null; _lpFired = true;
+    showExContextMenu(nameEl.dataset.ex);
+  }, 500);
 }, { passive: true });
 const _lpCancel = () => { clearTimeout(_lpTimer); _lpTimer = null; };
-document.addEventListener('touchend',   _lpCancel, { passive: true });
-document.addEventListener('touchmove',  _lpCancel, { passive: true });
+document.addEventListener('touchend',  _lpCancel, { passive: true });
+document.addEventListener('touchmove', _lpCancel, { passive: true });
+// Swallow the click that fires after long-press so accordion doesn't toggle
+document.addEventListener('click', e => {
+  if (!_lpFired) return;
+  _lpFired = false;
+  e.stopPropagation();
+}, true);
 // Desktop fallback
 document.addEventListener('contextmenu', e => {
   const nameEl = e.target.closest('[data-ex]');
