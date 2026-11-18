@@ -3,6 +3,7 @@
 // ============================================================
 import { db, SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { store } from './store.js';
+import * as localdb from './localdb.js';
 
 // ── IndexedDB offline queue ──
 export const SyncDB = (() => {
@@ -181,8 +182,37 @@ export async function updatePendingBadge() {
   } catch(e) {}
 }
 
+// ── Local-first write: LocalDB first, Supabase second ──
+// Replaces the try/catch Supabase direct pattern everywhere in the app.
+// Returns immediately after LocalDB write; Supabase sync is best-effort.
+export async function localWrite(table, data, conflictKey, onConflict) {
+  // 1. Write to local store — always instant, never fails
+  try { await localdb.put(table, data); } catch(e) {
+    console.warn('[sync] localdb.put failed:', e?.message);
+  }
+
+  // 2. Try Supabase now if online
+  if (navigator.onLine) {
+    try {
+      await withRetry(() =>
+        db.from(table).upsert(data, { onConflict })
+          .then(r => { if (r.error) throw r.error; })
+      );
+      setSyncStatus('synced');
+      return;
+    } catch(e) { /* fall through to queue */ }
+  }
+
+  // 3. Queue for later
+  setSyncStatus('error');
+  await queueOfflineSave({ table, onConflict, conflictKey, data });
+}
+
 // ── Auto-flush triggers ──
-window.addEventListener('online', flushOfflineQueue);
+window.addEventListener('online', async () => {
+  flushOfflineQueue();
+  localdb.pullFromSupabase().catch(() => {});
+});
 
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState !== 'visible') return;

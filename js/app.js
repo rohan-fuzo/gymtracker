@@ -9,6 +9,7 @@ import { prog, DAYS, getTodayDowIndex, getTodayDateStr, parseLocalDate,
          getProgrammeState, applyNewStartDate, loadProgrammeConfig } from './programme.js';
 import { setSyncStatus, flushOfflineQueue, updatePendingBadge } from './sync.js';
 import { db } from './config.js';
+import * as localdb from './localdb.js';
 import { exData, loadExerciseData, getTravelMode } from './data.js';
 import { showToast, haptic, renderSkeletonWeekStrip, renderSkeletonWorkout,
          registerPWA, updateNotifBell, checkPendingNotifications, handleNotifBellTap,
@@ -35,101 +36,65 @@ import { manualSync, withRetry } from './sync.js';
 async function init(){
   setSyncStatus('syncing');
 
-  // ── Sync: restore all caches before first await ──
-  // loadProgrammeConfig runs its localStorage restore synchronously (before its DB await),
-  // so prog.start is set immediately if we have a cached value.
   const configPromise = loadProgrammeConfig();
   todayStr = getTodayDateStr();
   selectedDateStr = todayStr;
   cDay = getTodayDowIndex();
-  restoreWeekCacheSync();  // weekActivityCache from localStorage
+  restoreWeekCacheSync();
 
-  // ── If we have cached data, render immediately and dismiss splash ──
-  const hadCache = !!prog.start;
-  if(hadCache) {
-    cPhase = getProgrammeState(new Date()).phase;
-    document.querySelectorAll('#phase-strip .ph-btn').forEach(b=>{
-      b.classList.toggle('active', parseInt(b.dataset.ph)===cPhase);
-    });
-    // Restore today's data from localStorage
-    try {
-      const cs = localStorage.getItem(`gm_sets_${todayStr}_${cPhase}`);
-      if(cs) loggedSets = JSON.parse(cs);
-    } catch(_) {}
-    try {
-      const cc = localStorage.getItem(`gm_check_${todayStr}`);
-      if(cc) checkCache = JSON.parse(cc);
-    } catch(_) {}
-    try {
-      const ch = localStorage.getItem(`gm_hyd_${todayStr}`);
-      if(ch != null) hydrationGlasses = +ch || 0;
-    } catch(_) {}
-    renderWeekStrip();
-    renderWorkout();
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      document.getElementById('splash')?.classList.add('hidden');
-    }));
-  } else {
+  // ── Bootstrap: on first install pull all Supabase data into LocalDB ──
+  const isBootstrapped = await localdb.getMeta('bootstrapped').catch(() => false);
+  if (!isBootstrapped) {
     renderSkeletonWeekStrip();
     renderSkeletonWorkout();
+    if (navigator.onLine) await localdb.bootstrapFromSupabase();
   }
 
-  try {
-    // ── Parallel: all DB calls at once (config already in-flight) ──
-    const dk = DAYS[cDay];
-    const [sessionRes] = await Promise.all([
-      db.from('workout_sessions').select('*').eq('date',todayStr).eq('day_of_week',dk).limit(1),
-      loadSetsForDate(todayStr, /*silent=*/true),
-      loadCheckCache(todayStr),
-      loadHydration(todayStr),
-      configPromise,
-      loadWeekActivity(),
-    ]);
+  await configPromise;
+  cPhase = getProgrammeState(new Date()).phase;
 
-    // Recompute phase from fresh DB data; if it changed, reload sets for correct phase
-    const freshPhase = getProgrammeState(new Date()).phase;
-    if(freshPhase !== cPhase) {
-      cPhase = freshPhase;
-      await loadSetsForDate(todayStr, /*silent=*/true);
-    }
-    document.querySelectorAll('#phase-strip .ph-btn').forEach(b=>{
-      b.classList.toggle('active', parseInt(b.dataset.ph)===cPhase);
-    });
-    if(sessionRes?.data?.length) sessionId = sessionRes.data[0].id;
+  // ── Load all today's data from LocalDB — instant, works offline ──
+  const dk = DAYS[cDay];
+  await Promise.all([
+    loadSetsForDate(todayStr, /*silent=*/true),
+    loadCheckCache(todayStr),
+    loadHydration(todayStr),
+    loadWeekActivity(),
+  ]);
 
-    // Persist fresh data for next visit
-    try {
-      localStorage.setItem(`gm_sets_${todayStr}_${cPhase}`, JSON.stringify(loggedSets));
-      localStorage.setItem(`gm_check_${todayStr}`, JSON.stringify(checkCache));
-      localStorage.setItem(`gm_hyd_${todayStr}`, String(hydrationGlasses));
-    } catch(_) {}
+  // Session id from LocalDB
+  const session = await localdb.getSession(todayStr, dk).catch(() => null);
+  if (session?.id) sessionId = session.id;
 
-    setSyncStatus('synced');
-    flushOfflineQueue();
-  } catch(e){
-    console.error(e);
-    setSyncStatus('error');
+  document.querySelectorAll('#phase-strip .ph-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.ph) === cPhase);
+  });
+
+  renderWeekStrip();
+  renderWorkout();
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.getElementById('splash')?.classList.add('hidden');
+  }));
+  setSyncStatus('synced');
+
+  // ── Background: flush pending queue + pull fresh data from Supabase ──
+  flushOfflineQueue();
+  if (navigator.onLine) {
+    localdb.pullFromSupabase()
+      .then(() => loadSetsForDate(todayStr, /*silent=*/true))
+      .then(() => { renderWeekStrip(); renderWorkout(); renderPhaseBanner(); })
+      .catch(() => {});
   }
 
-  // Cold-load path: render after DB (same latency as before, skeletons shown)
-  if(!hadCache) {
-    renderWeekStrip();
-    renderWorkout();
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      document.getElementById('splash')?.classList.add('hidden');
-    }));
-  }
   _resumeRestTimerIfActive();
 }
 
 async function loadSetsForDate(dateStr, silent=false){
-  const {data} = await db.from('exercise_logs')
-    .select('*').eq('date',dateStr).eq('phase',cPhase);
-  // ponytail: build full object before single assignment — same pattern as loadCheckCache.
-  // loggedSets={} fires the store immediately (clearing all chips via patchWorkoutSets),
-  // then per-key mutations bypass the store setter, so chips never get restored.
+  const rows = await localdb.getSetsForDate(dateStr);
+  // ponytail: build full object before single assignment to avoid partial-render races.
   const newSets = {};
-  if(data) data.forEach(row=>{
+  rows.forEach(row => {
+    if (row.phase !== cPhase) return;
     const key = `${row.exercise_name}|${row.set_number}|${row.is_mm_set?1:0}`;
     newSets[key] = {weight:row.weight_kg, reps:row.reps, completed:row.completed, rpe:row.rpe??null, id:row.id};
   });
@@ -139,19 +104,12 @@ async function loadSetsForDate(dateStr, silent=false){
 
 async function loadCheckCache(dateStr){
   dateStr = dateStr || selectedDateStr;
-  const [checkRes, warmupRes] = await Promise.all([
-    db.from('checklist_logs').select('*').eq('date',dateStr),
-    db.from('warmup_logs').select('*').eq('date',dateStr),
+  const [checkRows, warmupRows] = await Promise.all([
+    localdb.getChecklistForDate(dateStr),
+    localdb.getWarmupForDate(dateStr),
   ]);
-  // Build the full cache locally before a single store assignment.
-  // Previously, checkCache = {} fired a store notification immediately,
-  // triggering renderWorkout() with an empty cache (blank LISS inputs) and
-  // setting _workoutRenderKey. Subsequent per-key mutations (checkCache[k]=v)
-  // bypass the store, so the final .then(renderWorkout) hit the patch path
-  // which does not update cardio input values. One assignment = one render.
   const newCache = {};
-  if(checkRes.data) checkRes.data.forEach(r=>{
-    // Cardio logs store JSON in notes — restore as object with values
+  checkRows.forEach(r => {
     if(r.item_type==='cardio' && r.notes){
       try { newCache[r.item_key] = {...JSON.parse(r.notes), saved:true}; }
       catch(e){ newCache[r.item_key] = r.completed; }
@@ -159,14 +117,14 @@ async function loadCheckCache(dateStr){
       newCache[r.item_key] = r.completed;
     }
   });
-  if(warmupRes.data) warmupRes.data.forEach(r=>{ newCache[r.item_key] = r.completed; });
+  warmupRows.forEach(r => { newCache[r.item_key] = r.completed; });
   checkCache = newCache;
 }
 
 async function loadHydration(dateStr){
   dateStr = dateStr || selectedDateStr;
-  const {data} = await db.from('hydration_logs').select('*').eq('date',dateStr).limit(1);
-  hydrationGlasses = data && data.length>0 ? data[0].glasses : 0;
+  const row = await localdb.getHydrationForDate(dateStr);
+  hydrationGlasses = row ? row.glasses : 0;
 }
 
 let _sessionPromise = null;
@@ -179,11 +137,10 @@ async function ensureSession(){
     const w = exData.W?.[cPhase]?.[dk]?.[cSession];   // safe — phase/day may not be loaded yet
     const isTravel = getTravelMode(selectedDateStr);
     const sessionTitle = isTravel ? 'TRAVEL · ' + (w?.title || 'Travel Day') : (w?.title || 'Workout');
-    // Try to get existing session first
-    const {data:existing} = await db.from('workout_sessions')
-      .select('id').eq('date', selectedDateStr).eq('day_of_week', dk).limit(1).single();
-    if(existing?.id){
-      sessionId = existing.id;
+    // Try LocalDB first (instant, offline-safe)
+    const cached = await localdb.getSession(selectedDateStr, dk).catch(() => null);
+    if(cached?.id){
+      sessionId = cached.id;
       // Update title + travel flag if now in travel mode (fire-and-forget)
       if(isTravel){
         db.from('workout_sessions').update({ workout_title: sessionTitle, is_travel: true })
@@ -205,7 +162,10 @@ async function ensureSession(){
       // Column likely doesn't exist yet — retry without is_travel
       result = await db.from('workout_sessions').insert(insertBase).select().single();
     }
-    if(result.data) sessionId = result.data.id;
+    if(result.data) {
+      sessionId = result.data.id;
+      localdb.put('workout_sessions', result.data).catch(() => {});
+    }
     return sessionId;
   })();
   try { return await _sessionPromise; } finally { _sessionPromise = null; }
@@ -218,12 +178,17 @@ async function ensureSession(){
 function showScreen(id,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.botnav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('screen-'+id).classList.add('active');
-  btn.classList.add('active');
-  if(id==='progress') renderProgress();  // has internal 60s cache
+  document.querySelector('.topnav-gear')?.classList.remove('active');
+  document.getElementById('screen-'+id)?.classList.add('active');
+  if(id==='settings'){
+    document.querySelector('.topnav-gear')?.classList.add('active');
+  } else if(btn){
+    btn.classList.add('active');
+  }
+  if(id==='progress') renderProgress();
   if(id==='diet' && !_screenRendered.diet){ renderDiet(); _screenRendered.diet=true; }
   if(id==='mob' && !_screenRendered.mob){ renderMobility(); _screenRendered.mob=true; }
-  if(id==='settings') renderSettings(); // always re-render — reflects latest state
+  if(id==='settings') renderSettings();
 }
 
 // ============================================================

@@ -9,7 +9,8 @@ import { prog, DAYS, MONTH_NAMES, localDateStr, getTodayDateStr, parseLocalDate,
          getTodayDowIndex, getProgrammeState, getThisWeekProgress, getLastWeekStatus,
          isMeasurementDue, daysSinceMeasurement,
          viewingWeekOffset, setViewingWeekOffset, invalidateWeekMemo } from './programme.js';
-import { queueOfflineSave, withRetry, dedupedUpsert, setSyncStatus, flushOfflineQueue } from './sync.js';
+import { queueOfflineSave, withRetry, dedupedUpsert, setSyncStatus, flushOfflineQueue, localWrite } from './sync.js';
+import * as localdb from './localdb.js';
 import { exData, getTravelMode, setTravelMode, getTravelDayType } from './data.js';
 import { showToast, haptic, renderSkeletonWorkout } from './ui.js';
 import { startRestTimer, parseRestSecs, _stopExTimer, parseExTargetSecs, getExUnit,
@@ -96,25 +97,11 @@ async function toggleWarmup(itemKey, label, el){
     }
   });
   setSyncStatus('syncing');
-  try {
-    await withRetry(() =>
-      db.from('warmup_logs')
-        .upsert(validated(Schema.warmup_log, {
-          date: selectedDateStr, phase: cPhase||1,
-          item_key: itemKey, item_label: label, completed: newVal
-        }), {onConflict:'date,item_key'})
-        .then(r => { if(r.error) throw r.error; })
-    );
-    setSyncStatus('synced');
-    renderWeekStrip();
-  } catch(e){
-    setSyncStatus('error');
-    queueOfflineSave({
-      table: 'warmup_logs', onConflict: 'date,item_key',
-      conflictKey: `${selectedDateStr}|${itemKey}`,
-      data: { date: selectedDateStr, phase: cPhase||1, item_key: itemKey, item_label: label, completed: newVal },
-    });
-  }
+  await localWrite('warmup_logs',
+    validated(Schema.warmup_log, { date: selectedDateStr, phase: cPhase||1, item_key: itemKey, item_label: label, completed: newVal }),
+    `${selectedDateStr}|${itemKey}`, 'date,item_key'
+  );
+  renderWeekStrip();
 }
 
 // ============================================================
@@ -128,24 +115,10 @@ async function toggleCheck(itemKey, itemType, el){
   if(cb) cb.textContent = newVal ? '✓' : '';
   haptic(newVal ? [6] : [4]);
   setSyncStatus('syncing');
-  try {
-    await withRetry(() =>
-      db.from('checklist_logs')
-        .upsert(validated(Schema.checklist_log, {
-          date: selectedDateStr, item_type: itemType,
-          item_key: itemKey, completed: newVal
-        }), {onConflict:'date,item_key'})
-        .then(r => { if(r.error) throw r.error; })
-    );
-    setSyncStatus('synced');
-  } catch(e){
-    setSyncStatus('error');
-    queueOfflineSave({
-      table: 'checklist_logs', onConflict: 'date,item_key',
-      conflictKey: `${selectedDateStr}|${itemKey}`,
-      data: { date: selectedDateStr, item_type: itemType, item_key: itemKey, completed: newVal },
-    });
-  }
+  await localWrite('checklist_logs',
+    validated(Schema.checklist_log, { date: selectedDateStr, item_type: itemType, item_key: itemKey, completed: newVal }),
+    `${selectedDateStr}|${itemKey}`, 'date,item_key'
+  );
 }
 
 async function toggleCreatine(el){
@@ -161,23 +134,10 @@ async function toggleGlass(num){
   // Re-render hydration row
   renderHydrationRow();
   setSyncStatus('syncing');
-  try {
-    await withRetry(() =>
-      db.from('hydration_logs')
-        .upsert(validated(Schema.hydration_log, {
-          date: selectedDateStr, glasses: newVal
-        }), {onConflict:'date'})
-        .then(r => { if(r.error) throw r.error; })
-    );
-    setSyncStatus('synced');
-  } catch(e){
-    setSyncStatus('error');
-    queueOfflineSave({
-      table: 'hydration_logs', onConflict: 'date',
-      conflictKey: `${selectedDateStr}|hydration`,
-      data: { date: selectedDateStr, glasses: newVal },
-    });
-  }
+  await localWrite('hydration_logs',
+    validated(Schema.hydration_log, { date: selectedDateStr, glasses: newVal }),
+    `${selectedDateStr}|hydration`, 'date'
+  );
 }
 
 function renderHydrationRow(){
@@ -292,7 +252,7 @@ function closeModal(){
   pendingSet = null;
 }
 
-async function saveSet(){
+async function saveSet(andNext=false){
   if(!pendingSet) return;
   // Timed exercises save via logTimedSetNow — never via the normal save button
   const dk = DAYS[cDay];
@@ -323,15 +283,15 @@ async function saveSet(){
     haptic([10,30,10,30,10]);
     return;
   }
-  await commitSet(weight, reps, true);
+  await commitSet(weight, reps, true, andNext);
 }
 
 async function skipSet(){
   if(!pendingSet) return;
-  await commitSet(0, 0, true);
+  await commitSet(0, 0, true, false);
 }
 
-async function commitSet(weight, reps, completed){
+async function commitSet(weight, reps, completed, andNext=false){
   const {exName, setNum, isMM, chipEl, exIndex} = pendingSet;
   const key = `${exName}|${setNum}|${isMM?1:0}`;
 
@@ -371,6 +331,14 @@ async function commitSet(weight, reps, completed){
   haptic([10, 50, 10]);
   showToast(weight>0 ? `${weight}kg × ${reps} saved ✓` : 'Set logged ✓');
 
+  // Auto-advance: open next incomplete set chip in this exercise
+  if(andNext && rowEl){
+    setTimeout(() => {
+      const nextChip = rowEl.querySelector(`.set-chip:not(.done)`);
+      if(nextChip) nextChip.click();
+    }, 350); // after rest timer starts
+  }
+
   setSyncStatus('syncing');
 
   // Start rest timer immediately (don't wait for DB write)
@@ -387,45 +355,17 @@ async function commitSet(weight, reps, completed){
     completed,
   });
 
-  try {
-    await dedupedUpsert(conflictKey, async () => {
-      // ensureSession may return null if session creation fails — that's OK,
-      // the exercise_log row still saves; session_id is nullable.
-      const sid = await ensureSession().catch(err => {
-        console.warn('[commitSet] ensureSession failed, proceeding without session_id:', err?.message);
-        return null;
-      });
-      await withRetry(() =>
-        db.from('exercise_logs')
-          .upsert({...payload, session_id: sid},
-                  {onConflict:'date,exercise_name,set_number,is_mm_set'})
-          .then(r => { if(r.error) throw r.error; return r; })
-      );
-    });
-    setSyncStatus('synced');
-    // Refresh week activity — debounced for today, immediate for past dates
-    clearTimeout(window._weekRefreshTimer);
-    const isPastDate = selectedDateStr !== todayStr;
-    window._weekRefreshTimer = setTimeout(() => {
-      loadWeekActivity().then(() => {
-        renderWeekStrip();
-        renderPhaseBanner();
-      });
-    }, isPastDate ? 300 : 1500); // faster refresh for past date logging
-  } catch(e){
-    const errMsg = e?.message || e?.code || String(e);
-    console.error('commitSet failed:', errMsg, e?.code, e?.details, e?.hint, e);
-    // ── Queue offline — keep optimistic UI; data will sync within 30s ──
-    queueOfflineSave({
-      table: 'exercise_logs',
-      onConflict: 'date,exercise_name,set_number,is_mm_set',
-      conflictKey: selectedDateStr+'|'+exName+'|'+setNum+'|'+(isMM?1:0),
-      data: {...payload, session_id: sessionId||null}
-    });
-    setSyncStatus('error');
-    if(e?.code === 'PGRST119' || errMsg?.includes('unique or exclusion constraint'))
-      showToast('DB missing unique index — run supabase-setup.sql', 'error');
-  }
+  // Write to LocalDB first (instant), Supabase in background
+  const sid = await ensureSession().catch(() => null);
+  await localWrite('exercise_logs',
+    {...payload, session_id: sid||null},
+    conflictKey, 'date,exercise_name,set_number,is_mm_set'
+  );
+  // Refresh week activity strip
+  clearTimeout(window._weekRefreshTimer);
+  window._weekRefreshTimer = setTimeout(() => {
+    loadWeekActivity().then(() => { renderWeekStrip(); renderPhaseBanner(); });
+  }, selectedDateStr !== todayStr ? 300 : 1500);
 }
 
 
@@ -433,19 +373,8 @@ async function commitSet(weight, reps, completed){
 async function prefetchPreviousBests(exercises){
   const names = exercises.map(ex=>ex.n);
   if(!names.length) return;
-  const {data} = await db.from('exercise_logs')
-    .select('exercise_name,set_number,weight_kg,reps,date')
-    .in('exercise_name', names)
-    .eq('completed', true)
-    .neq('date', selectedDateStr)
-    .eq('is_mm_set', false)
-    .order('date', {ascending:false})
-    .limit(300);
-  if(!data) return;
-  data.forEach(row=>{
-    const key=`${row.exercise_name}|${row.set_number}|0`;
-    if(!_prevBestCache[key]) _prevBestCache[key]={weight:row.weight_kg,reps:row.reps,date:row.date};
-  });
+  const bests = await localdb.getPreviousBests(names, selectedDateStr);
+  Object.assign(_prevBestCache, bests);
 }
 
 function getPreviousBest(exName, setNum, isMM){
@@ -901,6 +830,9 @@ function renderWorkout(){
   h+=renderCreatineBannerHTML();
   h+=renderHydrationHTML();
   c.innerHTML=h;
+  // Auto-expand the first incomplete exercise
+  const firstIncomplete = c.querySelector('.ex-row:not(.ex-done)');
+  if(firstIncomplete) firstIncomplete.classList.add('open');
   Perf.end('renderWorkout');
 }
 
@@ -952,28 +884,12 @@ async function saveCardioLog(logKey, btnEl){
   btnEl.textContent = '✓ LOGGED';
   btnEl.classList.add('saved');
   setSyncStatus('syncing');
-  try {
-    await withRetry(() =>
-      db.from('checklist_logs').upsert({
-        date: selectedDateStr,
-        item_type: 'cardio',
-        item_key: logKey,
-        completed: true,
-        notes: JSON.stringify({incline, speed, mins})
-      }, {onConflict:'date,item_key'})
-        .then(r => { if(r.error) throw r.error; })
-    );
-    setSyncStatus('synced');
-    showToast(`${mins} min logged ✓`);
-    loadWeekActivity().then(() => renderWeekStrip());
-  } catch(e){
-    setSyncStatus('error');
-    queueOfflineSave({
-      table: 'checklist_logs', onConflict: 'date,item_key',
-      conflictKey: `${selectedDateStr}|${logKey}`,
-      data: { date: selectedDateStr, item_type: 'cardio', item_key: logKey, completed: true, notes: JSON.stringify({incline, speed, mins}) },
-    });
-  }
+  await localWrite('checklist_logs',
+    { date: selectedDateStr, item_type: 'cardio', item_key: logKey, completed: true, notes: JSON.stringify({incline, speed, mins}) },
+    `${selectedDateStr}|${logKey}`, 'date,item_key'
+  );
+  showToast(`${mins} min logged ✓`);
+  loadWeekActivity().then(() => renderWeekStrip());
 }
 
 function renderCardioLogHTML(logKey, title, targetMins){

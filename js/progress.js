@@ -6,7 +6,8 @@ import { db, TABLES, MEASURE_SITES, MEAS_GROUPS, MEASURE_SITES_MAP } from './con
 import { store } from './store.js';
 import { prog, DAYS, localDateStr, parseLocalDate, formatDate,
          isMeasurementDue, daysSinceMeasurement, getProgrammeState } from './programme.js';
-import { setSyncStatus, withRetry } from './sync.js';
+import { setSyncStatus, withRetry, localWrite } from './sync.js';
+import * as localdb from './localdb.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
 
 // ── Module-level state ──
@@ -78,16 +79,16 @@ async function renderScoreTab(){
   _progressLastFetch = now;
   if(tabEl){ tabEl.dataset.tab='score'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading...</p></div>`; }
   try {
-    const [metricsRes, inbodyRes, exLogsRes, healthRes] = await Promise.all([
-      db.from('body_metrics').select('*').order('date',{ascending:true}),
-      db.from('inbody_logs').select('*').order('date',{ascending:true}),
-      db.from('exercise_logs').select('date').eq('completed',true),
-      db.from('apple_health_logs').select('*').order('date',{ascending:true}),
+    const [metrics, inbodyLogs, exLogsRaw, healthLogs] = await Promise.all([
+      localdb.getAll('body_metrics'),
+      localdb.getAll('inbody_logs'),
+      localdb.getAll('exercise_logs'),
+      localdb.getAll('apple_health_logs'),
     ]);
-    const metrics    = metricsRes.data || [];
-    const inbodyLogs = inbodyRes.data  || [];
-    const exLogs     = exLogsRes.data  || [];
-    const healthLogs = healthRes.data  || [];
+    metrics.sort((a,b)=>a.date.localeCompare(b.date));
+    inbodyLogs.sort((a,b)=>a.date.localeCompare(b.date));
+    healthLogs.sort((a,b)=>a.date.localeCompare(b.date));
+    const exLogs = exLogsRaw.filter(r=>r.completed);
     _metricsCache   = metrics;
     _inbodyForBody  = inbodyLogs;
     // _exLogs intentionally NOT cached here — Score only fetches 'date', Trends needs full rows
@@ -235,16 +236,14 @@ async function renderTrendsTab(){
   try {
     // Reuse cache from score tab if available
     if(!_metricsCache){
-      const r = await db.from('body_metrics').select('*').order('date',{ascending:true});
-      _metricsCache = r.data || [];
+      _metricsCache = (await localdb.getAll('body_metrics')).sort((a,b)=>a.date.localeCompare(b.date));
     }
     if(!_exLogs){
-      const r = await db.from('exercise_logs').select('date,exercise_name,weight_kg,reps,is_mm_set').eq('completed',true).order('date',{ascending:true});
-      _exLogs = r.data || [];
+      const all = await localdb.getAll('exercise_logs');
+      _exLogs = all.filter(r=>r.completed).sort((a,b)=>a.date.localeCompare(b.date));
     }
     if(!_inbodyForBody){
-      const r = await db.from('inbody_logs').select('*').order('date',{ascending:true});
-      _inbodyForBody = r.data || [];
+      _inbodyForBody = (await localdb.getAll('inbody_logs')).sort((a,b)=>a.date.localeCompare(b.date));
     }
     const metrics    = _metricsCache;
     const exLogs     = _exLogs;
@@ -520,12 +519,10 @@ async function renderBodyTab(){
   if(tabEl){ tabEl.dataset.tab='body'; tabEl.innerHTML=`<div class="empty-state"><div class="es-icon">⏳</div><p>Loading measurements...</p></div>`; }
   try {
     // Fetch measurements; reuse cached inbody data from weight tab if available
-    const measRes = await db.from(TABLES.MEASUREMENTS).select('*').order('date',{ascending:true});
+    _bodyData = (await localdb.getAll('body_measurements')).sort((a,b)=>a.date.localeCompare(b.date));
     if(_inbodyForBody === null) {
-      const ibRes = await db.from(TABLES.INBODY).select('*').order('date',{ascending:true});
-      _inbodyForBody = ibRes.data || [];
+      _inbodyForBody = (await localdb.getAll('inbody_logs')).sort((a,b)=>a.date.localeCompare(b.date));
     }
-    _bodyData = measRes.data || [];
     const latest  = _bodyData.length > 0 ? _bodyData[_bodyData.length-1] : null;
     const prev    = _bodyData.length > 1 ? _bodyData[_bodyData.length-2] : null;
     const first   = _bodyData.length > 0 ? _bodyData[0] : null;
@@ -975,21 +972,12 @@ async function saveMeasurement(){
   const notes=document.getElementById('meas-notes')?.value;
   if(notes) payload.notes=notes;
   if(!hasAny){ showToast('Enter at least one measurement','error'); return; }
-  setSyncStatus('syncing');
-  try {
-    const {error}=await db.from(TABLES.MEASUREMENTS).upsert(payload,{onConflict:'date'});
-    if(error) throw error;
-    setSyncStatus('synced');
-    localStorage.setItem('lastMeasurementDate',date);
-    closeMeasModal();
-    showToast('Measurements saved ✓');
-    _bodyLastFetch=0;
-    if(_progressTab==='body') renderBodyTab();
-  } catch(e){
-    setSyncStatus('error');
-    showToast('Save failed','error');
-    console.error(e);
-  }
+  await localWrite('body_measurements', payload, `${date}|meas`, 'date');
+  localStorage.setItem('lastMeasurementDate',date);
+  closeMeasModal();
+  showToast('Measurements saved ✓');
+  _bodyLastFetch=0;
+  if(_progressTab==='body') renderBodyTab();
 }
 
 // ── Height modal ──
@@ -1046,14 +1034,10 @@ async function saveWeighIn(){
   const w = parseFloat(document.getElementById('weigh-input').value);
   const notes = document.getElementById('weigh-notes').value;
   if(!w||w<40||w>200){ showToast('Enter a valid weight','error'); return; }
-  setSyncStatus('syncing');
-  try {
-    await db.from('body_metrics').upsert({date:todayStr,weight_kg:w,phase:cPhase,notes:notes||null},{onConflict:'date'});
-    setSyncStatus('synced');
-    closeWeighModal();
-    showToast(`${w}kg logged ✓`);
-    _progressLastFetch = 0; // invalidate cache — force re-fetch next time Progress tab opens
-  } catch(e){ setSyncStatus('error'); showToast('Save failed','error'); }
+  await localWrite('body_metrics',{date:todayStr,weight_kg:w,phase:cPhase,notes:notes||null},todayStr,'date');
+  closeWeighModal();
+  showToast(`${w}kg logged ✓`);
+  _progressLastFetch = 0;
 }
 
 
@@ -1236,11 +1220,7 @@ async function toggleMob(k, el){
   if(bar) bar.style.width=pct+'%';
   const counter = document.querySelector('#mob-content [style*="font-size:16px"]');
   if(counter){ counter.textContent=`${done}/${total}`; counter.style.color=pct===100?'var(--p3)':'var(--muted)'; }
-  setSyncStatus('syncing');
-  try {
-    await db.from('checklist_logs').upsert({date:todayStr,item_type:'mobility',item_key:k,completed:newVal},{onConflict:'date,item_key'});
-    setSyncStatus('synced');
-  } catch(e){ setSyncStatus('error'); }
+  await localWrite('checklist_logs',{date:todayStr,item_type:'mobility',item_key:k,completed:newVal},`${todayStr}|${k}`,'date,item_key');
 }
 
 // ============================================================
@@ -1498,22 +1478,14 @@ async function saveInBody() {
     lean_left_leg: get('ib-ll'),
   };
   if(!record.weight_kg) { showToast('Enter at least weight', 'error'); return; }
-  setSyncStatus('syncing');
-  try {
-    await db.from('inbody_logs').upsert(record, {onConflict:'date'});
-    // Also update body_metrics weight
-    await db.from('body_metrics').upsert({date:todayStr, weight_kg:record.weight_kg, phase:cPhase}, {onConflict:'date'});
-    // Store last InBody date for notification scheduling
-    localStorage.setItem('lastInBodyDate', todayStr);
-    _progressLastFetch = 0; // invalidate progress cache
-    setSyncStatus('synced');
-    showToast('InBody saved ✓');
-    closeInBodyModal();
-  } catch(e) {
-    setSyncStatus('error');
-    showToast('Save failed', 'error');
-    console.error(e);
-  }
+  await Promise.all([
+    localWrite('inbody_logs', record, todayStr, 'date'),
+    localWrite('body_metrics', {date:todayStr, weight_kg:record.weight_kg, phase:cPhase}, todayStr, 'date'),
+  ]);
+  localStorage.setItem('lastInBodyDate', todayStr);
+  _progressLastFetch = 0;
+  showToast('InBody saved ✓');
+  closeInBodyModal();
 }
 
 // ============================================================
