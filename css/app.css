@@ -567,7 +567,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .derived-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .derived-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
 /* Log CTA */
-.meas-empty-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:12px 16px 0;padding:20px 16px}
+.meas-empty-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:12px 16px;padding:20px 16px}
 .meas-empty-top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .meas-empty-icon{font-size:28px;flex-shrink:0;line-height:1}
 .meas-empty-title{font-size:14px;font-weight:700;color:var(--text)}
