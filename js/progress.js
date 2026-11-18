@@ -1409,8 +1409,8 @@ async function generateProgressSummary() {
   if (btn) { btn.textContent = 'Thinking…'; btn.disabled = true; }
   if (out) out.textContent = '';
   try {
-    const metrics  = await localdb.getAll('body_metrics');
-    const exLogs   = await localdb.getAll('exercise_logs');
+    const metrics  = _metricsCache || [];
+    const exLogs   = _exLogs || [];
     const cutoff   = new Date(); cutoff.setDate(cutoff.getDate() - 28);
     const cutStr   = localDateStr(cutoff);
     const recentW  = metrics.filter(m => m.date >= cutStr).map(m => `${m.date}:${m.weight_kg}kg`);
