@@ -86,41 +86,47 @@ async function _decrypt(encrypted, ivB64, dob) {
 // ── Supabase sync helpers ──
 async function _syncProfileToSupabase() {
   const p = getProfile();
-  await db.from(TABLES.PROFILE).upsert({
-    id:1, name:p.name, dob:p.dob, sex:p.sex,
-    height_cm:p.height||null, target_weight_kg:p.target||null,
-    updated_at:new Date().toISOString(),
-  }).catch(()=>{});
+  try {
+    await db.from(TABLES.PROFILE).upsert({
+      id:1, name:p.name, dob:p.dob, sex:p.sex,
+      height_cm:p.height||null, target_weight_kg:p.target||null,
+      updated_at:new Date().toISOString(),
+    });
+  } catch {}
 }
 
 async function _syncSecretToSupabase(plainKey) {
   const dob = getProfile().dob;
   if (!dob) return;
   const { encrypted, iv } = await _encrypt(plainKey, dob);
-  await db.from(TABLES.SECRETS).upsert({ id:1, encrypted_groq_key:encrypted, iv, updated_at:new Date().toISOString() }).catch(()=>{});
+  try {
+    await db.from(TABLES.SECRETS).upsert({ id:1, encrypted_groq_key:encrypted, iv, updated_at:new Date().toISOString() });
+  } catch {}
 }
 
 export async function loadProfileAndSecretsFromSupabase() {
-  if (!localStorage.getItem('userName')) {
-    const { data } = await db.from(TABLES.PROFILE).select('*').eq('id',1).maybeSingle().catch(()=>({data:null}));
-    if (data) {
-      if (data.name)             localStorage.setItem('userName',       data.name);
-      if (data.dob)              localStorage.setItem('userDOB',        data.dob);
-      if (data.sex)              localStorage.setItem('userSex',        data.sex);
-      if (data.height_cm)        localStorage.setItem('userHeightCm',   String(data.height_cm));
-      if (data.target_weight_kg) localStorage.setItem('targetWeightKg', String(data.target_weight_kg));
-    }
-  }
-  if (!localStorage.getItem('groq_api_key')) {
-    const dob = getProfile().dob;
-    if (dob) {
-      const { data } = await db.from(TABLES.SECRETS).select('encrypted_groq_key,iv').eq('id',1).maybeSingle().catch(()=>({data:null}));
-      if (data?.encrypted_groq_key) {
-        const val = await _decrypt(data.encrypted_groq_key, data.iv, dob);
-        if (val) setGroqKey(val);
+  try {
+    if (!localStorage.getItem('userName')) {
+      const { data } = await db.from(TABLES.PROFILE).select('*').eq('id',1).maybeSingle();
+      if (data) {
+        if (data.name)             localStorage.setItem('userName',       data.name);
+        if (data.dob)              localStorage.setItem('userDOB',        data.dob);
+        if (data.sex)              localStorage.setItem('userSex',        data.sex);
+        if (data.height_cm)        localStorage.setItem('userHeightCm',   String(data.height_cm));
+        if (data.target_weight_kg) localStorage.setItem('targetWeightKg', String(data.target_weight_kg));
       }
     }
-  }
+    if (!localStorage.getItem('groq_api_key')) {
+      const dob = getProfile().dob;
+      if (dob) {
+        const { data } = await db.from(TABLES.SECRETS).select('encrypted_groq_key,iv').eq('id',1).maybeSingle();
+        if (data?.encrypted_groq_key) {
+          const val = await _decrypt(data.encrypted_groq_key, data.iv, dob);
+          if (val) setGroqKey(val);
+        }
+      }
+    }
+  } catch {}
 }
 
 // ── Date display helper ──
