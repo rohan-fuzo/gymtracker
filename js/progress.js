@@ -590,36 +590,51 @@ async function renderBodyTab(){
     const u = getMeasureUnit();
     let h = '';
 
-    // Measurement due banner
     const measDue = isMeasurementDue();
     const dSince  = daysSinceMeasurement();
-    if(measDue){
-      h += `<div class="notif-banner" style="border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06);margin-bottom:0">
-        <div class="notif-banner-icon">📏</div>
-        <div class="notif-banner-text">
-          <div class="notif-banner-title">MEASUREMENTS DUE${dSince && dSince < 999?` — ${dSince} DAYS AGO`:' — FIRST LOG'}</div>
-          <div class="notif-banner-sub">Bi-weekly tape measure · same time of day</div>
-        </div>
-        <button class="notif-banner-btn" style="background:var(--p3);color:#000" onclick="openMeasModal()">LOG</button>
-      </div>`;
-    }
 
-    // Log CTA + unit toggle bar
-    h += `<div class="meas-log-cta">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--text)">${latest?`LAST: ${latest.date}`:'NO MEASUREMENTS YET'}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${_bodyData.length} entr${_bodyData.length===1?'y':'ies'} logged</div>
+    if(!latest){
+      // Empty state: single clean card, no dual CTAs
+      h += `<div class="meas-empty-card">
+        <div class="meas-empty-top">
+          <span class="meas-empty-icon">📏</span>
+          <div>
+            <div class="meas-empty-title">Body Measurements</div>
+            <div class="meas-empty-sub">Bi-weekly tape · track recomp beyond the scale</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px">
+        <div class="meas-empty-row">
           <div class="unit-toggle">
             <button class="unit-btn${u==='cm'?' active':''}" onclick="setMeasUnit('cm')">CM</button>
             <button class="unit-btn${u==='in'?' active':''}" onclick="setMeasUnit('in')">IN</button>
           </div>
-          <button class="meas-log-btn" onclick="openMeasModal()">+ LOG</button>
+          <button class="meas-log-btn" onclick="openMeasModal()">LOG FIRST ENTRY</button>
         </div>
-      </div>
-    </div>`;
+      </div>`;
+    } else {
+      // Has data: slim due nudge (if applicable) + compact header
+      if(measDue){
+        h += `<div class="meas-due-bar">
+          <span>📏 Due${dSince < 999 ? ` · ${dSince} days since last` : ''}</span>
+          <button class="meas-due-btn" onclick="openMeasModal()">LOG NOW</button>
+        </div>`;
+      }
+      h += `<div class="meas-log-cta">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--text)">LAST: ${latest.date}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${_bodyData.length} entr${_bodyData.length===1?'y':'ies'} logged</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="unit-toggle">
+              <button class="unit-btn${u==='cm'?' active':''}" onclick="setMeasUnit('cm')">CM</button>
+              <button class="unit-btn${u==='in'?' active':''}" onclick="setMeasUnit('in')">IN</button>
+            </div>
+            <button class="meas-log-btn" onclick="openMeasModal()">+ LOG</button>
+          </div>
+        </div>
+      </div>`;
+    }
 
     // Derived metrics (waist:hip, waist:height)
     if(latest){
