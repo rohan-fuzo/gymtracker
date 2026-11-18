@@ -175,14 +175,8 @@ function toggleTravelMode() {
 }
 
 // Render the travel toggle banner
-function renderTravelToggle(isActive, travelType) {
-  const typeLabels = {
-    push:'Push', pull:'Pull', legs:'Legs', fullbody:'Full Body', liss:'Walk / Jog'
-  };
-  const label = isActive ? (typeLabels[travelType] || 'Bodyweight') : 'Travel mode';
-  return `<div style="margin:0 16px 12px;display:flex">
-    <button class="travel-chip${isActive?' active':''}" onclick="toggleTravelMode()">✈️ ${label}</button>
-  </div>`;
+function renderTravelChip(isActive) {
+  return `<button class="travel-chip${isActive?' active':''}" onclick="toggleTravelMode()">✈️${isActive?' On':''}</button>`;
 }
 
 
@@ -710,17 +704,17 @@ function renderWorkout(){
   const isPowerDay = travelW ? false : !!w.isPower; // travel days never render as power
 
   let h = sessionToggleH;
-  h += renderTravelToggle(isTravelDay, travelType);
 
   h+=`<div class="workout-card">`;
   if(isPowerDay){
     h+=`<div class="power-header"><div class="power-title">⚡ ${w.title}</div><div class="power-sub">${w.sub}</div>
     <div class="intensity-bar"><div class="intensity-label">INTENSITY</div>
     <div class="intensity-dots">${[1,2,3,4,5].map(i=>`<div class="dot ${i<=4?'lit':'half'}"></div>`).join('')}</div>
-    <div style="font-size:11px;color:var(--gold);margin-left:4px">85% 1RM · 5×3</div></div></div>`;
+    <div style="font-size:11px;color:var(--gold);margin-left:4px">85% 1RM · 5×3</div></div>
+    <div style="margin-top:8px">${renderTravelChip(isTravelDay)}</div></div>`;
   } else {
     h+=`<div class="wc-header"><div><div class="wc-day">${displayTitle}</div><div style="margin-top:4px">${tagH}</div></div>
-    <div class="wc-meta"><div class="wc-duration">${displayDur}'</div><div class="wc-kcal">${displayKcal} kcal</div></div></div>`;
+    <div class="wc-meta"><div class="wc-duration">${displayDur}'</div><div class="wc-kcal">${displayKcal} kcal</div><div style="margin-top:6px">${renderTravelChip(isTravelDay)}</div></div></div>`;
   }
   if(w.wu){
     h+=`<div class="sec-label" style="border-top:none;padding-top:8px">WARMUP</div>`;
@@ -960,11 +954,9 @@ function renderLiss(w,c,isTravelDay=false){
     : '';
   // Load saved cardio data into checkCache if stored as JSON in notes
   let h='';
-  // Travel toggle (LISS days too)
-  h += renderTravelToggle(isTravelDay, 'liss');
   h+=`<div class="workout-card"><div class="wc-header">
-    <div><div class="wc-day">${w.title}${isTravelDay?' <span style="font-size:13px">✈️</span>':''}</div><div style="margin-top:4px"><span class="tag tag-liss">LISS</span></div></div>
-    <div class="wc-meta"><div class="wc-duration">${w.dur}'</div></div></div>
+    <div><div class="wc-day">${w.title}</div><div style="margin-top:4px"><span class="tag tag-liss">LISS</span></div></div>
+    <div class="wc-meta"><div class="wc-duration">${w.dur}'</div><div style="margin-top:6px">${renderTravelChip(isTravelDay)}</div></div></div>
     ${travelNote}
     <div class="liss-main">${isTravelDay ? '✈️ Travel LISS — choose any of:\n• 30–45 min brisk walk (outdoors or hotel corridor laps)\n• Jog at easy pace — talk test: can still hold a conversation\n• Stair climbing — hotel stairs, any multi-floor building\n• Skipping rope if you have one\n\nLog your time below.' : w.liss.main}</div>
     <div class="liss-log-wrap">${renderCardioLogHTML(lissKey, isTravelDay ? 'Walk / Jog / Stairs' : 'Incline Treadmill', targetMins)}</div>
