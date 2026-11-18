@@ -379,10 +379,17 @@ async function renderTrendsTab(){
           <div><div class="pr-name">${n}</div><div class="pr-date">${prs[n].date}</div></div>
           <div class="pr-val">${prs[n].weight}kg × ${prs[n].reps}</div>
         </div>`).join('');
+      const prSection = (list, label, id) => {
+        if(!list.length) return '';
+        const vis = list.slice(0,5), hid = list.slice(5);
+        return `<div class="pr-group-label">${label}</div>${prRows(vis)}`
+          + (hid.length ? `<div id="${id}" style="display:none">${prRows(hid)}</div>`
+            + `<button class="view-all-btn" onclick="document.getElementById('${id}').style.display='block';this.remove()">VIEW ALL ${list.length} →</button>` : '');
+      };
       h += `<div class="pw-card">
         <div class="pw-card-head"><div class="pw-card-title">PERSONAL RECORDS</div></div>
-        ${compound.length  ? `<div class="pr-group-label">COMPOUNDS</div>${prRows(compound)}`  : ''}
-        ${isolation.length ? `<div class="pr-group-label">ISOLATION</div>${prRows(isolation)}` : ''}
+        ${prSection(compound,'COMPOUNDS','pr-cmp-more')}
+        ${prSection(isolation,'ISOLATION','pr-iso-more')}
       </div>`;
 
       // Strength progress chart
@@ -731,35 +738,43 @@ async function renderBodyTab(){
     if(_bodyData.length > 0){
       const ms = buildMonthlySummary(_bodyData);
       if(ms.length){
+        const monthRow = m => `<div class="month-summary-row">
+          <div class="month-summary-label">${m.label}</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">${m.text}</div>
+        </div>`;
+        const msVis = ms.slice(0,4), msHid = ms.slice(4);
         h += `<div class="chart-card" style="margin-bottom:12px">
           <div class="chart-title">MONTHLY SUMMARY</div>
-          ${ms.map(m=>`<div class="month-summary-row">
-            <div class="month-summary-label">${m.label}</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6">${m.text}</div>
-          </div>`).join('')}
+          ${msVis.map(monthRow).join('')}
+          ${msHid.length ? `<div id="month-overflow" style="display:none">${msHid.map(monthRow).join('')}</div>`
+            + `<button class="view-all-btn" onclick="document.getElementById('month-overflow').style.display='block';this.remove()">VIEW ALL ${ms.length} MONTHS →</button>` : ''}
         </div>`;
       }
     }
 
-    // History list (most recent 10)
+    // History list (most recent 5, expand to 10)
     if(_bodyData.length > 0){
-      const recent = [..._bodyData].reverse().slice(0,10);
+      const allRecent = [..._bodyData].reverse().slice(0,10);
+      const histRow = entry => {
+        const logged = MEASURE_SITES.filter(s=>entry[s.key]!=null);
+        return `<div class="meas-history-row" onclick="openMeasModal('${entry.date}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${entry.date}</div>
+            <div style="font-size:11px;color:var(--cyan)">${logged.length} sites</div>
+          </div>
+          <div class="meas-history-pills">
+            ${logged.slice(0,6).map(s=>`<span class="meas-history-pill">${s.label}: ${fmtM(entry[s.key])}</span>`).join('')}
+            ${logged.length>6?`<span class="meas-history-pill" style="color:var(--muted)">+${logged.length-6} more</span>`:''}
+          </div>
+          ${entry.notes?`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${entry.notes}</div>`:''}
+        </div>`;
+      };
+      const histVis = allRecent.slice(0,5), histHid = allRecent.slice(5);
       h += `<div class="chart-card" style="margin-bottom:12px">
         <div class="chart-title">HISTORY</div>
-        ${recent.map(entry=>{
-          const logged = MEASURE_SITES.filter(s=>entry[s.key]!=null);
-          return `<div class="meas-history-row" onclick="openMeasModal('${entry.date}')">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <div style="font-size:13px;font-weight:600;color:var(--text)">${entry.date}</div>
-              <div style="font-size:11px;color:var(--cyan)">${logged.length} sites</div>
-            </div>
-            <div class="meas-history-pills">
-              ${logged.slice(0,6).map(s=>`<span class="meas-history-pill">${s.label}: ${fmtM(entry[s.key])}</span>`).join('')}
-              ${logged.length>6?`<span class="meas-history-pill" style="color:var(--muted)">+${logged.length-6} more</span>`:''}
-            </div>
-            ${entry.notes?`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${entry.notes}</div>`:''}
-          </div>`;
-        }).join('')}
+        ${histVis.map(histRow).join('')}
+        ${histHid.length ? `<div id="hist-overflow" style="display:none">${histHid.map(histRow).join('')}</div>`
+          + `<button class="view-all-btn" onclick="document.getElementById('hist-overflow').style.display='block';this.remove()">VIEW ALL ${allRecent.length} →</button>` : ''}
       </div>`;
     }
 
