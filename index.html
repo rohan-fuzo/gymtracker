@@ -51,24 +51,21 @@
 
     <div class="cg-fields">
 
-      <!-- ENERGY: emoji slider -->
+      <!-- ENERGY: emoji circles -->
       <div class="cg-field" data-idx="0">
         <div class="cg-field-label">ENERGY</div>
-        <div class="cg-eslider">
-          <div class="cg-eslider-marks">
-            <span data-pos="1">😴</span>
-            <span data-pos="2">🥱</span>
-            <span data-pos="3">😐</span>
-            <span data-pos="4">😊</span>
-            <span data-pos="5">⚡</span>
-          </div>
-          <input type="range" min="1" max="5" step="1" class="cg-slider-input" id="cg-input-energy" value="1">
+        <div class="cg-ecircles" data-field="energy">
+          <button class="cg-ecircle" data-val="1">😴</button>
+          <button class="cg-ecircle" data-val="2">🥱</button>
+          <button class="cg-ecircle" data-val="3">😐</button>
+          <button class="cg-ecircle" data-val="4">😊</button>
+          <button class="cg-ecircle" data-val="5">⚡</button>
         </div>
       </div>
 
       <!-- SLEEP: emoji cards -->
       <div class="cg-field" data-idx="1">
-        <div class="cg-field-label">SLEEP</div>
+        <div class="cg-field-label">SLEEP <span class="cg-field-hint">last night</span></div>
         <div class="cg-ecards" data-field="sleep">
           <button class="cg-ecard" data-val="poor">😤<span>Poor</span></button>
           <button class="cg-ecard" data-val="moderate">🥱<span>Okay</span></button>
@@ -90,7 +87,7 @@
       <div class="cg-field" data-idx="3">
         <div class="cg-field-label">STRESS</div>
         <div class="cg-ecircles" data-field="stress">
-          <button class="cg-ecircle" data-val="1">😌</button>
+          <button class="cg-ecircle" data-val="1">😴</button>
           <button class="cg-ecircle" data-val="2">🙂</button>
           <button class="cg-ecircle" data-val="3">😐</button>
           <button class="cg-ecircle" data-val="4">😤</button>
@@ -111,7 +108,10 @@
       </div>
 
     </div>
+  </div>
+  <div class="cg-footer">
     <button id="cg-submit" class="cg-submit" disabled>LET'S GO →</button>
+    <button id="cg-skip" class="cg-skip">skip today</button>
   </div>
 </div>
 

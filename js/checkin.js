@@ -7,6 +7,7 @@ import { getTodayDateStr } from './programme.js';
 
 export async function todayCheckinDone() {
   const today = getTodayDateStr();
+  if (localStorage.getItem('checkin_skip_' + today)) return true;
   try {
     const rows = await localdb.getByDate('daily_checkins', today);
     if (rows.length) return true;
@@ -50,29 +51,6 @@ export function initCheckinGate(onDone) {
     submit.classList.toggle('ready', allDone);
   }
 
-  // ── Energy: emoji slider ──
-  const energyInput = gate.querySelector('#cg-input-energy');
-  const energyMarks = gate.querySelectorAll('.cg-eslider-marks span');
-
-  function applyEnergyVal(val, touched) {
-    energyInput.style.setProperty('--fill', ((val - 1) / 4 * 100) + '%');
-    energyMarks.forEach(m => m.classList.toggle('active', parseInt(m.dataset.pos) === val));
-    if (touched) { sel.energy = val; updateDots(); }
-  }
-
-  energyInput.addEventListener('input', () => {
-    applyEnergyVal(parseInt(energyInput.value), true);
-  });
-
-  // Tapping an emoji mark jumps the slider there
-  gate.querySelector('.cg-eslider-marks')?.addEventListener('click', e => {
-    const mark = e.target.closest('[data-pos]');
-    if (!mark) return;
-    const v = parseInt(mark.dataset.pos);
-    energyInput.value = v;
-    applyEnergyVal(v, true);
-  });
-
   // ── Sleep + Mood: emoji cards ──
   gate.querySelectorAll('.cg-ecards').forEach(group => {
     group.addEventListener('click', e => {
@@ -85,7 +63,7 @@ export function initCheckinGate(onDone) {
     });
   });
 
-  // ── Stress + Soreness: emoji circles ──
+  // ── Energy + Stress + Soreness: emoji circles ──
   gate.querySelectorAll('.cg-ecircles').forEach(group => {
     group.addEventListener('click', e => {
       const btn = e.target.closest('.cg-ecircle');
@@ -102,6 +80,12 @@ export function initCheckinGate(onDone) {
     submit.classList.remove('ready');
     submit.textContent = 'Saving...';
     await _save(sel);
+    gate.classList.add('hidden');
+    onDone();
+  });
+
+  document.getElementById('cg-skip')?.addEventListener('click', () => {
+    localStorage.setItem('checkin_skip_' + getTodayDateStr(), '1');
     gate.classList.add('hidden');
     onDone();
   });

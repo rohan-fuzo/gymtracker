@@ -617,9 +617,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .view-all-btn{display:block;width:100%;padding:10px 16px;text-align:center;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--p3);background:none;border:none;border-top:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:'DM Sans',sans-serif}
 
 /* ── DAILY CHECK-IN GATE ── */
-#checkin-gate{position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding-top:max(env(safe-area-inset-top,0px),20px);padding-bottom:max(env(safe-area-inset-bottom,0px),24px)}
+#checkin-gate{position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column;align-items:center;overflow-y:auto;padding-top:max(env(safe-area-inset-top,0px),20px)}
 #checkin-gate.hidden{display:none}
-.cg-inner{width:100%;max-width:420px;padding:20px 24px 32px;display:flex;flex-direction:column}
+.cg-inner{width:100%;max-width:420px;padding:20px 24px 12px;display:flex;flex-direction:column;flex:1}
 
 /* Header */
 .cg-header{margin-bottom:28px}
@@ -631,7 +631,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .cg-dot.filled{background:var(--p1);transform:scale(1.25)}
 
 /* Fields */
-.cg-fields{display:flex;flex-direction:column;gap:22px;margin-bottom:28px}
+.cg-fields{display:flex;flex-direction:column;gap:22px;margin-bottom:16px}
 .cg-field{opacity:0;animation:cg-rise .35s ease both}
 .cg-field[data-idx="0"]{animation-delay:.06s}
 .cg-field[data-idx="1"]{animation-delay:.12s}
@@ -640,16 +640,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .cg-field[data-idx="4"]{animation-delay:.30s}
 @keyframes cg-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .cg-field-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
-
-/* Emoji slider (energy) */
-.cg-eslider{position:relative}
-.cg-eslider-marks{display:flex;justify-content:space-between;margin-bottom:14px}
-.cg-eslider-marks span{font-size:28px;line-height:1;opacity:.2;transition:opacity .2s,transform .2s;cursor:pointer;user-select:none}
-.cg-eslider-marks span.active{opacity:1;transform:scale(1.3)}
-.cg-slider-input{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(to right,var(--p1) 0%,var(--p1) var(--fill,0%),var(--surface3) var(--fill,0%),var(--surface3) 100%);cursor:pointer;outline:none;display:block}
-.cg-slider-input::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--p1);border:3px solid var(--bg);box-shadow:0 0 0 2px var(--p1);cursor:pointer}
-.cg-slider-input::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--p1);border:3px solid var(--bg);cursor:pointer}
-.cg-slider-input::-moz-range-track{background:var(--surface3);height:6px;border-radius:3px}
+.cg-field-hint{font-size:9px;font-weight:500;letter-spacing:.5px;color:var(--surface3);text-transform:lowercase;margin-left:6px}
 
 /* Emoji cards (sleep, mood) */
 .cg-ecards{display:flex;gap:10px}
@@ -658,15 +649,18 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .cg-ecard.sel{background:rgba(184,132,94,.12);border-color:var(--p1);transform:scale(1.04)}
 .cg-ecard.sel span{color:var(--p1)}
 
-/* Emoji circles (stress, soreness) */
+/* Emoji circles (energy, stress, soreness) */
 .cg-ecircles{display:flex;gap:8px;justify-content:space-between}
 .cg-ecircle{width:56px;height:56px;border-radius:50%;background:var(--surface2);border:1.5px solid var(--border);font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s,transform .2s;-webkit-tap-highlight-color:transparent;flex-shrink:0}
 .cg-ecircle.sel{background:rgba(184,132,94,.15);border-color:var(--p1);transform:scale(1.18)}
 
-/* Submit */
+/* Footer — sticky submit + skip */
+.cg-footer{position:sticky;bottom:0;width:100%;max-width:420px;padding:16px 24px max(env(safe-area-inset-bottom,0px),20px);background:linear-gradient(to bottom,transparent 0,var(--bg) 20px);display:flex;flex-direction:column;gap:12px;align-items:center}
 .cg-submit{width:100%;padding:18px;background:var(--p1);border:none;border-radius:14px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;cursor:pointer;transition:opacity .2s,transform .1s;-webkit-tap-highlight-color:transparent}
 .cg-submit:not(:disabled):active{transform:scale(.98)}
 .cg-submit.ready{animation:cg-pulse 1.8s ease infinite}
 @keyframes cg-pulse{0%,100%{box-shadow:0 0 0 0 rgba(184,132,94,.4)}50%{box-shadow:0 0 0 8px rgba(184,132,94,0)}}
 .cg-submit:disabled{background:var(--surface3);color:var(--muted);cursor:default;animation:none}
+.cg-skip{background:none;border:none;color:var(--muted);font-size:12px;letter-spacing:.5px;cursor:pointer;padding:4px 8px;-webkit-tap-highlight-color:transparent;opacity:.6}
+.cg-skip:active{opacity:.3}
 .view-all-btn:active{opacity:.7}
