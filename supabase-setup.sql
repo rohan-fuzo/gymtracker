@@ -270,3 +270,34 @@ create policy "Allow all for anon" on body_measurements
 -- Safe to run on an existing database (idempotent)
 -- ============================================================
 alter table exercise_logs add column if not exists rpe int check (rpe between 6 and 10);
+
+-- ============================================================
+-- PROFILE + USER SECRETS (single-user app: id = 1 always)
+-- Run in Supabase SQL Editor
+-- ============================================================
+
+-- Profile (name, DOB, sex, height, target weight)
+create table if not exists profile (
+  id int primary key default 1 check (id = 1),
+  name text,
+  dob text,
+  sex text,
+  height_cm numeric(5,1),
+  target_weight_kg numeric(5,2),
+  updated_at timestamptz default now()
+);
+alter table profile enable row level security;
+create policy "Allow all for anon" on profile for all using (true) with check (true);
+
+-- Encrypted secrets (Groq API key stored AES-256-GCM encrypted)
+-- encrypted_groq_key and iv are base64-encoded
+-- Encryption key = PBKDF2(master=localStorage.groq_enc_master, salt=DOB)
+-- The DB alone cannot decrypt without the device localStorage master key
+create table if not exists user_secrets (
+  id int primary key default 1 check (id = 1),
+  encrypted_groq_key text,
+  iv text,
+  updated_at timestamptz default now()
+);
+alter table user_secrets enable row level security;
+create policy "Allow all for anon" on user_secrets for all using (true) with check (true);

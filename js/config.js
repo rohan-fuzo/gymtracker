@@ -21,6 +21,8 @@ export const TABLES = Object.freeze({
   HYDRATION:    'hydration_logs',
   INBODY:       'inbody_logs',
   MEASUREMENTS: 'body_measurements',
+  PROFILE:      'profile',
+  SECRETS:      'user_secrets',
 });
 
 export const CONFLICTS = Object.freeze({
