@@ -30,7 +30,8 @@ import { renderProgress, switchProgressTab, renderScoreTab, renderTrendsTab, ren
          toggleMeasAccordion, setMeasUnit, updateMeasChart, updateComparison,
          openHeightModal, closeHeightModal, handleHeightModalClick, saveHeight, skipHeight,
          switchDietPhase, toggleMob, hardRefreshIDB,
-         triggerManualSync, updateSettingsSyncCard } from './progress.js';
+         triggerManualSync, updateSettingsSyncCard,
+         saveGroqKey, generateProgressSummary } from './progress.js';
 import { startExTimer, logTimedSetNow } from './timer.js';
 import { manualSync, withRetry } from './sync.js';
 
@@ -571,6 +572,8 @@ window.renderSettings          = renderSettings;
 window.hardRefreshIDB          = hardRefreshIDB;
 window.triggerManualSync       = triggerManualSync;
 window.updateSettingsSyncCard  = updateSettingsSyncCard;
+window.saveGroqKey             = saveGroqKey;
+window.generateProgressSummary = generateProgressSummary;
 window.openResetModal     = openResetModal;
 window.closeResetModal    = closeResetModal;
 window.confirmReset       = confirmReset;

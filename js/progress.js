@@ -9,6 +9,7 @@ import { prog, DAYS, localDateStr, parseLocalDate, formatDate,
 import { setSyncStatus, withRetry, localWrite, SyncDB, manualSync } from './sync.js';
 import * as localdb from './localdb.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
+import { getGroqKey, setGroqKey, callGroq } from './ai.js';
 
 // ── Module-level state ──
 let _progressTab       = 'trends';
@@ -398,6 +399,11 @@ async function renderTrendsTab(){
       </button>
     </div>`;
 
+    h += `<div class="settings-card" style="margin:0 16px 14px">
+      <div class="settings-card-title">AI Coach Summary</div>
+      <div id="ai-summary-out" style="font-size:13px;line-height:1.6;color:var(--text);padding:0 0 12px;min-height:0;white-space:pre-wrap"></div>
+      <button id="ai-summary-btn" class="settings-apply-btn" onclick="generateProgressSummary()">Generate Summary</button>
+    </div>`;
     h += `<div class="spacer"></div>`;
     if(tabEl) tabEl.innerHTML = h;
 
@@ -1323,6 +1329,17 @@ function renderSettings() {
       </button>
     </div>
 
+    <!-- AI -->
+    <div class="settings-card">
+      <div class="settings-card-title">AI Coach (Groq)</div>
+      <div class="settings-hint">Free API key from <strong style="color:var(--text)">console.groq.com</strong> — stored locally, never sent anywhere else.</div>
+      <div style="padding:0 16px 12px">
+        <input id="settings-groq-key" type="password" placeholder="gsk_…" autocomplete="off"
+          style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;padding:10px 12px;outline:none"
+          value="${getGroqKey()}" oninput="saveGroqKey(this.value)">
+      </div>
+    </div>
+
     <!-- Sync -->
     <div class="settings-card" id="settings-sync-card">
       <div class="settings-card-title">Sync</div>
@@ -1381,6 +1398,42 @@ async function updateSettingsSyncCard() {
     const keys = await caches.keys().catch(() => []);
     const active = keys.find(k => k.startsWith('gymtracker-'));
     versionEl.textContent = active ? active.replace('gymtracker-', '') : '—';
+  }
+}
+
+function saveGroqKey(val) { setGroqKey(val); }
+
+async function generateProgressSummary() {
+  const btn = document.getElementById('ai-summary-btn');
+  const out = document.getElementById('ai-summary-out');
+  if (btn) { btn.textContent = 'Thinking…'; btn.disabled = true; }
+  if (out) out.textContent = '';
+  try {
+    const metrics  = await localdb.getAll('weight_logs');
+    const exLogs   = await localdb.getAll('ex_logs');
+    const cutoff   = new Date(); cutoff.setDate(cutoff.getDate() - 28);
+    const cutStr   = localDateStr(cutoff);
+    const recentW  = metrics.filter(m => m.date >= cutStr).map(m => `${m.date}:${m.weight_kg}kg`);
+    const sessions = [...new Set(exLogs.filter(r => r.date >= cutStr).map(r => r.date))];
+    const latest   = metrics.length ? metrics[metrics.length-1].weight_kg : null;
+    const start    = prog.start ? metrics.find(m => m.date >= localDateStr(prog.start)) : null;
+    const lost     = (latest && start) ? (start.weight_kg - latest).toFixed(1) : null;
+
+    const prompt = `You are a concise, encouraging strength coach. Summarise this athlete's last 4 weeks in 3-4 sentences. Be specific about numbers. No fluff.
+
+Weight log (date:kg): ${recentW.slice(-14).join(', ') || 'none'}
+Training days: ${sessions.length} in last 28 days
+Total weight lost since programme start: ${lost ? lost+'kg' : 'unknown'}
+Target weight: 87kg, current: ${latest ? latest+'kg' : 'unknown'}
+
+Give a punchy coach-style summary.`;
+
+    const summary = await callGroq([{ role: 'user', content: prompt }]);
+    if (out) out.textContent = summary;
+  } catch(e) {
+    if (out) out.textContent = e.message;
+  } finally {
+    if (btn) { btn.textContent = 'Regenerate'; btn.disabled = false; }
   }
 }
 
@@ -1642,4 +1695,6 @@ export {
   hardRefreshIDB,
   triggerManualSync,
   updateSettingsSyncCard,
+  saveGroqKey,
+  generateProgressSummary,
 };

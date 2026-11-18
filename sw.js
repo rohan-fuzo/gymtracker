@@ -21,6 +21,7 @@ const PRECACHE = [
   'js/timer.js',
   'js/workout.js',
   'js/progress.js',
+  'js/ai.js',
   'js/app.js',
   // CDN
   'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600;700&display=swap',
