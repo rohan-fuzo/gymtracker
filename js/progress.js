@@ -597,7 +597,7 @@ async function renderBodyTab(){
       h += `<div class="notif-banner" style="border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06);margin-bottom:0">
         <div class="notif-banner-icon">📏</div>
         <div class="notif-banner-text">
-          <div class="notif-banner-title">MEASUREMENTS DUE${dSince?` — ${dSince} DAYS AGO`:' — FIRST LOG'}</div>
+          <div class="notif-banner-title">MEASUREMENTS DUE${dSince && dSince < 999?` — ${dSince} DAYS AGO`:' — FIRST LOG'}</div>
           <div class="notif-banner-sub">Bi-weekly tape measure · same time of day</div>
         </div>
         <button class="notif-banner-btn" style="background:var(--p3);color:#000" onclick="openMeasModal()">LOG</button>
