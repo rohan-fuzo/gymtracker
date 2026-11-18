@@ -70,7 +70,7 @@ async function renderProgress(){
       <div class="ai-coach-card" id="ai-coach-card">
         <div class="ai-coach-header">
           <span class="ai-coach-label">⚡ AI COACH</span>
-          <span class="ai-coach-date" id="ai-coach-date"></span>
+          <span class="ai-coach-date"><span style="color:var(--dim);margin-right:8px">qwen3-8b</span><span id="ai-coach-date"></span></span>
         </div>
         <div id="ai-summary-out" class="ai-coach-text">Generating your summary…</div>
       </div>
