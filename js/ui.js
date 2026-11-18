@@ -204,6 +204,11 @@ export async function registerPWA() {
     const reg = await navigator.serviceWorker.register('sw.js');
     reg.update().catch(() => {});
 
+    // Force update check whenever app comes back to foreground (critical for iOS PWA)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if(refreshing) return;

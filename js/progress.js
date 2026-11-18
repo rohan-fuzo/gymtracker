@@ -1367,6 +1367,9 @@ function renderSettings() {
       <button class="settings-apply-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="hardRefreshIDB()">
         Hard Refresh Data
       </button>
+      <button class="settings-apply-btn" style="margin-top:8px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).then(()=>window.location.reload())">
+        Reload App (get latest update)
+      </button>
     </div>
 
     <!-- Danger zone -->
