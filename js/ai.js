@@ -1,4 +1,4 @@
-const GROQ_MODEL = 'gemma2-9b-it';
+const GROQ_MODEL = 'qwen/qwen3.8-27b';
 const GROQ_URL   = 'https://api.groq.com/openai/v1/chat/completions';
 
 export function getGroqKey() { return localStorage.getItem('groq_api_key') || ''; }
