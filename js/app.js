@@ -15,6 +15,7 @@ import { showToast, haptic, renderSkeletonWeekStrip, renderSkeletonWorkout,
          registerPWA, updateNotifBell, checkPendingNotifications, handleNotifBellTap,
          initNotifications } from './ui.js';
 import { _resumeRestTimerIfActive, skipRestTimer } from './timer.js';
+import { todayCheckinDone, initCheckinGate } from './checkin.js';
 import { renderWeekStrip, renderWorkout, renderPhaseBanner,
          openSetModal, handleModalClick, closeModal, saveSet, skipSet,
          saveCardioLog, toggleWarmup, toggleCheck, toggleCreatine, toggleGlass,
@@ -77,8 +78,18 @@ async function init(){
 
   renderWeekStrip();
   renderWorkout();
+
+  // Check if today's check-in is done; gate fires before splash hides
+  const checkinDone = await todayCheckinDone();
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.getElementById('splash')?.classList.add('hidden');
+    if (!checkinDone) {
+      const gate = document.getElementById('checkin-gate');
+      if (gate) {
+        gate.classList.remove('hidden');
+        initCheckinGate(() => { showScreen('today', null); });
+      }
+    }
   }));
   setSyncStatus('synced');
 

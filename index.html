@@ -32,6 +32,66 @@
   } catch(e) {}
 </script>
 
+<!-- DAILY CHECK-IN GATE — shown before Today if no check-in today; can't be skipped -->
+<div id="checkin-gate" class="hidden">
+  <div class="cg-inner">
+    <div class="cg-header">
+      <div class="cg-date" id="cg-date">MON 1 JAN</div>
+      <div class="cg-title">DAILY CHECK-IN</div>
+      <div class="cg-sub">How are you feeling today?</div>
+    </div>
+    <div class="cg-fields">
+      <div class="cg-row">
+        <div class="cg-label"><span class="cg-emoji">⚡</span> Energy</div>
+        <div class="cg-pills" data-field="energy">
+          <button class="cg-pill" data-val="1">1</button>
+          <button class="cg-pill" data-val="2">2</button>
+          <button class="cg-pill" data-val="3">3</button>
+          <button class="cg-pill" data-val="4">4</button>
+          <button class="cg-pill" data-val="5">5</button>
+        </div>
+      </div>
+      <div class="cg-row">
+        <div class="cg-label"><span class="cg-emoji">😴</span> Sleep</div>
+        <div class="cg-pills" data-field="sleep">
+          <button class="cg-pill" data-val="poor">Poor</button>
+          <button class="cg-pill" data-val="moderate">OK</button>
+          <button class="cg-pill" data-val="good">Good</button>
+        </div>
+      </div>
+      <div class="cg-row">
+        <div class="cg-label"><span class="cg-emoji">😊</span> Mood</div>
+        <div class="cg-pills" data-field="mood">
+          <button class="cg-pill" data-val="low">Low</button>
+          <button class="cg-pill" data-val="neutral">Neutral</button>
+          <button class="cg-pill" data-val="happy">Happy</button>
+        </div>
+      </div>
+      <div class="cg-row">
+        <div class="cg-label"><span class="cg-emoji">😤</span> Stress</div>
+        <div class="cg-pills" data-field="stress">
+          <button class="cg-pill" data-val="1">1</button>
+          <button class="cg-pill" data-val="2">2</button>
+          <button class="cg-pill" data-val="3">3</button>
+          <button class="cg-pill" data-val="4">4</button>
+          <button class="cg-pill" data-val="5">5</button>
+        </div>
+      </div>
+      <div class="cg-row">
+        <div class="cg-label"><span class="cg-emoji">💪</span> Soreness</div>
+        <div class="cg-pills" data-field="soreness">
+          <button class="cg-pill" data-val="1">1</button>
+          <button class="cg-pill" data-val="2">2</button>
+          <button class="cg-pill" data-val="3">3</button>
+          <button class="cg-pill" data-val="4">4</button>
+          <button class="cg-pill" data-val="5">5</button>
+        </div>
+      </div>
+    </div>
+    <button id="cg-submit" class="cg-submit" disabled>LET'S GO →</button>
+  </div>
+</div>
+
 <div class="app">
 <div class="topnav">
   <div class="topnav-brand">ROHAN'S <span>GYM</span></div>

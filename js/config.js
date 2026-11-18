@@ -23,6 +23,7 @@ export const TABLES = Object.freeze({
   MEASUREMENTS: 'body_measurements',
   PROFILE:      'profile',
   SECRETS:      'user_secrets',
+  CHECKINS:     'daily_checkins',
 });
 
 export const CONFLICTS = Object.freeze({

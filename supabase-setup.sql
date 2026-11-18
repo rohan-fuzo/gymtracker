@@ -301,3 +301,39 @@ create table if not exists user_secrets (
 );
 alter table user_secrets enable row level security;
 create policy "Allow all for anon" on user_secrets for all using (true) with check (true);
+
+-- ============================================================
+-- DAILY CHECK-INS
+-- ============================================================
+create table if not exists daily_checkins (
+  id uuid default gen_random_uuid() primary key,
+  date date not null unique,
+  energy int not null check (energy between 1 and 5),
+  sleep text not null check (sleep in ('poor','moderate','good')),
+  mood text not null check (mood in ('low','neutral','happy')),
+  stress int not null check (stress between 1 and 5),
+  soreness int not null check (soreness between 1 and 5),
+  created_at timestamptz default now()
+);
+alter table daily_checkins enable row level security;
+create policy "Allow all for anon" on daily_checkins for all using (true) with check (true);
+
+-- SESSION NOTES
+alter table workout_sessions add column if not exists notes text;
+
+-- ESTIMATED 1RM VIEW (Epley formula: weight × (1 + reps/30))
+-- Only uses sets of 1-10 reps — Epley is unreliable above 10
+create or replace view estimated_1rm
+  with (security_invoker = true)
+as
+select distinct on (exercise_name)
+  exercise_name,
+  date,
+  weight_kg,
+  reps,
+  round(weight_kg * (1 + reps::numeric / 30), 2) as est_1rm_kg
+from exercise_logs
+where completed = true
+  and weight_kg > 0
+  and reps between 1 and 10
+order by exercise_name, round(weight_kg * (1 + reps::numeric / 30), 2) desc;

@@ -21,6 +21,7 @@ const PRECACHE = [
   'js/timer.js',
   'js/workout.js',
   'js/progress.js',
+  'js/checkin.js',
   'js/ai.js',
   'js/app.js',
   // CDN

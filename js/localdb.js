@@ -6,7 +6,7 @@
 import { db, TABLES } from './config.js';
 
 const DB_NAME = 'gymtracker_local';
-const DB_VER  = 1;
+const DB_VER  = 2;
 
 // ── Stores that need composite key; others use 'date' directly ──
 const COMPOSITE = {
@@ -31,7 +31,7 @@ function open() {
       const stores = [
         'workout_sessions','exercise_logs','warmup_logs','checklist_logs',
         'hydration_logs','body_metrics','inbody_logs','body_measurements',
-        'apple_health_logs',
+        'apple_health_logs','daily_checkins',
       ];
       for (const name of stores) {
         if (!d.objectStoreNames.contains(name)) {
@@ -202,7 +202,8 @@ export async function bootstrapFromSupabase() {
     { table: TABLES.BODY,         store: 'body_metrics'       },
     { table: TABLES.INBODY,       store: 'inbody_logs'        },
     { table: TABLES.MEASUREMENTS, store: 'body_measurements'  },
-    { table: 'apple_health_logs', store: 'apple_health_logs'  },
+    { table: 'apple_health_logs',   store: 'apple_health_logs'  },
+    { table: TABLES.CHECKINS,       store: 'daily_checkins'     },
   ];
 
   await Promise.all(pulls.map(async ({ table, store }) => {
@@ -233,7 +234,8 @@ export async function pullFromSupabase() {
     { table: TABLES.BODY,         store: 'body_metrics'       },
     { table: TABLES.INBODY,       store: 'inbody_logs'        },
     { table: TABLES.MEASUREMENTS, store: 'body_measurements'  },
-    { table: 'apple_health_logs', store: 'apple_health_logs'  },
+    { table: 'apple_health_logs',   store: 'apple_health_logs'  },
+    { table: TABLES.CHECKINS,       store: 'daily_checkins'     },
   ];
   await Promise.all(pulls.map(async ({ table, store }) => {
     try {
