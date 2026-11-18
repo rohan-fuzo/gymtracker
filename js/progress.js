@@ -57,24 +57,22 @@ async function renderProgress(){
   if(!document.getElementById('progress-tab-content')){
     el.innerHTML = `
       <div class="progress-tab-bar">
-        <button class="progress-tab-btn" id="ptab-trends"   onclick="switchProgressTab('trends')">TRENDS</button>
-        <button class="progress-tab-btn" id="ptab-body"     onclick="switchProgressTab('body')">BODY</button>
-        <button class="progress-tab-btn" id="ptab-mobility" onclick="switchProgressTab('mobility')">MOBILITY</button>
+        <button class="progress-tab-btn" id="ptab-trends" onclick="switchProgressTab('trends')">TRENDS</button>
+        <button class="progress-tab-btn" id="ptab-body"   onclick="switchProgressTab('body')">BODY</button>
       </div>
       <div id="progress-tab-content"></div>`;
   }
-  ['trends','body','mobility'].forEach(t=>{
+  ['trends','body'].forEach(t=>{
     document.getElementById(`ptab-${t}`)?.classList.toggle('active', _progressTab===t);
   });
-  if(_progressTab==='trends')   await renderTrendsTab();
-  else if(_progressTab==='body')     await renderBodyTab();
-  else                               renderMobilityTab();
+  if(_progressTab==='body') await renderBodyTab();
+  else                      await renderTrendsTab();
 }
 
 function renderMobilityTab(){
   const tabEl = document.getElementById('progress-tab-content');
   if(!tabEl) return;
-  if(tabEl.dataset.tab === 'mobility') return; // already rendered, toggleMob updates in-place
+  if(tabEl.dataset.tab === 'mobility') return;
   tabEl.dataset.tab = 'mobility';
   tabEl.innerHTML = `<div id="mob-content" style="padding:16px"></div><div class="spacer"></div>`;
   renderMobility();
