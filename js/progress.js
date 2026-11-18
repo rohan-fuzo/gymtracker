@@ -11,6 +11,41 @@ import * as localdb from './localdb.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
 import { getGroqKey, setGroqKey, callGroq } from './ai.js';
 
+// ── Profile helpers ──
+function getProfile() {
+  return {
+    name:   localStorage.getItem('userName')       || '',
+    dob:    localStorage.getItem('userDOB')        || '',
+    sex:    localStorage.getItem('userSex')        || '',
+    height: parseFloat(localStorage.getItem('userHeightCm')    || '0'),
+    target: parseFloat(localStorage.getItem('targetWeightKg')  || '87'),
+  };
+}
+function getAge() {
+  const dob = localStorage.getItem('userDOB');
+  if(!dob) return null;
+  const d = new Date(dob), now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  if(now < new Date(now.getFullYear(), d.getMonth(), d.getDate())) age--;
+  return age;
+}
+function saveProfile() {
+  const n = document.getElementById('prof-name')?.value;
+  const d = document.getElementById('prof-dob')?.value;
+  const h = document.getElementById('prof-height')?.value;
+  const t = document.getElementById('prof-target')?.value;
+  if(n !== undefined) localStorage.setItem('userName', n);
+  if(d !== undefined) localStorage.setItem('userDOB', d);
+  if(h) localStorage.setItem('userHeightCm', h);
+  if(t) localStorage.setItem('targetWeightKg', t);
+  showToast('Profile saved');
+}
+function setProfileSex(val) {
+  localStorage.setItem('userSex', val);
+  document.querySelectorAll('.prof-sex-btn').forEach(b => b.classList.toggle('active', b.dataset.sex === val));
+  showToast('Profile saved');
+}
+
 // ── Date display helper ──
 function fmtDate(str) {
   if(!str || str.length < 10) return str;
@@ -119,7 +154,7 @@ async function renderScoreTab(){
     // _exLogs intentionally NOT cached here — Score only fetches 'date', Trends needs full rows
 
     const latestWeight  = metrics.length ? metrics[metrics.length-1].weight_kg : null;
-    const targetWeight  = 87;
+    const targetWeight  = getProfile().target;
     const startStr      = prog.start ? localDateStr(prog.start) : null;
     const progMetrics   = startStr ? metrics.filter(m => m.date >= startStr) : metrics;
     const startWeight   = progMetrics.length ? progMetrics[0].weight_kg : 105;
@@ -136,7 +171,7 @@ async function renderScoreTab(){
 
     const curState      = getProgrammeState(new Date());
     const curWeek       = curState.beforeStart ? 0 : curState.week;
-    const thisWeekTarget = prog.weekTargets[curWeek] || 87;
+    const thisWeekTarget = prog.weekTargets[curWeek] || getProfile().target;
     const onTrack       = latestWeight ? latestWeight <= thisWeekTarget + 0.5 : null;
     const weightGap     = latestWeight ? (latestWeight - thisWeekTarget).toFixed(1) : null;
     const isMonday      = new Date().getDay() === 1;
@@ -223,7 +258,7 @@ async function renderScoreTab(){
         </div>
       </div>
       <div class="journey-bar-wrap">
-        <div class="journey-bar-labels"><span>${startWeight} kg</span><span style="color:var(--p3)">87 kg GOAL</span></div>
+        <div class="journey-bar-labels"><span>${startWeight} kg</span><span style="color:var(--p3)">${targetWeight} kg GOAL</span></div>
         <div class="journey-bar-track">
           <div class="journey-bar-fill" style="width:${journeyPct}%"></div>
           <div class="journey-bar-marker" style="left:${Math.max(1,journeyPct)}%">
@@ -294,7 +329,7 @@ async function renderTrendsTab(){
 
     // ── Compact summary banner (replaces Score tab) ──
     const latestWeight = metrics.length ? metrics[metrics.length-1].weight_kg : null;
-    const targetWeight = 87;
+    const targetWeight = getProfile().target;
     const startStr2    = prog.start ? localDateStr(prog.start) : null;
     const progMetrics2 = startStr2 ? metrics.filter(m => m.date >= startStr2) : metrics;
     const startWeight  = progMetrics2.length ? progMetrics2[0].weight_kg : null;
@@ -438,7 +473,7 @@ async function renderTrendsTab(){
             labels: metrics.map(m=>m.date.slice(5)),
             datasets:[
               {label:'Weight',data:metrics.map(m=>m.weight_kg),borderColor:'#ff4520',backgroundColor:'rgba(255,69,32,.08)',tension:.3,pointRadius:3,pointBackgroundColor:'#ff4520'},
-              {label:'Target', data:metrics.map(m=>{ const s=getProgrammeState(new Date(m.date)); return prog.weekTargets[s.week]||87; }),borderColor:'rgba(94,142,115,.5)',borderDash:[4,4],pointRadius:0,tension:0}
+              {label:'Target', data:metrics.map(m=>{ const s=getProgrammeState(new Date(m.date)); return prog.weekTargets[s.week]||getProfile().target; }),borderColor:'rgba(94,142,115,.5)',borderDash:[4,4],pointRadius:0,tension:0}
             ]
           },
           options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#666',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'},min:85,max:110}}}
@@ -483,7 +518,7 @@ async function renderPlanTab(){
     const curState      = getProgrammeState(new Date());
     const curWeek       = curState.beforeStart ? 0 : curState.week;
     const totalWeeks    = Object.keys(prog.weekTargets).length;
-    const weekTarget    = prog.weekTargets[curWeek] || 87;
+    const weekTarget    = prog.weekTargets[curWeek] || getProfile().target;
     const nextTarget    = prog.weekTargets[curWeek+1] || weekTarget;
     const blockWeek     = ((curWeek - 1) % 6) + 1;
     const weeksToDeload = 6 - blockWeek;
@@ -1372,6 +1407,34 @@ function renderSettings() {
       </button>
     </div>
 
+    <!-- Profile -->
+    <div class="settings-card">
+      <div class="settings-card-title">Profile</div>
+      <div class="prof-field-row">
+        <label class="prof-label">Name</label>
+        <input id="prof-name" class="prof-input" type="text" placeholder="Your name" value="${getProfile().name}" onchange="saveProfile()">
+      </div>
+      <div class="prof-field-row">
+        <label class="prof-label">Date of Birth</label>
+        <input id="prof-dob" class="prof-input" type="date" value="${getProfile().dob}" onchange="saveProfile()">
+      </div>
+      <div class="prof-field-row">
+        <label class="prof-label">Sex</label>
+        <div class="prof-sex-row">
+          <button class="prof-sex-btn${getProfile().sex==='male'?' active':''}" data-sex="male" onclick="setProfileSex('male')">Male</button>
+          <button class="prof-sex-btn${getProfile().sex==='female'?' active':''}" data-sex="female" onclick="setProfileSex('female')">Female</button>
+        </div>
+      </div>
+      <div class="prof-field-row">
+        <label class="prof-label">Height (cm)</label>
+        <input id="prof-height" class="prof-input" type="number" placeholder="175" value="${getProfile().height||''}" onchange="saveProfile()">
+      </div>
+      <div class="prof-field-row">
+        <label class="prof-label">Target Weight (kg)</label>
+        <input id="prof-target" class="prof-input" type="number" placeholder="87" value="${getProfile().target||''}" onchange="saveProfile()">
+      </div>
+    </div>
+
     <!-- AI -->
     <div class="settings-card">
       <div class="settings-card-title">AI Coach (Groq)</div>
@@ -1518,9 +1581,18 @@ async function generateProgressSummary() {
       if (sessions.some(d => d >= wStr && d < wEStr)) streak++; else break;
     }
 
-    const prompt = `You are a direct, no-fluff strength coach. Write a 3-sentence summary of this athlete's last 4 weeks. Use their actual numbers. Be honest but motivating.
+    const prof = getProfile();
+    const age  = getAge();
+    const athleteInfo = [
+      prof.name  ? `Name: ${prof.name}`                              : null,
+      age        ? `Age: ${age}`                                     : null,
+      prof.sex   ? `Sex: ${prof.sex}`                                : null,
+      prof.height? `Height: ${prof.height}cm`                       : null,
+    ].filter(Boolean).join(' | ');
 
-Current weight: ${latest ? latest+'kg' : '?'} | Target: 87kg | To go: ${latest ? Math.max(0,latest-87).toFixed(1)+'kg' : '?'}
+    const prompt = `You are a direct, no-fluff strength coach. Write a 3-sentence summary of this athlete's last 4 weeks. Use their actual numbers. Be honest but motivating.
+${athleteInfo ? '\nAthlete: '+athleteInfo : ''}
+Current weight: ${latest ? latest+'kg' : '?'} | Target: ${prof.target}kg | To go: ${latest ? Math.max(0,latest-prof.target).toFixed(1)+'kg' : '?'}
 Lost since start: ${lost ? lost+'kg' : 'unknown'}
 4-week weight trend: ${wTrend !== null ? (parseFloat(wTrend) <= 0 ? '↓'+Math.abs(wTrend)+'kg' : '↑'+wTrend+'kg') : 'unknown'}
 Training sessions (28 days): ${sessions.length} days
@@ -1802,4 +1874,6 @@ export {
   updateSettingsSyncCard,
   saveGroqKey,
   generateProgressSummary,
+  saveProfile,
+  setProfileSex,
 };

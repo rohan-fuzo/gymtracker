@@ -31,7 +31,8 @@ import { renderProgress, switchProgressTab, renderScoreTab, renderTrendsTab, ren
          openHeightModal, closeHeightModal, handleHeightModalClick, saveHeight, skipHeight,
          switchDietPhase, toggleMob, hardRefreshIDB,
          triggerManualSync, updateSettingsSyncCard,
-         saveGroqKey, generateProgressSummary } from './progress.js';
+         saveGroqKey, generateProgressSummary,
+         saveProfile, setProfileSex } from './progress.js';
 import { startExTimer, logTimedSetNow } from './timer.js';
 import { manualSync, withRetry } from './sync.js';
 
@@ -574,6 +575,8 @@ window.triggerManualSync       = triggerManualSync;
 window.updateSettingsSyncCard  = updateSettingsSyncCard;
 window.saveGroqKey             = saveGroqKey;
 window.generateProgressSummary = generateProgressSummary;
+window.saveProfile             = saveProfile;
+window.setProfileSex           = setProfileSex;
 window.openResetModal     = openResetModal;
 window.closeResetModal    = closeResetModal;
 window.confirmReset       = confirmReset;

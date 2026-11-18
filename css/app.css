@@ -91,6 +91,15 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .settings-apply-btn:active{background:rgba(255,69,32,.22)}
 .settings-apply-btn:disabled{opacity:.4;cursor:default}
 
+/* PROFILE FIELDS */
+.prof-field-row{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.prof-field-row:last-child{border-bottom:none}
+.prof-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;flex-shrink:0}
+.prof-input{background:transparent;border:none;border-radius:0;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;text-align:right;outline:none;width:100%;min-width:0}
+.prof-sex-row{display:flex;gap:6px}
+.prof-sex-btn{padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.prof-sex-btn.active{background:rgba(255,69,32,.12);border-color:rgba(255,69,32,.4);color:var(--p1)}
+
 /* RESET CONFIRMATION MODAL */
 .reset-modal{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .reset-modal.open{opacity:1;pointer-events:all}
