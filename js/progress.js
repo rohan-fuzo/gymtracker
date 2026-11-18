@@ -11,6 +11,16 @@ import * as localdb from './localdb.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
 import { getGroqKey, setGroqKey, callGroq } from './ai.js';
 
+// ── Date display helper ──
+function fmtDate(str) {
+  if(!str || str.length < 10) return str;
+  const [y, m, d] = str.split('-').map(Number);
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const v = d % 100;
+  const ord = d + (['th','st','nd','rd'][(v-20)%10] || ['th','st','nd','rd'][v] || 'th');
+  return `${ord} ${months[m-1]} ${y}`;
+}
+
 // ── Module-level state ──
 let _progressTab       = 'trends';
 let _bodyLastFetch     = 0;
@@ -147,7 +157,7 @@ async function renderScoreTab(){
     // Vitals strip — latest values only, no chart
     const vitalsHTML = healthLogs.length ? (()=>{
       const v = healthLogs[healthLogs.length-1];
-      return `<div class="pw-section">VITALS <span style="font-size:10px;font-weight:400;color:var(--dim);text-transform:none;letter-spacing:0"> · ${v.date}</span></div>
+      return `<div class="pw-section">VITALS <span style="font-size:10px;font-weight:400;color:var(--dim);text-transform:none;letter-spacing:0"> · ${fmtDate(v.date)}</span></div>
       <div class="pw-vitals">
         <div class="pw-vital">
           <div class="pw-vital-num" style="color:#ff4520">${v.active_calories||'—'}</div>
@@ -340,7 +350,7 @@ async function renderTrendsTab(){
       h += `<div class="pw-chart">
         <div class="pw-chart-head">
           <div class="pw-chart-title">BODY COMPOSITION</div>
-          <div class="pw-chart-sub">InBody · ${latestIB.date}</div>
+          <div class="pw-chart-sub">InBody · ${fmtDate(latestIB.date)}</div>
         </div>
         <div class="pw-macros">
           <div class="pw-macro-cell">
@@ -376,7 +386,7 @@ async function renderTrendsTab(){
       const isolation = uniqueEx.filter(n=>!compound.includes(n));
       const prRows = list => list.map(n=>`
         <div class="pr-item">
-          <div><div class="pr-name">${n}</div><div class="pr-date">${prs[n].date}</div></div>
+          <div><div class="pr-name">${n}</div><div class="pr-date">${fmtDate(prs[n].date)}</div></div>
           <div class="pr-val">${prs[n].weight}kg × ${prs[n].reps}</div>
         </div>`).join('');
       const prSection = (list, label, id) => {
@@ -622,7 +632,7 @@ async function renderBodyTab(){
       h += `<div class="meas-log-cta">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div>
-            <div style="font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--text)">LAST: ${latest.date}</div>
+            <div style="font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--text)">LAST: ${fmtDate(latest.date)}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">${_bodyData.length} entr${_bodyData.length===1?'y':'ies'} logged</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px">
@@ -674,7 +684,7 @@ async function renderBodyTab(){
       h += `<div class="chart-card" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div class="chart-title" style="margin-bottom:0">INBODY COMPOSITION</div>
-          <div style="font-size:11px;color:var(--muted)">${latestIB.date}</div>
+          <div style="font-size:11px;color:var(--muted)">${fmtDate(latestIB.date)}</div>
         </div>
         <div class="stat-grid">
           <div class="stat-card"><div class="stat-val" style="color:var(--p5);font-size:18px">${latestIB.body_fat_pct||'—'}%</div><div class="stat-key">Body Fat</div></div>
@@ -774,7 +784,7 @@ async function renderBodyTab(){
         const logged = MEASURE_SITES.filter(s=>entry[s.key]!=null);
         return `<div class="meas-history-row" onclick="openMeasModal('${entry.date}')">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${entry.date}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${fmtDate(entry.date)}</div>
             <div style="font-size:11px;color:var(--cyan)">${logged.length} sites</div>
           </div>
           <div class="meas-history-pills">
