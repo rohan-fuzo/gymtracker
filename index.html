@@ -35,58 +35,81 @@
 <!-- DAILY CHECK-IN GATE — shown before Today if no check-in today; can't be skipped -->
 <div id="checkin-gate" class="hidden">
   <div class="cg-inner">
+
     <div class="cg-header">
       <div class="cg-date" id="cg-date">MON 1 JAN</div>
-      <div class="cg-title">DAILY CHECK-IN</div>
-      <div class="cg-sub">How are you feeling today?</div>
+      <div class="cg-title">DAILY<br>CHECK-IN</div>
+      <div class="cg-sub">Quick pulse before you train</div>
+      <div class="cg-dots">
+        <span class="cg-dot" data-i="0"></span>
+        <span class="cg-dot" data-i="1"></span>
+        <span class="cg-dot" data-i="2"></span>
+        <span class="cg-dot" data-i="3"></span>
+        <span class="cg-dot" data-i="4"></span>
+      </div>
     </div>
+
     <div class="cg-fields">
-      <div class="cg-row">
-        <div class="cg-label"><span class="cg-emoji">⚡</span> Energy</div>
-        <div class="cg-pills" data-field="energy">
-          <button class="cg-pill" data-val="1">1</button>
-          <button class="cg-pill" data-val="2">2</button>
-          <button class="cg-pill" data-val="3">3</button>
-          <button class="cg-pill" data-val="4">4</button>
-          <button class="cg-pill" data-val="5">5</button>
+
+      <!-- ENERGY: emoji slider -->
+      <div class="cg-field" data-idx="0">
+        <div class="cg-field-label">ENERGY</div>
+        <div class="cg-eslider">
+          <div class="cg-eslider-marks">
+            <span data-pos="1">😴</span>
+            <span data-pos="2">🥱</span>
+            <span data-pos="3">😐</span>
+            <span data-pos="4">😊</span>
+            <span data-pos="5">⚡</span>
+          </div>
+          <input type="range" min="1" max="5" step="1" class="cg-slider-input" id="cg-input-energy" value="1">
         </div>
       </div>
-      <div class="cg-row">
-        <div class="cg-label"><span class="cg-emoji">😴</span> Sleep</div>
-        <div class="cg-pills" data-field="sleep">
-          <button class="cg-pill" data-val="poor">Poor</button>
-          <button class="cg-pill" data-val="moderate">OK</button>
-          <button class="cg-pill" data-val="good">Good</button>
+
+      <!-- SLEEP: emoji cards -->
+      <div class="cg-field" data-idx="1">
+        <div class="cg-field-label">SLEEP</div>
+        <div class="cg-ecards" data-field="sleep">
+          <button class="cg-ecard" data-val="poor">😤<span>Poor</span></button>
+          <button class="cg-ecard" data-val="moderate">🥱<span>Okay</span></button>
+          <button class="cg-ecard" data-val="good">😌<span>Good</span></button>
         </div>
       </div>
-      <div class="cg-row">
-        <div class="cg-label"><span class="cg-emoji">😊</span> Mood</div>
-        <div class="cg-pills" data-field="mood">
-          <button class="cg-pill" data-val="low">Low</button>
-          <button class="cg-pill" data-val="neutral">Neutral</button>
-          <button class="cg-pill" data-val="happy">Happy</button>
+
+      <!-- MOOD: emoji cards -->
+      <div class="cg-field" data-idx="2">
+        <div class="cg-field-label">MOOD</div>
+        <div class="cg-ecards" data-field="mood">
+          <button class="cg-ecard" data-val="low">😔<span>Low</span></button>
+          <button class="cg-ecard" data-val="neutral">😐<span>Neutral</span></button>
+          <button class="cg-ecard" data-val="happy">😊<span>Happy</span></button>
         </div>
       </div>
-      <div class="cg-row">
-        <div class="cg-label"><span class="cg-emoji">😤</span> Stress</div>
-        <div class="cg-pills" data-field="stress">
-          <button class="cg-pill" data-val="1">1</button>
-          <button class="cg-pill" data-val="2">2</button>
-          <button class="cg-pill" data-val="3">3</button>
-          <button class="cg-pill" data-val="4">4</button>
-          <button class="cg-pill" data-val="5">5</button>
+
+      <!-- STRESS: emoji circles -->
+      <div class="cg-field" data-idx="3">
+        <div class="cg-field-label">STRESS</div>
+        <div class="cg-ecircles" data-field="stress">
+          <button class="cg-ecircle" data-val="1">😌</button>
+          <button class="cg-ecircle" data-val="2">🙂</button>
+          <button class="cg-ecircle" data-val="3">😐</button>
+          <button class="cg-ecircle" data-val="4">😤</button>
+          <button class="cg-ecircle" data-val="5">🤯</button>
         </div>
       </div>
-      <div class="cg-row">
-        <div class="cg-label"><span class="cg-emoji">💪</span> Soreness</div>
-        <div class="cg-pills" data-field="soreness">
-          <button class="cg-pill" data-val="1">1</button>
-          <button class="cg-pill" data-val="2">2</button>
-          <button class="cg-pill" data-val="3">3</button>
-          <button class="cg-pill" data-val="4">4</button>
-          <button class="cg-pill" data-val="5">5</button>
+
+      <!-- SORENESS: emoji circles -->
+      <div class="cg-field" data-idx="4">
+        <div class="cg-field-label">SORENESS</div>
+        <div class="cg-ecircles" data-field="soreness">
+          <button class="cg-ecircle" data-val="1">🏃</button>
+          <button class="cg-ecircle" data-val="2">😐</button>
+          <button class="cg-ecircle" data-val="3">😣</button>
+          <button class="cg-ecircle" data-val="4">🥵</button>
+          <button class="cg-ecircle" data-val="5">💀</button>
         </div>
       </div>
+
     </div>
     <button id="cg-submit" class="cg-submit" disabled>LET'S GO →</button>
   </div>
