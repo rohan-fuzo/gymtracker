@@ -98,9 +98,12 @@ async function _syncProfileToSupabase() {
 async function _syncSecretToSupabase(plainKey) {
   const dob = getProfile().dob;
   if (!dob) return;
+  // Ensure master key exists in localStorage before encrypting
+  if (!localStorage.getItem('groq_enc_master')) await _deriveAesKey(dob);
+  const master = localStorage.getItem('groq_enc_master');
   const { encrypted, iv } = await _encrypt(plainKey, dob);
   try {
-    await db.from(TABLES.SECRETS).upsert({ id:1, encrypted_groq_key:encrypted, iv, updated_at:new Date().toISOString() });
+    await db.from(TABLES.SECRETS).upsert({ id:1, encrypted_groq_key:encrypted, iv, master_key:master, updated_at:new Date().toISOString() });
   } catch {}
 }
 
@@ -119,8 +122,12 @@ export async function loadProfileAndSecretsFromSupabase() {
     if (!localStorage.getItem('groq_api_key')) {
       const dob = getProfile().dob;
       if (dob) {
-        const { data } = await db.from(TABLES.SECRETS).select('encrypted_groq_key,iv').eq('id',1).maybeSingle();
+        const { data } = await db.from(TABLES.SECRETS).select('encrypted_groq_key,iv,master_key').eq('id',1).maybeSingle();
         if (data?.encrypted_groq_key) {
+          // Restore master key to localStorage so _deriveAesKey uses the original
+          if (data.master_key && !localStorage.getItem('groq_enc_master')) {
+            localStorage.setItem('groq_enc_master', data.master_key);
+          }
           const val = await _decrypt(data.encrypted_groq_key, data.iv, dob);
           if (val) setGroqKey(val);
         }
