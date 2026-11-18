@@ -177,18 +177,11 @@ function toggleTravelMode() {
 // Render the travel toggle banner
 function renderTravelToggle(isActive, travelType) {
   const typeLabels = {
-    push:'Push Bodyweight', pull:'Pull Bodyweight',
-    legs:'Legs Bodyweight', fullbody:'Full Body Bodyweight',
-    liss:'Walk / Jog / Stairs'
+    push:'Push', pull:'Pull', legs:'Legs', fullbody:'Full Body', liss:'Walk / Jog'
   };
-  const label = typeLabels[travelType] || 'Bodyweight Workout';
-  return `<div class="travel-toggle-wrap${isActive?' active':''}" onclick="toggleTravelMode()">
-    <div class="travel-toggle-icon">✈️</div>
-    <div class="travel-toggle-body">
-      <div class="travel-toggle-title">Travelling today?</div>
-      <div class="travel-toggle-sub">${isActive ? '🟢 ' + label + ' active' : 'Swap to no-equipment bodyweight workout'}</div>
-    </div>
-    <div class="travel-toggle-switch${isActive?' on':''}"></div>
+  const label = isActive ? (typeLabels[travelType] || 'Bodyweight') : 'Travel mode';
+  return `<div style="margin:0 16px 12px;display:flex">
+    <button class="travel-chip${isActive?' active':''}" onclick="toggleTravelMode()">✈️ ${label}</button>
   </div>`;
 }
 
