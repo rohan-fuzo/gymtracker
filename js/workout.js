@@ -756,7 +756,7 @@ function renderWorkout(){
       h += `<div class="ex-row${exDone?' ex-done':''}" id="${ek}">
         <div class="ex-main" onclick="tEx('${ek}')">
           <div class="ex-info">
-            <div class="ex-name">${ex.n}${travelW?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(6,182,212,.12);color:var(--cyan);font-weight:700;letter-spacing:.3px">BW</span>':''}</div>
+            <div class="ex-name" data-ex="${esc(ex.n)}">${ex.n}${travelW?'<span style="margin-left:6px;font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(6,182,212,.12);color:var(--cyan);font-weight:700;letter-spacing:.3px">BW</span>':''}</div>
             <div class="ex-sets">${isFirst?'<span style="color:var(--gold);font-size:10px">MM → </span>':''}${ex.s}${ex.r ? ' · '+ex.r+' rest' : ''}</div>
             <div class="ex-equip">${ex.eq.join('')}</div>
           </div>

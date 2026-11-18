@@ -508,6 +508,53 @@ if(window.location.hostname === 'localhost' || window.location.hostname.includes
   }, msUntilMidnight);
 })();
 
+// ── Exercise long-press context menu ──
+function showExContextMenu(name) {
+  document.getElementById('ex-ctx-sheet')?.remove();
+  const expanded = name.replace(/^DB /, 'Dumbbell ').replace(/^BB /, 'Barbell ').replace(/^KB /, 'Kettlebell ');
+  const enc = encodeURIComponent(expanded);
+
+  const sheet = document.createElement('div');
+  sheet.id = 'ex-ctx-sheet';
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'ex-ctx-backdrop';
+  backdrop.onclick = () => sheet.remove();
+
+  const card = document.createElement('div');
+  card.className = 'ex-ctx-card';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'ex-ctx-label';
+  lbl.textContent = expanded;
+
+  const rows = [
+    { icon: '📋', text: 'Copy name',      fn: () => { navigator.clipboard?.writeText(expanded); sheet.remove(); window.showToast?.('Copied'); } },
+    { icon: '▶️', text: 'Search YouTube', fn: () => { window.open('https://www.youtube.com/results?search_query='+enc+'+exercise', '_blank'); sheet.remove(); } },
+    { icon: '🔍', text: 'Search Google',  fn: () => { window.open('https://www.google.com/search?q='+enc+'+exercise+how+to', '_blank'); sheet.remove(); } },
+  ];
+
+  card.appendChild(lbl);
+  rows.forEach(({ icon, text, fn }) => {
+    const btn = document.createElement('button');
+    btn.className = 'ex-ctx-row';
+    btn.innerHTML = `<span class="ex-ctx-icon">${icon}</span>${text}`;
+    btn.onclick = fn;
+    card.appendChild(btn);
+  });
+
+  sheet.appendChild(backdrop);
+  sheet.appendChild(card);
+  document.body.appendChild(sheet);
+}
+
+document.addEventListener('contextmenu', e => {
+  const nameEl = e.target.closest('[data-ex]');
+  if (!nameEl) return;
+  e.preventDefault();
+  showExContextMenu(nameEl.dataset.ex);
+});
+
 // ── Window exports — functions called from HTML inline handlers ──
 // Navigation
 window.showScreen       = showScreen;
