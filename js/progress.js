@@ -1608,7 +1608,11 @@ async function updateSettingsSyncCard() {
   }
 }
 
-function saveGroqKey(val) { setGroqKey(val); }
+function saveGroqKey(val) {
+  const trimmed = val.trim();
+  setGroqKey(trimmed);
+  if (trimmed) _syncSecretToSupabase(trimmed);
+}
 
 async function generateProgressSummary() {
   const out     = document.getElementById('ai-summary-out');

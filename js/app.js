@@ -32,12 +32,14 @@ import { renderProgress, switchProgressTab, renderScoreTab, renderTrendsTab, ren
          switchDietPhase, toggleMob, hardRefreshIDB,
          triggerManualSync, updateSettingsSyncCard,
          saveGroqKey, generateProgressSummary,
-         saveProfile, setProfileSex, showSettingsSub } from './progress.js';
+         saveProfile, setProfileSex, showSettingsSub,
+         loadProfileAndSecretsFromSupabase } from './progress.js';
 import { startExTimer, logTimedSetNow } from './timer.js';
 import { manualSync, withRetry } from './sync.js';
 
 async function init(){
   setSyncStatus('syncing');
+  loadProfileAndSecretsFromSupabase().catch(() => {});
 
   const configPromise = loadProgrammeConfig();
   todayStr = getTodayDateStr();
