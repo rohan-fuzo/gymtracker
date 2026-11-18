@@ -1,4 +1,4 @@
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = 'llama3-70b-8192';
 const GROQ_URL   = 'https://api.groq.com/openai/v1/chat/completions';
 
 export function getGroqKey() { return localStorage.getItem('groq_api_key') || ''; }
