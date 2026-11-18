@@ -1283,6 +1283,10 @@ function renderSettings() {
     <div class="settings-card" id="settings-sync-card">
       <div class="settings-card-title">Sync</div>
       <div class="settings-row">
+        <div class="settings-row-label">Version</div>
+        <div class="settings-row-val" id="settings-sw-version" style="font-size:11px;color:var(--muted)">—</div>
+      </div>
+      <div class="settings-row">
         <div class="settings-row-label">Status</div>
         <div class="settings-row-val" id="settings-sync-status">checking…</div>
       </div>
@@ -1315,6 +1319,7 @@ function renderSettings() {
 async function updateSettingsSyncCard() {
   const statusEl  = document.getElementById('settings-sync-status');
   const pendingEl = document.getElementById('settings-sync-pending');
+  const versionEl = document.getElementById('settings-sw-version');
   const btn       = document.getElementById('settings-sync-btn');
   if (!statusEl) return;
   const items   = await SyncDB.getAll().catch(() => []);
@@ -1327,6 +1332,11 @@ async function updateSettingsSyncCard() {
   if (btn) {
     btn.textContent = total > 0 ? `Sync Now (${total})` : 'Sync Now';
     btn.style.opacity = total > 0 ? '1' : '.5';
+  }
+  if (versionEl && 'caches' in window) {
+    const keys = await caches.keys().catch(() => []);
+    const active = keys.find(k => k.startsWith('gymtracker-'));
+    versionEl.textContent = active ? active.replace('gymtracker-', '') : '—';
   }
 }
 
