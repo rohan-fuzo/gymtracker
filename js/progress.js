@@ -1361,129 +1361,150 @@ async function toggleMob(k, el){
 function renderSettings() {
   const el = document.getElementById('settings-content');
   if (!el) return;
-
-  const state   = getProgrammeState(new Date());
-  const startStr = localDateStr(prog.start);
-  const curWeek  = state.beforeStart ? '—' : state.week;
-  const curPhase = state.beforeStart ? '—' : state.phase;
-  const dayName  = state.beforeStart ? '—' : DAYS[state.dowIndex];
-
+  const p = getProfile();
+  const profileSub = p.name || (p.height ? p.height+'cm' : '') || 'Not set';
+  const state = getProgrammeState(new Date());
+  const progSub = state.beforeStart ? 'Not started' : `Wk ${state.week} · Ph ${state.phase}`;
+  const groqSub = getGroqKey() ? 'Key saved' : 'No key';
   el.innerHTML = `
-    <!-- Current programme status -->
+    <div class="sett-section-head">Profile</div>
     <div class="settings-card">
-      <div class="settings-card-title">Current Programme</div>
-      <div class="settings-row">
-        <div class="settings-row-label">Start Date</div>
-        <div class="settings-row-val">${formatDate(prog.start)}</div>
+      <div class="sett-nav-row" onclick="showSettingsSub('profile')">
+        <span class="sett-nav-icon">👤</span>
+        <span class="sett-nav-label">Personal details</span>
+        <span class="sett-nav-meta">${profileSub}</span>
+        <span class="sett-nav-arrow">›</span>
       </div>
-      <div class="settings-row">
-        <div class="settings-row-label">Today</div>
-        <div class="settings-row-val">Week ${curWeek} · ${dayName}</div>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-label">Phase</div>
-        <div class="settings-row-val">Phase ${curPhase} of 5</div>
+      <div class="sett-nav-row" onclick="showSettingsSub('programme')">
+        <span class="sett-nav-icon">📅</span>
+        <span class="sett-nav-label">Programme</span>
+        <span class="sett-nav-meta">${progSub}</span>
+        <span class="sett-nav-arrow">›</span>
       </div>
     </div>
 
-    <!-- Change start date -->
+    <div class="sett-section-head">App</div>
     <div class="settings-card">
-      <div class="settings-card-title">Change Start Date</div>
-      <div style="padding:0 16px">
-        <input
-          class="settings-date-input"
-          type="date"
-          id="settings-date-picker"
-          value="${startStr}"
-          max="${localDateStr()}"
-        >
+      <div class="sett-nav-row" onclick="showSettingsSub('ai')">
+        <span class="sett-nav-icon">🤖</span>
+        <span class="sett-nav-label">AI Coach</span>
+        <span class="sett-nav-meta">${groqSub}</span>
+        <span class="sett-nav-arrow">›</span>
       </div>
-      <div class="settings-hint">
-        Moving the start date recalculates your current week, phase, and all
-        progress milestones. Your logged workouts and sets are <strong style="color:var(--text)">not deleted</strong>.
+      <div class="sett-nav-row" onclick="showSettingsSub('sync')">
+        <span class="sett-nav-icon">🔄</span>
+        <span class="sett-nav-label">Sync &amp; Data</span>
+        <span class="sett-nav-meta"></span>
+        <span class="sett-nav-arrow">›</span>
       </div>
-      <button class="settings-apply-btn" id="settings-apply-btn" onclick="openResetModal()">
-        Apply New Start Date
-      </button>
-    </div>
-
-    <!-- Profile -->
-    <div class="settings-card">
-      <div class="settings-card-title">Profile</div>
-      <div class="prof-field-row">
-        <label class="prof-label">Name</label>
-        <input id="prof-name" class="prof-input" type="text" placeholder="Your name" value="${getProfile().name}" onchange="saveProfile()">
-      </div>
-      <div class="prof-field-row">
-        <label class="prof-label">Date of Birth</label>
-        <input id="prof-dob" class="prof-input" type="date" value="${getProfile().dob}" onchange="saveProfile()">
-      </div>
-      <div class="prof-field-row">
-        <label class="prof-label">Sex</label>
-        <div class="prof-sex-row">
-          <button class="prof-sex-btn${getProfile().sex==='male'?' active':''}" data-sex="male" onclick="setProfileSex('male')">Male</button>
-          <button class="prof-sex-btn${getProfile().sex==='female'?' active':''}" data-sex="female" onclick="setProfileSex('female')">Female</button>
-        </div>
-      </div>
-      <div class="prof-field-row">
-        <label class="prof-label">Height (cm)</label>
-        <input id="prof-height" class="prof-input" type="number" placeholder="175" value="${getProfile().height||''}" onchange="saveProfile()">
-      </div>
-      <div class="prof-field-row">
-        <label class="prof-label">Target Weight (kg)</label>
-        <input id="prof-target" class="prof-input" type="number" placeholder="87" value="${getProfile().target||''}" onchange="saveProfile()">
-      </div>
-    </div>
-
-    <!-- AI -->
-    <div class="settings-card">
-      <div class="settings-card-title">AI Coach (Groq)</div>
-      <div class="settings-hint">Free API key from <strong style="color:var(--text)">console.groq.com</strong> — stored locally, never sent anywhere else.</div>
-      <div style="padding:0 16px 12px">
-        <input id="settings-groq-key" type="password" placeholder="gsk_…" autocomplete="off"
-          style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;padding:10px 12px;outline:none"
-          value="${getGroqKey()}" oninput="saveGroqKey(this.value)">
-      </div>
-    </div>
-
-    <!-- Sync -->
-    <div class="settings-card" id="settings-sync-card">
-      <div class="settings-card-title">Sync</div>
-      <div class="settings-row">
-        <div class="settings-row-label">Version</div>
-        <div class="settings-row-val" id="settings-sw-version" style="font-size:11px;color:var(--muted)">—</div>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-label">Status</div>
-        <div class="settings-row-val" id="settings-sync-status">checking…</div>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-label">Pending writes</div>
-        <div class="settings-row-val" id="settings-sync-pending">—</div>
-      </div>
-      <button class="settings-apply-btn" id="settings-sync-btn" onclick="triggerManualSync()">
-        Sync Now
-      </button>
-    </div>
-
-    <!-- Hard refresh -->
-    <div class="settings-card">
-      <div class="settings-card-title">Cache</div>
-      <div class="settings-hint">Clears the local exercise data cache (IndexedDB) and reloads fresh from the server.</div>
-      <button class="settings-apply-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="hardRefreshIDB()">
-        Hard Refresh Data
-      </button>
-      <button class="settings-apply-btn" style="margin-top:8px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).then(()=>window.location.reload())">
-        Reload App (get latest update)
-      </button>
-    </div>
-
-    <!-- Danger zone -->
-    <div style="padding:4px 4px 0;font-size:11px;color:var(--muted);text-align:center;line-height:1.6">
-      Programme config is saved to Supabase and persists across devices and sessions.
     </div>
   `;
-  updateSettingsSyncCard();
+}
+
+function showSettingsSub(section) {
+  const el = document.getElementById('settings-content');
+  if (!el) return;
+
+  const back = `<button class="sett-back-btn" onclick="renderSettings()">‹ Settings</button>`;
+
+  if (section === 'profile') {
+    const p = getProfile();
+    el.innerHTML = `${back}
+      <div class="sett-sub-title">Personal details</div>
+      <div class="settings-card">
+        <div class="prof-field-row">
+          <label class="prof-label">Name</label>
+          <input id="prof-name" class="prof-input" type="text" placeholder="Your name" value="${p.name}" onchange="saveProfile()">
+        </div>
+        <div class="prof-field-row">
+          <label class="prof-label">Date of Birth</label>
+          <input id="prof-dob" class="prof-input" type="date" value="${p.dob}" onchange="saveProfile()">
+        </div>
+        <div class="prof-field-row">
+          <label class="prof-label">Sex</label>
+          <div class="prof-sex-row">
+            <button class="prof-sex-btn${p.sex==='male'?' active':''}" data-sex="male" onclick="setProfileSex('male')">Male</button>
+            <button class="prof-sex-btn${p.sex==='female'?' active':''}" data-sex="female" onclick="setProfileSex('female')">Female</button>
+          </div>
+        </div>
+        <div class="prof-field-row">
+          <label class="prof-label">Height (cm)</label>
+          <input id="prof-height" class="prof-input" type="number" placeholder="175" value="${p.height||''}" onchange="saveProfile()">
+        </div>
+        <div class="prof-field-row">
+          <label class="prof-label">Target weight (kg)</label>
+          <input id="prof-target" class="prof-input" type="number" placeholder="87" value="${p.target||''}" onchange="saveProfile()">
+        </div>
+      </div>`;
+
+  } else if (section === 'programme') {
+    const state   = getProgrammeState(new Date());
+    const startStr = localDateStr(prog.start);
+    const curWeek  = state.beforeStart ? '—' : state.week;
+    const curPhase = state.beforeStart ? '—' : state.phase;
+    const dayName  = state.beforeStart ? '—' : DAYS[state.dowIndex];
+    el.innerHTML = `${back}
+      <div class="sett-sub-title">Programme</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-row-label">Start date</div>
+          <div class="settings-row-val">${formatDate(prog.start)}</div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Today</div>
+          <div class="settings-row-val">Week ${curWeek} · ${dayName}</div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Phase</div>
+          <div class="settings-row-val">Phase ${curPhase} of 5</div>
+        </div>
+      </div>
+      <div class="settings-card" style="margin-top:0">
+        <div class="settings-card-title">Change Start Date</div>
+        <div style="padding:0 16px">
+          <input class="settings-date-input" type="date" id="settings-date-picker" value="${startStr}" max="${localDateStr()}">
+        </div>
+        <div class="settings-hint">Recalculates week, phase and milestones. Logged workouts are <strong style="color:var(--text)">not deleted</strong>.</div>
+        <button class="settings-apply-btn" onclick="openResetModal()">Apply New Start Date</button>
+      </div>`;
+
+  } else if (section === 'ai') {
+    el.innerHTML = `${back}
+      <div class="sett-sub-title">AI Coach</div>
+      <div class="settings-card">
+        <div class="settings-hint" style="padding-top:14px">Free API key from <strong style="color:var(--text)">console.groq.com</strong> — stored locally only, never sent anywhere else.</div>
+        <div style="padding:0 16px 16px">
+          <input id="settings-groq-key" type="password" placeholder="gsk_…" autocomplete="off"
+            style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;padding:10px 12px;outline:none"
+            value="${getGroqKey()}" oninput="saveGroqKey(this.value)">
+        </div>
+      </div>`;
+
+  } else if (section === 'sync') {
+    el.innerHTML = `${back}
+      <div class="sett-sub-title">Sync &amp; Data</div>
+      <div class="settings-card" id="settings-sync-card">
+        <div class="settings-row">
+          <div class="settings-row-label">Version</div>
+          <div class="settings-row-val" id="settings-sw-version" style="font-size:11px;color:var(--muted)">—</div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Status</div>
+          <div class="settings-row-val" id="settings-sync-status">checking…</div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label">Pending writes</div>
+          <div class="settings-row-val" id="settings-sync-pending">—</div>
+        </div>
+        <button class="settings-apply-btn" id="settings-sync-btn" onclick="triggerManualSync()">Sync Now</button>
+      </div>
+      <div class="settings-card" style="margin-top:0">
+        <div class="settings-hint" style="padding-top:14px">Clears local IndexedDB cache and reloads fresh from server.</div>
+        <button class="settings-apply-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="hardRefreshIDB()">Hard Refresh Data</button>
+        <button class="settings-apply-btn" style="margin-top:8px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).then(()=>window.location.reload())">Reload App</button>
+      </div>`;
+    updateSettingsSyncCard();
+  }
 }
 
 async function updateSettingsSyncCard() {
@@ -1876,4 +1897,5 @@ export {
   generateProgressSummary,
   saveProfile,
   setProfileSex,
+  showSettingsSub,
 };
