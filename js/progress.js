@@ -1412,10 +1412,21 @@ async function generateProgressSummary() {
   if (btn) { btn.textContent = 'Thinking…'; btn.disabled = true; }
   if (out) out.textContent = '';
   try {
-    const metrics  = _metricsCache || [];
-    const exLogs   = _exLogs || [];
-    const cutoff   = new Date(); cutoff.setDate(cutoff.getDate() - 28);
-    const cutStr   = localDateStr(cutoff);
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 28);
+    const cutStr = localDateStr(cutoff);
+
+    // Use in-memory cache if populated, else fall back to Supabase
+    let metrics = _metricsCache?.length ? _metricsCache : [];
+    let exLogs  = _exLogs?.length       ? _exLogs       : [];
+    if (!metrics.length) {
+      const { data } = await db.from(TABLES.BODY).select('date,weight_kg').order('date');
+      metrics = data || [];
+    }
+    if (!exLogs.length) {
+      const { data } = await db.from(TABLES.EXERCISES).select('date').gte('date', cutStr);
+      exLogs = data || [];
+    }
+
     const recentW  = metrics.filter(m => m.date >= cutStr).map(m => `${m.date}:${m.weight_kg}kg`);
     const sessions = [...new Set(exLogs.filter(r => r.date >= cutStr).map(r => r.date))];
     const latest   = metrics.length ? metrics[metrics.length-1].weight_kg : null;
