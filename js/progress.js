@@ -46,6 +46,9 @@ function setProfileSex(val) {
   showToast('Profile saved');
 }
 
+// ── HTML-escape helper: use for all user-controlled data in innerHTML templates ──
+function hesc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 // ── Date display helper ──
 function fmtDate(str) {
   if(!str || str.length < 10) return str;
@@ -476,7 +479,7 @@ async function renderTrendsTab(){
               {label:'Target', data:metrics.map(m=>{ const s=getProgrammeState(new Date(m.date)); return prog.weekTargets[s.week]||getProfile().target; }),borderColor:'rgba(94,142,115,.5)',borderDash:[4,4],pointRadius:0,tension:0}
             ]
           },
-          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#666',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'},min:85,max:110}}}
+          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#666',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10}},grid:{color:'#222'},min:Math.floor(Math.min(...metrics.map(m=>m.weight_kg),getProfile().target)-3),max:Math.ceil(Math.max(...metrics.map(m=>m.weight_kg))+3)}}}
         });
       }
     }
@@ -826,7 +829,7 @@ async function renderBodyTab(){
             ${logged.slice(0,6).map(s=>`<span class="meas-history-pill">${s.label}: ${fmtM(entry[s.key])}</span>`).join('')}
             ${logged.length>6?`<span class="meas-history-pill" style="color:var(--muted)">+${logged.length-6} more</span>`:''}
           </div>
-          ${entry.notes?`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${entry.notes}</div>`:''}
+          ${entry.notes?`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${hesc(entry.notes)}</div>`:''}
         </div>`;
       };
       const histVis = allRecent.slice(0,5), histHid = allRecent.slice(5);
@@ -1372,7 +1375,7 @@ function renderSettings() {
       <div class="sett-nav-row" onclick="showSettingsSub('profile')">
         <span class="sett-nav-icon">👤</span>
         <span class="sett-nav-label">Personal details</span>
-        <span class="sett-nav-meta">${profileSub}</span>
+        <span class="sett-nav-meta">${hesc(profileSub)}</span>
         <span class="sett-nav-arrow">›</span>
       </div>
       <div class="sett-nav-row" onclick="showSettingsSub('programme')">
@@ -1414,11 +1417,11 @@ function showSettingsSub(section) {
       <div class="settings-card">
         <div class="prof-field-row">
           <label class="prof-label">Name</label>
-          <input id="prof-name" class="prof-input" type="text" placeholder="Your name" value="${p.name}" onchange="saveProfile()">
+          <input id="prof-name" class="prof-input" type="text" placeholder="Your name" value="${hesc(p.name)}" onchange="saveProfile()">
         </div>
         <div class="prof-field-row">
           <label class="prof-label">Date of Birth</label>
-          <input id="prof-dob" class="prof-input" type="date" value="${p.dob}" onchange="saveProfile()">
+          <input id="prof-dob" class="prof-input" type="date" value="${hesc(p.dob)}" onchange="saveProfile()">
         </div>
         <div class="prof-field-row">
           <label class="prof-label">Sex</label>
@@ -1429,11 +1432,11 @@ function showSettingsSub(section) {
         </div>
         <div class="prof-field-row">
           <label class="prof-label">Height (cm)</label>
-          <input id="prof-height" class="prof-input" type="number" placeholder="175" value="${p.height||''}" onchange="saveProfile()">
+          <input id="prof-height" class="prof-input" type="number" placeholder="175" value="${hesc(p.height||'')}" onchange="saveProfile()">
         </div>
         <div class="prof-field-row">
           <label class="prof-label">Target weight (kg)</label>
-          <input id="prof-target" class="prof-input" type="number" placeholder="87" value="${p.target||''}" onchange="saveProfile()">
+          <input id="prof-target" class="prof-input" type="number" placeholder="87" value="${hesc(p.target||'')}" onchange="saveProfile()">
         </div>
       </div>`;
 
@@ -1476,7 +1479,7 @@ function showSettingsSub(section) {
         <div style="padding:0 16px 16px">
           <input id="settings-groq-key" type="password" placeholder="gsk_…" autocomplete="off"
             style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;padding:10px 12px;outline:none"
-            value="${getGroqKey()}" oninput="saveGroqKey(this.value)">
+            value="${hesc(getGroqKey())}" oninput="saveGroqKey(this.value)">
         </div>
       </div>`;
 
