@@ -337,3 +337,18 @@ where completed = true
   and weight_kg > 0
   and reps between 1 and 10
 order by exercise_name, round(weight_kg * (1 + reps::numeric / 30), 2) desc;
+
+-- LISS / CARDIO VIEW (extracts JSON fields from checklist_logs.notes)
+create or replace view liss_logs
+  with (security_invoker = true)
+as
+select
+  date,
+  item_key,
+  (notes::json->>'incline')::numeric  as incline,
+  (notes::json->>'speed')::numeric    as speed,
+  (notes::json->>'mins')::numeric     as mins
+from checklist_logs
+where item_type = 'cardio'
+  and notes is not null
+  and notes <> '';
