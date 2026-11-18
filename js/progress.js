@@ -6,7 +6,7 @@ import { db, TABLES, MEASURE_SITES, MEAS_GROUPS, MEASURE_SITES_MAP } from './con
 import { store } from './store.js';
 import { prog, DAYS, localDateStr, parseLocalDate, formatDate,
          isMeasurementDue, daysSinceMeasurement, getProgrammeState } from './programme.js';
-import { setSyncStatus, withRetry, localWrite } from './sync.js';
+import { setSyncStatus, withRetry, localWrite, SyncDB, manualSync } from './sync.js';
 import * as localdb from './localdb.js';
 import { showToast, haptic, isInBodyDue, daysSinceInBody } from './ui.js';
 
@@ -1279,6 +1279,22 @@ function renderSettings() {
       </button>
     </div>
 
+    <!-- Sync -->
+    <div class="settings-card" id="settings-sync-card">
+      <div class="settings-card-title">Sync</div>
+      <div class="settings-row">
+        <div class="settings-row-label">Status</div>
+        <div class="settings-row-val" id="settings-sync-status">checking…</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">Pending writes</div>
+        <div class="settings-row-val" id="settings-sync-pending">—</div>
+      </div>
+      <button class="settings-apply-btn" id="settings-sync-btn" onclick="triggerManualSync()">
+        Sync Now
+      </button>
+    </div>
+
     <!-- Hard refresh -->
     <div class="settings-card">
       <div class="settings-card-title">Cache</div>
@@ -1293,6 +1309,32 @@ function renderSettings() {
       Programme config is saved to Supabase and persists across devices and sessions.
     </div>
   `;
+  updateSettingsSyncCard();
+}
+
+async function updateSettingsSyncCard() {
+  const statusEl  = document.getElementById('settings-sync-status');
+  const pendingEl = document.getElementById('settings-sync-pending');
+  const btn       = document.getElementById('settings-sync-btn');
+  if (!statusEl) return;
+  const items   = await SyncDB.getAll().catch(() => []);
+  const lsItems = JSON.parse(localStorage.getItem('gymtracker_q') || '[]');
+  const total   = items.length + lsItems.length;
+  statusEl.textContent  = navigator.onLine ? 'Online' : 'Offline';
+  statusEl.style.color  = navigator.onLine ? 'var(--p3)' : 'var(--p2)';
+  pendingEl.textContent = total > 0 ? `${total} item${total > 1 ? 's' : ''}` : 'All synced ✓';
+  pendingEl.style.color = total > 0 ? 'var(--p1)' : 'var(--p3)';
+  if (btn) {
+    btn.textContent = total > 0 ? `Sync Now (${total})` : 'Sync Now';
+    btn.style.opacity = total > 0 ? '1' : '.5';
+  }
+}
+
+async function triggerManualSync() {
+  const btn = document.getElementById('settings-sync-btn');
+  if (btn) { btn.textContent = 'Syncing…'; btn.style.opacity = '.6'; }
+  await manualSync();
+  updateSettingsSyncCard();
 }
 
 let _pendingResetDate = null;
@@ -1544,4 +1586,6 @@ export {
   renderStrengthChartData,
   updateStrengthChart,
   hardRefreshIDB,
+  triggerManualSync,
+  updateSettingsSyncCard,
 };
